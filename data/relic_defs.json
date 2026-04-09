@@ -1,0 +1,68 @@
+[
+  {
+    "id": "warband_contract",
+    "name": "Warband Contract",
+    "category": "count",
+    "weight": 1.0,
+    "tags": ["melee", "swarm"],
+    "modifiers": {
+      "add_unit": "warrior",
+      "add_count": 3
+    }
+  },
+  {
+    "id": "blood_oath",
+    "name": "Blood Oath",
+    "category": "relic",
+    "weight": 0.8,
+    "tags": ["melee", "berserker"],
+    "modifiers": {
+      "attack_interval_scale": 0.9,
+      "max_hp_scale": 1.1
+    }
+  },
+  {
+    "id": "meteor_manual",
+    "name": "Meteor Manual",
+    "category": "unit",
+    "weight": 0.7,
+    "tags": ["caster", "aoe"],
+    "modifiers": {
+      "unlock_unit": "mage",
+      "spell_damage_scale": 1.2
+    }
+  },
+  {
+    "id": "healing_banner",
+    "name": "Healing Banner",
+    "category": "relic",
+    "weight": 0.9,
+    "tags": ["support", "sustain"],
+    "modifiers": {
+      "support_tick_scale": 0.85,
+      "team_max_hp_scale": 1.08
+    }
+  },
+  {
+    "id": "shadow_path",
+    "name": "Shadow Path",
+    "category": "unit",
+    "weight": 0.6,
+    "tags": ["assassin", "rush"],
+    "modifiers": {
+      "unlock_unit": "assassin",
+      "move_speed_scale": 1.15
+    }
+  },
+  {
+    "id": "reinforcement_horn",
+    "name": "Reinforcement Horn",
+    "category": "count",
+    "weight": 1.1,
+    "tags": ["mixed", "tempo"],
+    "modifiers": {
+      "bonus_choices": 1,
+      "next_wave_add_count": 2
+    }
+  }
+]

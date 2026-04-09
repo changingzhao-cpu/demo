@@ -1,0 +1,86 @@
+[
+  {
+    "wave": 1,
+    "enemy_count": 5,
+    "enemy_comp": ["warrior"],
+    "spawn_batch_size": 5,
+    "tags": ["intro"]
+  },
+  {
+    "wave": 2,
+    "enemy_count": 8,
+    "enemy_comp": ["warrior", "berserker"],
+    "spawn_batch_size": 8,
+    "tags": ["melee"]
+  },
+  {
+    "wave": 3,
+    "enemy_count": 12,
+    "enemy_comp": ["warrior", "mage"],
+    "spawn_batch_size": 12,
+    "tags": ["mixed"]
+  },
+  {
+    "wave": 4,
+    "enemy_count": 18,
+    "enemy_comp": ["warrior", "berserker", "priest"],
+    "spawn_batch_size": 18,
+    "tags": ["build_start"]
+  },
+  {
+    "wave": 5,
+    "enemy_count": 30,
+    "enemy_comp": ["warrior", "mage", "priest"],
+    "spawn_batch_size": 15,
+    "tags": ["density"]
+  },
+  {
+    "wave": 6,
+    "enemy_count": 50,
+    "enemy_comp": ["warrior", "berserker", "assassin"],
+    "spawn_batch_size": 25,
+    "tags": ["rush"]
+  },
+  {
+    "wave": 7,
+    "enemy_count": 80,
+    "enemy_comp": ["warrior", "mage", "shaman"],
+    "spawn_batch_size": 20,
+    "tags": ["aoe"]
+  },
+  {
+    "wave": 8,
+    "enemy_count": 120,
+    "enemy_comp": ["warrior", "priest", "assassin"],
+    "spawn_batch_size": 30,
+    "tags": ["support"]
+  },
+  {
+    "wave": 9,
+    "enemy_count": 180,
+    "enemy_comp": ["warrior", "berserker", "mage", "assassin"],
+    "spawn_batch_size": 45,
+    "tags": ["surge"]
+  },
+  {
+    "wave": 10,
+    "enemy_count": 260,
+    "enemy_comp": ["warrior", "mage", "shaman", "priest"],
+    "spawn_batch_size": 65,
+    "tags": ["late_game"]
+  },
+  {
+    "wave": 11,
+    "enemy_count": 360,
+    "enemy_comp": ["warrior", "berserker", "mage", "priest", "assassin"],
+    "spawn_batch_size": 90,
+    "tags": ["swarm"]
+  },
+  {
+    "wave": 12,
+    "enemy_count": 500,
+    "enemy_comp": ["warrior", "berserker", "mage", "shaman", "priest", "assassin"],
+    "spawn_batch_size": 100,
+    "tags": ["finale", "peak"]
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "warrior",
+    "name": "Warrior",
+    "archetype": "melee",
+    "max_hp": 120.0,
+    "move_speed": 62.0,
+    "attack_interval": 0.85,
+    "attack_range": 18.0,
+    "radius": 8.0,
+    "base_damage": 14.0,
+    "sprite_key": "warrior_red"
+  },
+  {
+    "id": "berserker",
+    "name": "Berserker",
+    "archetype": "melee",
+    "max_hp": 105.0,
+    "move_speed": 70.0,
+    "attack_interval": 0.7,
+    "attack_range": 18.0,
+    "radius": 8.0,
+    "base_damage": 16.0,
+    "sprite_key": "berserker_red"
+  },
+  {
+    "id": "mage",
+    "name": "Mage",
+    "archetype": "caster",
+    "max_hp": 70.0,
+    "move_speed": 56.0,
+    "attack_interval": 1.4,
+    "attack_range": 24.0,
+    "radius": 7.0,
+    "base_damage": 20.0,
+    "sprite_key": "mage_blue"
+  },
+  {
+    "id": "shaman",
+    "name": "Shaman",
+    "archetype": "caster",
+    "max_hp": 82.0,
+    "move_speed": 54.0,
+    "attack_interval": 1.6,
+    "attack_range": 24.0,
+    "radius": 7.0,
+    "base_damage": 18.0,
+    "sprite_key": "shaman_blue"
+  },
+  {
+    "id": "priest",
+    "name": "Priest",
+    "archetype": "support",
+    "max_hp": 88.0,
+    "move_speed": 55.0,
+    "attack_interval": 1.5,
+    "attack_range": 20.0,
+    "radius": 7.0,
+    "base_damage": 10.0,
+    "sprite_key": "priest_gold"
+  },
+  {
+    "id": "assassin",
+    "name": "Assassin",
+    "archetype": "assassin",
+    "max_hp": 76.0,
+    "move_speed": 82.0,
+    "attack_interval": 0.65,
+    "attack_range": 16.0,
+    "radius": 7.0,
+    "base_damage": 18.0,
+    "sprite_key": "assassin_green"
+  }
+]
