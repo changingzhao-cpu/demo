@@ -1,0 +1,43 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+/export/
+/.export/
+
+# Imported assets
+.import/
+*.import
+
+# Mono / C#
+.mono/
+
+# Build logs and temp files
+*.log
+*.tmp
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+
+# Secrets and local platform config
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+.env
+.env.*
+
+# WeChat Mini Game local outputs
+minigame_dist/
+wechat_dist/
+wxgame/
+
+# Local test and coverage outputs
+coverage/
+.test-output/
+.gut_editor_layout.cfg
+.gut_cache/
+*.lcov
+
+# Optional exported presets override
+export_presets.cfg
