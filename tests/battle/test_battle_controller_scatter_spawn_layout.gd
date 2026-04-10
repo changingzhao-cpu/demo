@@ -29,21 +29,27 @@ func _test_start_run_uses_scatter_layout_with_clear_density_difference(failures:
 		elif store.team_id[entity_id] == ENEMY_TEAM_ID:
 			enemy_positions.append(position)
 	_assert_eq(ally_positions.size(), 6, "wave 1 should still seed six ally units for scatter layout checks", failures)
-	_assert_eq(enemy_positions.size(), 5, "wave 1 should seed five enemies for scatter layout checks", failures)
+	_assert_eq(enemy_positions.size(), 5, "wave 1 should still seed five enemies for scatter layout checks", failures)
 	if ally_positions.size() == 6:
-		_assert_true(_x_spread(ally_positions) >= 2.4, "ally scatter layout should spread across multiple forward lanes instead of a tight column pair", failures)
-		_assert_true(_min_pair_distance(ally_positions) > 1.0, "ally scatter layout should avoid overlapping starting positions", failures)
+		_assert_true(_x_spread(ally_positions) >= 2.8, "ally scatter layout should spread across multiple forward lanes instead of a tight column pair", failures)
+		_assert_true(_min_pair_distance(ally_positions) > 1.1, "ally scatter layout should avoid overlapping starting positions", failures)
 		_assert_true(not _is_mechanical_grid(ally_positions), "ally scatter layout should not look like a mechanical grid", failures)
-		_assert_true(_x_spread(ally_positions) - _x_spread(enemy_positions) >= 0.35 if enemy_positions.size() == 5 else true, "ally scatter should remain visibly wider than the enemy swarm", failures)
+		_assert_true(_x_spread(ally_positions) - _x_spread(enemy_positions) >= 0.6 if enemy_positions.size() == 5 else true, "ally scatter should remain visibly wider than the enemy swarm", failures)
 	if enemy_positions.size() == 5:
-		_assert_true(_x_spread(enemy_positions) <= 2.8, "enemy scatter layout should stay denser than allies", failures)
-		_assert_true(_min_pair_distance(enemy_positions) > 0.75, "enemy scatter layout should avoid overlapping starting positions", failures)
+		_assert_true(_x_spread(enemy_positions) <= 2.4, "enemy scatter layout should stay denser than allies", failures)
+		_assert_true(_min_pair_distance(enemy_positions) > 0.85, "enemy scatter layout should avoid overlapping starting positions", failures)
 		_assert_true(not _is_mechanical_grid(enemy_positions), "enemy scatter layout should not look like a mechanical grid", failures)
 	if ally_positions.size() == 6 and enemy_positions.size() == 5:
-		_assert_true(_average_x(ally_positions) < -5.0, "allies should still stage on the left side", failures)
-		_assert_true(_average_x(enemy_positions) > 7.0, "enemies should still stage on the right side", failures)
+		_assert_true(_average_x(ally_positions) < -6.0, "allies should still stage clearly on the left side", failures)
+		_assert_true(_average_x(enemy_positions) > 8.0, "enemies should still stage clearly on the right side", failures)
 		_assert_true(_x_spread(ally_positions) > _x_spread(enemy_positions), "ally scatter should be looser while enemy swarm remains denser", failures)
 		_assert_true(_average_pair_distance(ally_positions) > _average_pair_distance(enemy_positions), "ally scatter should keep lower density than the enemy swarm", failures)
+		_assert_true(_team_gap(ally_positions, enemy_positions) >= 13.0, "opening scatter should preserve a visible central engagement corridor", failures)
+		_assert_true(_rightmost_x(ally_positions) < _leftmost_x(enemy_positions), "opening formations should not overlap across the center lane", failures)
+		_assert_true(_rightmost_x(ally_positions) <= -4.2, "allies should not open too close to the center line", failures)
+		_assert_true(_leftmost_x(enemy_positions) >= 6.0, "enemies should not open too close to the center line", failures)
+		_assert_true(_y_spread(enemy_positions) <= 3.0, "enemy swarm should stay vertically compact instead of becoming a tall blob", failures)
+		_assert_true(_y_spread(ally_positions) >= 3.2, "allies should use multiple vertical lanes for a readable opening", failures)
 	controller.free()
 
 func _average_x(positions: Array[Vector2]) -> float:
@@ -63,6 +69,35 @@ func _x_spread(positions: Array[Vector2]) -> float:
 		min_x = minf(min_x, position.x)
 		max_x = maxf(max_x, position.x)
 	return max_x - min_x
+
+func _y_spread(positions: Array[Vector2]) -> float:
+	if positions.is_empty():
+		return 0.0
+	var min_y := positions[0].y
+	var max_y := positions[0].y
+	for position in positions:
+		min_y = minf(min_y, position.y)
+		max_y = maxf(max_y, position.y)
+	return max_y - min_y
+
+func _leftmost_x(positions: Array[Vector2]) -> float:
+	if positions.is_empty():
+		return 0.0
+	var min_x := positions[0].x
+	for position in positions:
+		min_x = minf(min_x, position.x)
+	return min_x
+
+func _rightmost_x(positions: Array[Vector2]) -> float:
+	if positions.is_empty():
+		return 0.0
+	var max_x := positions[0].x
+	for position in positions:
+		max_x = maxf(max_x, position.x)
+	return max_x
+
+func _team_gap(ally_positions: Array[Vector2], enemy_positions: Array[Vector2]) -> float:
+	return _leftmost_x(enemy_positions) - _rightmost_x(ally_positions)
 
 func _min_pair_distance(positions: Array[Vector2]) -> float:
 	var best := INF

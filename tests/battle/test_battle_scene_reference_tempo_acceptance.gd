@@ -31,9 +31,13 @@ func _test_reference_tempo_progresses_from_scatter_to_clash_to_impact(failures: 
 	var impact_effect_count := 0
 	var early_distribution_ok := false
 	var saw_attack_by_one_second := false
+	var saw_contact_signal_by_one_second := false
+	var saw_non_scatter_hint := false
+	var max_ally_displacement := 0.0
 	for step in range(180):
 		await main_loop.process_frame
 		var report: Dictionary = controller.call("get_last_tick_report")
+		max_ally_displacement = maxf(max_ally_displacement, ally_view.global_position.distance_to(start_position))
 		if step == 10:
 			early_text = String(phase_hint.text)
 			early_distribution_ok = _has_side_separation(unit_layer)
@@ -45,13 +49,20 @@ func _test_reference_tempo_progresses_from_scatter_to_clash_to_impact(failures: 
 			impact_effect_count = effect_layer.get_child_count()
 		if step <= 60 and int(report.get("attacked", 0)) > 0:
 			saw_attack_by_one_second = true
+		if step <= 60 and (int(report.get("in_range", 0)) > 0 or int(report.get("combat_event_count", 0)) > 0):
+			saw_contact_signal_by_one_second = true
+		if String(phase_hint.text) != "Scatter setup":
+			saw_non_scatter_hint = true
 	_assert_true(early_text.contains("Scatter"), "battle scene should present an early scatter/setup tempo hint", failures)
 	_assert_true(clash_text.contains("Clash") or clash_text.contains("Charge"), "battle scene should present a mid-tempo clash hint by around 1 second", failures)
 	_assert_true(impact_text.contains("Impact") or impact_text.contains("Burst"), "battle scene should present a later impact hint by around 3 seconds", failures)
 	_assert_true(phase_hint.text.length() <= 36, "tempo HUD hint should stay compact during runtime acceptance", failures)
 	_assert_true(early_distribution_ok, "battle scene should keep visible left-right separation in the early scatter window", failures)
+	_assert_true(max_ally_displacement > 24.0, "battle scene should visibly auto-advance units instead of staying near-static", failures)
 	_assert_true(ally_view.global_position.distance_to(start_position) > 18.0, "battle scene should move from scatter setup into active melee by the tempo acceptance window", failures)
 	_assert_true(saw_attack_by_one_second, "battle scene should reach attack contact by around the first second", failures)
+	_assert_true(saw_contact_signal_by_one_second, "battle scene should expose stable contact signals by around the first second", failures)
+	_assert_true(saw_non_scatter_hint, "battle scene should not remain in scatter setup for the full runtime acceptance window", failures)
 	_assert_true(clash_effect_count > 0, "battle scene should already show combat effects by the clash phase", failures)
 	_assert_true(impact_effect_count >= clash_effect_count, "battle scene should sustain or intensify visible effects by the later impact phase", failures)
 	_assert_true(_count_visible_views(unit_layer) >= 8, "battle scene should still show multiple unit views instead of collapsing into unreadable blobs", failures)

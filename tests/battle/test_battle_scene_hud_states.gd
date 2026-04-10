@@ -8,6 +8,7 @@ func run() -> Array[String]:
 	_test_reward_hud_switches_when_wave_clears(failures)
 	_test_settle_hud_switches_when_run_fails(failures)
 	_test_combat_hud_stays_compact_and_avoids_extra_overlay_labels(failures)
+	_test_combat_hud_avoids_debug_title_and_heavy_debug_copy(failures)
 	return failures
 
 func _test_combat_hud_shows_wave_and_state(failures: Array[String]) -> void:
@@ -97,6 +98,21 @@ func _test_combat_hud_stays_compact_and_avoids_extra_overlay_labels(failures: Ar
 	_assert_hidden_or_missing(legend_enemies, "LegendEnemies should not remain as a prominent overlay label", failures)
 	_assert_hidden_or_missing(tempo_banner, "TempoBanner should not remain as a prominent overlay label", failures)
 	_assert_hidden_or_missing(arena_flavor, "ArenaFlavor should not remain as a prominent overlay label", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
+
+func _test_combat_hud_avoids_debug_title_and_heavy_debug_copy(failures: Array[String]) -> void:
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = BattleScene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var battle_label = instance.get_node_or_null("UiLayer/BattleLabel")
+	var state_label = instance.get_node_or_null("UiLayer/StateLabel")
+	if battle_label != null:
+		_assert_hidden_or_missing(battle_label, "BattleLabel should not remain as a prominent debug title in combat HUD", failures)
+	if state_label != null:
+		_assert_false(String(state_label.text).begins_with("State:"), "combat HUD should avoid raw debug-style state prefixes", failures)
+		_assert_true(String(state_label.text).length() <= 18, "combat state copy should stay lightweight if shown at all", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
 

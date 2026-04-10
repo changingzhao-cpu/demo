@@ -5,10 +5,10 @@ const BOUND_TINT := Color(0.45, 0.85, 1.0, 1.0)
 const ENEMY_TINT := Color(0.95, 0.4, 0.4, 1.0)
 const UNBOUND_TINT := Color(0.4, 0.4, 0.4, 0.4)
 const DEAD_ALPHA := 0.35
-const VISUAL_RADIUS := 3.2
+const VISUAL_RADIUS := 3.0
 const MAX_MOTION_STRENGTH := 1.0
-const ATTACK_PULSE_BONUS := 0.28
-const HIT_PULSE_BONUS := 0.4
+const ATTACK_PULSE_BONUS := 0.24
+const HIT_PULSE_BONUS := 0.36
 
 var _entity_id: int = -1
 var _is_bound := false
@@ -35,11 +35,11 @@ func _draw() -> void:
 	else:
 		_draw_ally_fighter_silhouette(readable_motion, flash_tint)
 	if _hit_pulse_strength > 0.0:
-		var hit_center := Vector2(_visual_facing_sign * 1.5, -0.7)
-		draw_arc(hit_center, VISUAL_RADIUS + 0.55, -0.9, 0.9, 12, Color(1.0, 0.98, 0.9, minf(0.52, _hit_pulse_strength)), 1.1)
+		var hit_center := Vector2(_visual_facing_sign * 1.35, -0.62)
+		draw_arc(hit_center, VISUAL_RADIUS + 0.4, -0.9, 0.9, 12, Color(1.0, 0.98, 0.9, minf(0.5, _hit_pulse_strength)), 1.0)
 	if _is_showing_death_state:
-		draw_line(Vector2(-VISUAL_RADIUS - 0.7, -VISUAL_RADIUS - 0.5), Vector2(VISUAL_RADIUS + 0.7, VISUAL_RADIUS + 0.5), Color(1.0, 1.0, 1.0, _visual_tint.a * 0.55), 1.2)
-		draw_line(Vector2(-VISUAL_RADIUS - 0.7, VISUAL_RADIUS + 0.5), Vector2(VISUAL_RADIUS + 0.7, -VISUAL_RADIUS - 0.5), Color(1.0, 1.0, 1.0, _visual_tint.a * 0.55), 1.2)
+		draw_line(Vector2(-VISUAL_RADIUS - 0.6, -VISUAL_RADIUS - 0.45), Vector2(VISUAL_RADIUS + 0.6, VISUAL_RADIUS + 0.45), Color(1.0, 1.0, 1.0, _visual_tint.a * 0.55), 1.1)
+		draw_line(Vector2(-VISUAL_RADIUS - 0.6, VISUAL_RADIUS + 0.45), Vector2(VISUAL_RADIUS + 0.6, -VISUAL_RADIUS - 0.45), Color(1.0, 1.0, 1.0, _visual_tint.a * 0.55), 1.1)
 
 func bind_entity(entity_id: int) -> void:
 	_entity_id = entity_id
@@ -143,55 +143,55 @@ func reset_for_pool() -> void:
 func _draw_ally_fighter_silhouette(readable_motion: float, flash_tint: Color) -> void:
 	var body_color := flash_tint
 	var head_color := flash_tint.lerp(Color.WHITE, 0.2)
-	var cape_color := Color(0.18, 0.24, 0.35, flash_tint.a * 0.72)
-	var stance_shift := Vector2(_visual_facing_sign * (0.25 + readable_motion * 0.45), sin(readable_motion * PI) * 0.22)
+	var cape_color := Color(0.18, 0.24, 0.35, flash_tint.a * 0.68)
+	var stance_shift := Vector2(_visual_facing_sign * (0.2 + readable_motion * 0.36), sin(readable_motion * PI) * 0.18)
 	var body_points := PackedVector2Array([
-		Vector2(-1.2, -0.7) + stance_shift,
-		Vector2(1.0, -1.05) + stance_shift,
-		Vector2(1.45, 0.85) + stance_shift,
-		Vector2(-0.85, 1.25) + stance_shift
+		Vector2(-1.0, -0.62) + stance_shift,
+		Vector2(0.82, -0.92) + stance_shift,
+		Vector2(1.18, 0.72) + stance_shift,
+		Vector2(-0.7, 1.05) + stance_shift
 	])
 	var cape_points := PackedVector2Array([
-		Vector2(-1.35, -0.55) + stance_shift,
-		Vector2(-2.45, 0.35) + stance_shift,
-		Vector2(-1.65, 1.35) + stance_shift,
-		Vector2(-0.35, 0.55) + stance_shift
+		Vector2(-1.08, -0.45) + stance_shift,
+		Vector2(-1.95, 0.22) + stance_shift,
+		Vector2(-1.28, 1.08) + stance_shift,
+		Vector2(-0.22, 0.45) + stance_shift
 	])
 	draw_colored_polygon(cape_points, cape_color)
 	draw_colored_polygon(body_points, body_color)
-	draw_circle(Vector2(0.2, -2.0) + stance_shift, 0.82, head_color)
-	var weapon_start := Vector2(0.95, -0.15) + stance_shift
-	var weapon_tip := weapon_start + Vector2(_visual_facing_sign * (2.15 + _attack_pulse_strength * 1.2), -0.5)
-	draw_line(weapon_start, weapon_tip, Color(1.0, 0.95, 0.78, flash_tint.a * 0.92), 1.0)
-	draw_circle(weapon_tip, 0.36 + _attack_pulse_strength * 0.3, Color(1.0, 0.96, 0.86, flash_tint.a * 0.82))
-	draw_line(Vector2(-0.35, 1.05) + stance_shift, Vector2(-0.9, 2.8) + stance_shift, Color(0.16, 0.18, 0.22, flash_tint.a * 0.9), 0.95)
-	draw_line(Vector2(0.65, 1.0) + stance_shift, Vector2(1.15, 2.9) + stance_shift, Color(0.16, 0.18, 0.22, flash_tint.a * 0.9), 0.95)
+	draw_circle(Vector2(0.15, -1.72) + stance_shift, 0.7, head_color)
+	var weapon_start := Vector2(0.8, -0.12) + stance_shift
+	var weapon_tip := weapon_start + Vector2(_visual_facing_sign * (1.8 + _attack_pulse_strength * 0.9), -0.42)
+	draw_line(weapon_start, weapon_tip, Color(1.0, 0.95, 0.78, flash_tint.a * 0.9), 0.9)
+	draw_circle(weapon_tip, 0.26 + _attack_pulse_strength * 0.22, Color(1.0, 0.96, 0.86, flash_tint.a * 0.78))
+	draw_line(Vector2(-0.28, 0.9) + stance_shift, Vector2(-0.78, 2.35) + stance_shift, Color(0.16, 0.18, 0.22, flash_tint.a * 0.88), 0.82)
+	draw_line(Vector2(0.55, 0.86) + stance_shift, Vector2(0.95, 2.4) + stance_shift, Color(0.16, 0.18, 0.22, flash_tint.a * 0.88), 0.82)
 
 func _draw_enemy_goose_silhouette(readable_motion: float, flash_tint: Color) -> void:
 	var body_color := flash_tint.lerp(Color.WHITE, 0.08)
-	var wing_color := Color(1.0, 1.0, 1.0, flash_tint.a * 0.88)
+	var wing_color := Color(1.0, 1.0, 1.0, flash_tint.a * 0.84)
 	var beak_color := Color(1.0, 0.75, 0.36, flash_tint.a * 0.95)
-	var lunge_shift := Vector2(_visual_facing_sign * (0.3 + readable_motion * 0.55), -0.05)
-	_draw_ellipse(Vector2.ZERO + lunge_shift, Vector2(2.15, 1.55), body_color)
-	_draw_ellipse(Vector2(-0.55 * _visual_facing_sign, -0.05) + lunge_shift, Vector2(1.35, 0.95), wing_color)
+	var lunge_shift := Vector2(_visual_facing_sign * (0.24 + readable_motion * 0.42), -0.04)
+	_draw_ellipse(Vector2.ZERO + lunge_shift, Vector2(1.82, 1.28), body_color)
+	_draw_ellipse(Vector2(-0.42 * _visual_facing_sign, -0.04) + lunge_shift, Vector2(1.1, 0.76), wing_color)
 	var neck_points := PackedVector2Array([
-		Vector2(0.8 * _visual_facing_sign, -0.5) + lunge_shift,
-		Vector2(1.6 * _visual_facing_sign, -1.8) + lunge_shift,
-		Vector2(2.0 * _visual_facing_sign, -1.45) + lunge_shift,
-		Vector2(1.25 * _visual_facing_sign, -0.25) + lunge_shift
+		Vector2(0.64 * _visual_facing_sign, -0.42) + lunge_shift,
+		Vector2(1.28 * _visual_facing_sign, -1.48) + lunge_shift,
+		Vector2(1.6 * _visual_facing_sign, -1.2) + lunge_shift,
+		Vector2(0.98 * _visual_facing_sign, -0.18) + lunge_shift
 	])
 	draw_colored_polygon(neck_points, wing_color)
-	draw_circle(Vector2(2.15 * _visual_facing_sign, -1.7) + lunge_shift, 0.58, wing_color)
+	draw_circle(Vector2(1.76 * _visual_facing_sign, -1.38) + lunge_shift, 0.46, wing_color)
 	var beak := PackedVector2Array([
-		Vector2(2.55 * _visual_facing_sign, -1.72) + lunge_shift,
-		Vector2(3.45 * _visual_facing_sign, -1.55 - _attack_pulse_strength * 0.25) + lunge_shift,
-		Vector2(2.75 * _visual_facing_sign, -1.2) + lunge_shift
+		Vector2(2.08 * _visual_facing_sign, -1.4) + lunge_shift,
+		Vector2(2.8 * _visual_facing_sign, -1.28 - _attack_pulse_strength * 0.18) + lunge_shift,
+		Vector2(2.22 * _visual_facing_sign, -0.98) + lunge_shift
 	])
 	draw_colored_polygon(beak, beak_color)
-	draw_line(Vector2(-0.7, 0.95) + lunge_shift, Vector2(-1.15, 2.5) + lunge_shift, Color(0.4, 0.22, 0.1, flash_tint.a * 0.82), 0.85)
-	draw_line(Vector2(0.4, 0.95) + lunge_shift, Vector2(0.0, 2.55) + lunge_shift, Color(0.4, 0.22, 0.1, flash_tint.a * 0.82), 0.85)
+	draw_line(Vector2(-0.56, 0.78) + lunge_shift, Vector2(-0.92, 2.08) + lunge_shift, Color(0.4, 0.22, 0.1, flash_tint.a * 0.8), 0.74)
+	draw_line(Vector2(0.32, 0.78) + lunge_shift, Vector2(0.0, 2.12) + lunge_shift, Color(0.4, 0.22, 0.1, flash_tint.a * 0.8), 0.74)
 	if _attack_pulse_strength > 0.0:
-		draw_arc(Vector2(2.0 * _visual_facing_sign, -1.55) + lunge_shift, 1.0 + _attack_pulse_strength * 0.35, -0.65, 0.65, 10, Color(1.0, 0.95, 0.88, 0.36), 0.9)
+		draw_arc(Vector2(1.68 * _visual_facing_sign, -1.28) + lunge_shift, 0.82 + _attack_pulse_strength * 0.24, -0.65, 0.65, 10, Color(1.0, 0.95, 0.88, 0.32), 0.78)
 
 func _draw_ellipse(center: Vector2, radii: Vector2, color: Color) -> void:
 	var points := PackedVector2Array()
