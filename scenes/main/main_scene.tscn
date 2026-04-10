@@ -1,0 +1,99 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/battle/battle_scene.tscn" id="1_battle"]
+
+[sub_resource type="GDScript" id="GDScript_main_scene"]
+script/source = "extends Node2D
+
+@onready var _battle_scene = $BattleScene
+@onready var _status_summary_label: Label = $StatusSummaryLabel
+@onready var _settle_hint_label: Label = $SettleHintLabel
+
+func _ready() -> void:
+	_update_summary_labels()
+
+func _process(_delta: float) -> void:
+	_update_summary_labels()
+
+func _update_summary_labels() -> void:
+	if _battle_scene == null:
+		return
+	var controller = _battle_scene.get_node_or_null(\"BattleController\")
+	if controller == null or not controller.has_method(\"get_state\"):
+		return
+	var state := str(controller.call(\"get_state\"))
+	if _status_summary_label != null:
+		if state == \"reward\":
+			_status_summary_label.text = \"Status: Reward choice is ready\"
+		elif state == \"settle\":
+			_status_summary_label.text = \"Status: Settle reached, the run is over\"
+		else:
+			_status_summary_label.text = \"Status: Combat is running\"
+	if _settle_hint_label != null:
+		if state == \"settle\":
+			_settle_hint_label.text = \"Restart the run after Settle to watch the loop again\"
+		else:
+			_settle_hint_label.text = \"Reward leads to the next wave; Settle ends the run\""
+
+[node name="MainScene" type="Node2D"]
+script = SubResource("GDScript_main_scene")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 1280.0
+offset_bottom = 720.0
+color = Color(0.08, 0.09, 0.12, 1)
+mouse_filter = 2
+z_index = -3
+
+[node name="TitleLabel" type="Label" parent="."]
+offset_left = 32.0
+offset_top = 20.0
+offset_right = 360.0
+offset_bottom = 54.0
+text = "Battle Demo"
+
+[node name="SubtitleLabel" type="Label" parent="."]
+offset_left = 32.0
+offset_top = 52.0
+offset_right = 620.0
+offset_bottom = 82.0
+text = "500v500 readability prototype"
+
+[node name="RunHintLabel" type="Label" parent="."]
+offset_left = 32.0
+offset_top = 88.0
+offset_right = 760.0
+offset_bottom = 118.0
+text = "Watch Combat, then Reward, then Settle without opening debug tools"
+
+[node name="StatusSummaryLabel" type="Label" parent="."]
+offset_left = 820.0
+offset_top = 24.0
+offset_right = 1236.0
+offset_bottom = 54.0
+text = "Status: Combat is running"
+
+[node name="SettleHintLabel" type="Label" parent="."]
+offset_left = 820.0
+offset_top = 58.0
+offset_right = 1236.0
+offset_bottom = 106.0
+text = "Reward leads to the next wave; Settle ends the run"
+autowrap_mode = 3
+
+[node name="BattleSceneFrame" type="ColorRect" parent="."]
+offset_left = 24.0
+offset_top = 136.0
+offset_right = 1256.0
+offset_bottom = 688.0
+color = Color(1, 1, 1, 0.05)
+mouse_filter = 2
+z_index = -2
+
+[node name="BattleScene" parent="." instance=ExtResource("1_battle")]
+position = Vector2(0, 96)
+
+[node name="SettleAnchor" type="Node" parent="."]
+position = Vector2(640, 688)

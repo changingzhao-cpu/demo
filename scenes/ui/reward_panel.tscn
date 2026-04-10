@@ -1,0 +1,102 @@
+[gd_scene load_steps=2 format=3]
+
+[sub_resource type="GDScript" id="GDScript_reward_panel"]
+script/source = "extends Control
+signal reward_selected(index: int)
+
+@onready var _title_label: Label = $PanelFrame/TitleLabel
+@onready var _hint_label: Label = $PanelFrame/HintLabel
+@onready var _option_a: Button = $OptionButtons/OptionA
+@onready var _option_b: Button = $OptionButtons/OptionB
+@onready var _option_c: Button = $OptionButtons/OptionC
+
+func _ready() -> void:
+	visible = false
+	if _title_label != null:
+		_title_label.text = \"Reward Phase\"
+	if _hint_label != null:
+		_hint_label.text = \"Choose one reward to start the next wave\"
+	_option_a.pressed.connect(func() -> void: _select_reward(0))
+	_option_b.pressed.connect(func() -> void: _select_reward(1))
+	_option_c.pressed.connect(func() -> void: _select_reward(2))
+
+func show_rewards(rewards: Array) -> void:
+	visible = true
+	if _title_label != null:
+		_title_label.text = \"Reward Phase\"
+	if _hint_label != null:
+		_hint_label.text = \"Choose one reward to start the next wave\"
+	_option_a.text = str(rewards[0]) if rewards.size() > 0 else \"Option A\"
+	_option_b.text = str(rewards[1]) if rewards.size() > 1 else \"Option B\"
+	_option_c.text = str(rewards[2]) if rewards.size() > 2 else \"Option C\"
+
+func _select_reward(index: int) -> void:
+	reward_selected.emit(index)
+	visible = false"
+
+[node name="RewardPanel" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = SubResource("GDScript_reward_panel")
+
+[node name="PanelFrame" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -120.0
+offset_right = 150.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleLabel" type="Label" parent="PanelFrame"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 18.0
+offset_right = 220.0
+offset_bottom = 44.0
+text = "Reward Phase"
+
+[node name="HintLabel" type="Label" parent="PanelFrame"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 48.0
+offset_right = 280.0
+offset_bottom = 86.0
+text = "Choose one reward to start the next wave"
+autowrap_mode = 3
+
+[node name="OptionButtons" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -126.0
+offset_top = -10.0
+offset_right = 126.0
+offset_bottom = 96.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="OptionA" type="Button" parent="OptionButtons"]
+layout_mode = 2
+text = "Option A"
+
+[node name="OptionB" type="Button" parent="OptionButtons"]
+layout_mode = 2
+text = "Option B"
+
+[node name="OptionC" type="Button" parent="OptionButtons"]
+layout_mode = 2
+text = "Option C"

@@ -1,0 +1,36 @@
+extends RefCounted
+
+const BattleScene = preload("res://scenes/battle/battle_scene.tscn")
+
+func run() -> Array[String]:
+	var failures: Array[String] = []
+	_test_scene_conveys_side_angle_arena_readability(failures)
+	return failures
+
+func _test_scene_conveys_side_angle_arena_readability(failures: Array[String]) -> void:
+	var instance = BattleScene.instantiate()
+	_assert_true(instance.get_node_or_null("BattlefieldBackdrop") != null, "battle scene should keep a dedicated battlefield backdrop", failures)
+	_assert_true(instance.get_node_or_null("BattlefieldFrame") != null, "battle scene should keep a dedicated battlefield frame", failures)
+	_assert_true(instance.get_node_or_null("FrontlineMarker") != null, "battle scene should still expose a frontline reference node", failures)
+	_assert_true(instance.get_node_or_null("SpawnBandLeft") != null, "battle scene should still expose an ally-side staging reference node", failures)
+	_assert_true(instance.get_node_or_null("SpawnBandRight") != null, "battle scene should still expose an enemy-side staging reference node", failures)
+	var arena_shadow = instance.get_node_or_null("ArenaShadow")
+	var arena_floor = instance.get_node_or_null("ArenaFloor")
+	var arena_rim = instance.get_node_or_null("ArenaRim")
+	_assert_true(arena_shadow is Node2D, "battle scene should expose an ArenaShadow node for side-angle depth", failures)
+	_assert_true(arena_floor is Node2D, "battle scene should expose an ArenaFloor node for elliptical arena readability", failures)
+	_assert_true(arena_rim is Node2D, "battle scene should expose an ArenaRim node for arena boundary readability", failures)
+	var unit_layer = instance.get_node_or_null("UnitLayer")
+	var camera = instance.get_node_or_null("Camera2D")
+	_assert_true(unit_layer is Node2D, "battle scene should expose UnitLayer", failures)
+	_assert_true(camera is Camera2D, "battle scene should expose Camera2D", failures)
+	if unit_layer is Node2D:
+		_assert_true(unit_layer.position.y > 380.0, "unit layer should sit lower on screen to read as side-angle staging", failures)
+		_assert_true(unit_layer.scale.y < unit_layer.scale.x, "unit layer should compress vertical scale for side-angle readability", failures)
+	if camera is Camera2D:
+		_assert_true(camera.zoom.x > 1.0 and camera.zoom.y > 1.0, "camera should zoom out enough to frame the whole oblique arena", failures)
+	instance.free()
+
+func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
+	if not value:
+		failures.append(message)
