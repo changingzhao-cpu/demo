@@ -7,6 +7,7 @@ func run() -> Array[String]:
 	_test_combat_hud_shows_wave_and_state(failures)
 	_test_reward_hud_switches_when_wave_clears(failures)
 	_test_settle_hud_switches_when_run_fails(failures)
+	_test_combat_hud_stays_compact_and_avoids_extra_overlay_labels(failures)
 	return failures
 
 func _test_combat_hud_shows_wave_and_state(failures: Array[String]) -> void:
@@ -71,6 +72,44 @@ func _test_settle_hud_switches_when_run_fails(failures: Array[String]) -> void:
 	main_loop.root.remove_child(instance)
 	instance.free()
 
+func _test_combat_hud_stays_compact_and_avoids_extra_overlay_labels(failures: Array[String]) -> void:
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = BattleScene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var phase_hint = instance.get_node_or_null("UiLayer/PhaseHint")
+	var frontline_label = instance.get_node_or_null("UiLayer/FrontlineLabel")
+	var legend_allies = instance.get_node_or_null("UiLayer/LegendAllies")
+	var legend_enemies = instance.get_node_or_null("UiLayer/LegendEnemies")
+	var tempo_banner = instance.get_node_or_null("UiLayer/TempoBanner")
+	var arena_flavor = instance.get_node_or_null("UiLayer/ArenaFlavor")
+	if phase_hint == null:
+		failures.append("battle scene should expose PhaseHint before HUD compactness checks")
+		if instance.get_parent() != null:
+			main_loop.root.remove_child(instance)
+		instance.free()
+		return
+	var phase_text := String(phase_hint.text)
+	_assert_true(phase_text.length() <= 36, "PhaseHint should stay compact instead of using long stitched guidance text", failures)
+	_assert_false(phase_text.contains("Arena:"), "PhaseHint should not append arena flavor copy into the core HUD hint", failures)
+	_assert_hidden_or_missing(frontline_label, "FrontlineLabel should not remain as a prominent overlay label", failures)
+	_assert_hidden_or_missing(legend_allies, "LegendAllies should not remain as a prominent overlay label", failures)
+	_assert_hidden_or_missing(legend_enemies, "LegendEnemies should not remain as a prominent overlay label", failures)
+	_assert_hidden_or_missing(tempo_banner, "TempoBanner should not remain as a prominent overlay label", failures)
+	_assert_hidden_or_missing(arena_flavor, "ArenaFlavor should not remain as a prominent overlay label", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
+
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:
+		failures.append(message)
+
+func _assert_false(value: bool, message: String, failures: Array[String]) -> void:
+	if value:
+		failures.append(message)
+
+func _assert_hidden_or_missing(node: Node, message: String, failures: Array[String]) -> void:
+	if node == null:
+		return
+	if node is CanvasItem and node.visible:
 		failures.append(message)

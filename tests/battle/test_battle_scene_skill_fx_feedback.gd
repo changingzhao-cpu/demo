@@ -27,6 +27,22 @@ func _test_scene_spawns_hit_flash_skill_ring_and_launch_feedback(failures: Array
 	_assert_true(visual_kinds.has("hit_flash"), "battle scene should spawn hit flash feedback from combat events", failures)
 	_assert_true(visual_kinds.has("skill_ring"), "battle scene should spawn skill ring feedback from combat events", failures)
 	_assert_true(visual_kinds.has("launch_burst") or visual_kinds.has("knockback_trail"), "battle scene should spawn knockback or launch feedback from combat events", failures)
+	var skill_ring = _find_effect_node(effect_layer, "skill_ring")
+	var hit_flash = _find_effect_node(effect_layer, "hit_flash")
+	var launch_burst = _find_effect_node(effect_layer, "launch_burst")
+	var knockback_trail = _find_effect_node(effect_layer, "knockback_trail")
+	if skill_ring != null:
+		_assert_true(skill_ring.position.y > 0.0, "skill ring should sit below unit center so it reads like a ground effect", failures)
+		_assert_true(skill_ring.scale.x <= 1.1 and skill_ring.scale.y <= 0.7, "skill ring should stay compact instead of dominating the battlefield", failures)
+	if hit_flash != null:
+		_assert_true(hit_flash.position.y < 0.0, "hit flash should sit slightly above the target center", failures)
+		_assert_true(hit_flash.scale.x <= 0.85 and hit_flash.scale.y <= 0.85, "hit flash should stay tight around the impacted unit", failures)
+	if launch_burst != null:
+		_assert_true(launch_burst.position.y < -4.0, "launch burst should bias upward to read as lift", failures)
+		_assert_true(launch_burst.scale.y <= 1.15, "launch burst should stay bounded instead of towering over units", failures)
+	if knockback_trail != null:
+		_assert_true(absf(knockback_trail.position.x) >= 4.0, "knockback trail should show a clear horizontal displacement", failures)
+		_assert_true(knockback_trail.scale.x <= 1.1, "knockback trail should stay compact instead of becoming a giant smear", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
 
@@ -36,6 +52,12 @@ func _collect_visual_kinds(effect_layer: Node) -> Dictionary:
 		if child.has_meta("visual_kind"):
 			kinds[str(child.get_meta("visual_kind"))] = true
 	return kinds
+
+func _find_effect_node(effect_layer: Node, visual_kind: String) -> Node2D:
+	for child in effect_layer.get_children():
+		if child is Node2D and child.has_meta("visual_kind") and str(child.get_meta("visual_kind")) == visual_kind:
+			return child
+	return null
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:
