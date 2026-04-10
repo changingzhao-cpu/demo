@@ -9,6 +9,7 @@ func run() -> Array[String]:
 	_test_settle_hud_switches_when_run_fails(failures)
 	_test_combat_hud_stays_compact_and_avoids_extra_overlay_labels(failures)
 	_test_combat_hud_avoids_debug_title_and_heavy_debug_copy(failures)
+	_test_combat_hud_matches_runtime_truth(failures)
 	return failures
 
 func _test_combat_hud_shows_wave_and_state(failures: Array[String]) -> void:
@@ -113,6 +114,28 @@ func _test_combat_hud_avoids_debug_title_and_heavy_debug_copy(failures: Array[St
 	if state_label != null:
 		_assert_false(String(state_label.text).begins_with("State:"), "combat HUD should avoid raw debug-style state prefixes", failures)
 		_assert_true(String(state_label.text).length() <= 18, "combat state copy should stay lightweight if shown at all", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
+
+func _test_combat_hud_matches_runtime_truth(failures: Array[String]) -> void:
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = BattleScene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	var phase_hint = instance.get_node_or_null("UiLayer/PhaseHint")
+	if controller == null or phase_hint == null:
+		failures.append("battle scene should expose controller and phase hint before HUD truthfulness checks")
+		if instance.get_parent() != null:
+			main_loop.root.remove_child(instance)
+		instance.free()
+		return
+	for _step in range(30):
+		await main_loop.process_frame
+	var report: Dictionary = controller.call("get_last_tick_report")
+	var hint_text := String(phase_hint.text)
+	if int(report.get("combat_event_count", 0)) == 0 and int(report.get("in_range", 0)) == 0:
+		_assert_false(hint_text.contains("Clash") or hint_text.contains("Impact"), "combat HUD should not claim clash or impact before runtime contact exists", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
 

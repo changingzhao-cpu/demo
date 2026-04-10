@@ -57,11 +57,13 @@ func _get_tempo_hint_text() -> String:
 	var moved := int(report.get(\"moved\", 0))
 	var attacked := int(report.get(\"attacked\", 0))
 	var combat_event_count := int(report.get(\"combat_event_count\", 0))
+	var in_range := int(report.get(\"in_range\", 0))
+	var targeted_count := int(report.get(\"targeted_count\", 0))
 	if attacked > 0 and combat_event_count >= 3:
 		return \"Impact burst\"
-	if attacked > 0 or combat_event_count > 0:
+	if attacked > 0 or in_range > 0 or combat_event_count > 0:
 		return \"Clash phase\"
-	if moved > 0:
+	if moved > 0 or targeted_count > 0:
 		return \"Scatter setup\"
 	return \"Auto battle\"
 

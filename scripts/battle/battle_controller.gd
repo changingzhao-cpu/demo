@@ -12,18 +12,18 @@ const DEFAULT_STORE_CAPACITY := 128
 const GRID_CELL_SIZE := 4.0
 const ALLY_TEAM_ID := 0
 const ENEMY_TEAM_ID := 1
-const ALLY_SCATTER_CENTER_X := -10.3
-const ENEMY_SCATTER_CENTER_X := 10.6
-const ALLY_SCATTER_WIDTH := 5.4
-const ENEMY_SCATTER_WIDTH := 1.65
-const ALLY_SCATTER_HEIGHT := 6.2
-const ENEMY_SCATTER_HEIGHT := 3.5
-const ALLY_FORWARD_PULL := 0.95
-const ENEMY_FORWARD_PULL := 0.82
-const MIN_ALLY_SPAWN_DISTANCE := 1.32
-const MIN_ENEMY_SPAWN_DISTANCE := 0.92
-const ENEMY_SWARM_FRONT_BIAS := 0.42
-const ENEMY_SWARM_VERTICAL_CLUSTER := 0.62
+const ALLY_SCATTER_CENTER_X := -10.4
+const ENEMY_SCATTER_CENTER_X := 10.2
+const ALLY_SCATTER_WIDTH := 5.1
+const ENEMY_SCATTER_WIDTH := 1.85
+const ALLY_SCATTER_HEIGHT := 6.0
+const ENEMY_SCATTER_HEIGHT := 3.6
+const ALLY_FORWARD_PULL := 1.15
+const ENEMY_FORWARD_PULL := 1.28
+const MIN_ALLY_SPAWN_DISTANCE := 1.26
+const MIN_ENEMY_SPAWN_DISTANCE := 0.86
+const ENEMY_SWARM_FRONT_BIAS := 0.78
+const ENEMY_SWARM_VERTICAL_CLUSTER := 0.67
 const MAX_SPAWN_POSITION_ATTEMPTS := 24
 const MAX_RECENT_COMBAT_EVENTS := 24
 
@@ -176,8 +176,31 @@ func get_runtime_snapshot() -> Dictionary:
 		"live_count": _count_living_entities(),
 		"death_count": _recently_died_entities.size(),
 		"combat_event_count": _recent_combat_events.size(),
+		"targeted_count": _count_entities_with_targets(),
+		"advancing_count": _count_entities_in_state(3),
 		"last_tick_report": _last_tick_report.duplicate(true)
 	}
+
+func debug_get_runtime_snapshot() -> Dictionary:
+	return get_runtime_snapshot()
+
+func _count_entities_with_targets() -> int:
+	var count := 0
+	if _entity_store == null:
+		return count
+	for entity_id in _live_entity_ids:
+		if _entity_is_alive(entity_id) and _entity_store.target_id[entity_id] != -1:
+			count += 1
+	return count
+
+func _count_entities_in_state(state_value: int) -> int:
+	var count := 0
+	if _entity_store == null:
+		return count
+	for entity_id in _live_entity_ids:
+		if _entity_is_alive(entity_id) and _entity_store.state[entity_id] == state_value:
+			count += 1
+	return count
 
 func get_entity_visual_state(entity_id: int) -> Dictionary:
 	return {
@@ -366,6 +389,8 @@ func _refresh_last_tick_report() -> void:
 	_last_tick_report["death_count"] = _recently_died_entities.size()
 	_last_tick_report["live_count"] = _count_living_entities()
 	_last_tick_report["combat_event_count"] = _recent_combat_events.size()
+	_last_tick_report["targeted_count"] = _count_entities_with_targets()
+	_last_tick_report["advancing_count"] = _count_entities_in_state(3)
 
 func _count_living_entities() -> int:
 	var count := 0

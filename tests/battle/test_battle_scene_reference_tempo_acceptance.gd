@@ -34,10 +34,15 @@ func _test_reference_tempo_progresses_from_scatter_to_clash_to_impact(failures: 
 	var saw_contact_signal_by_one_second := false
 	var saw_non_scatter_hint := false
 	var max_ally_displacement := 0.0
+	var moved_signal_frames := 0
 	for step in range(180):
 		await main_loop.process_frame
 		var report: Dictionary = controller.call("get_last_tick_report")
 		max_ally_displacement = maxf(max_ally_displacement, ally_view.global_position.distance_to(start_position))
+		if int(report.get("moved", 0)) > 0:
+			moved_signal_frames += 1
+		else:
+			moved_signal_frames = 0
 		if step == 10:
 			early_text = String(phase_hint.text)
 			early_distribution_ok = _has_side_separation(unit_layer)
@@ -59,9 +64,11 @@ func _test_reference_tempo_progresses_from_scatter_to_clash_to_impact(failures: 
 	_assert_true(phase_hint.text.length() <= 36, "tempo HUD hint should stay compact during runtime acceptance", failures)
 	_assert_true(early_distribution_ok, "battle scene should keep visible left-right separation in the early scatter window", failures)
 	_assert_true(max_ally_displacement > 24.0, "battle scene should visibly auto-advance units instead of staying near-static", failures)
+	_assert_true(moved_signal_frames >= 3, "battle scene should show sustained movement frames instead of a single accidental twitch", failures)
 	_assert_true(ally_view.global_position.distance_to(start_position) > 18.0, "battle scene should move from scatter setup into active melee by the tempo acceptance window", failures)
 	_assert_true(saw_attack_by_one_second, "battle scene should reach attack contact by around the first second", failures)
 	_assert_true(saw_contact_signal_by_one_second, "battle scene should expose stable contact signals by around the first second", failures)
+	_assert_true(clash_effect_count > 0 or moved_signal_frames > 10, "battle scene should not stay in a no-effects no-movement idle state into the clash window", failures)
 	_assert_true(saw_non_scatter_hint, "battle scene should not remain in scatter setup for the full runtime acceptance window", failures)
 	_assert_true(clash_effect_count > 0, "battle scene should already show combat effects by the clash phase", failures)
 	_assert_true(impact_effect_count >= clash_effect_count, "battle scene should sustain or intensify visible effects by the later impact phase", failures)

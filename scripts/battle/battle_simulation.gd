@@ -125,6 +125,15 @@ func _resolve_target(store, entity_id: int) -> int:
 		if distance_sq < best_distance_sq:
 			best_distance_sq = distance_sq
 			best_target = candidate
+	if best_target != -1:
+		return best_target
+	for candidate in range(store.capacity):
+		if not _is_enemy_candidate(store, entity_id, candidate):
+			continue
+		var distance_sq: float = origin.distance_squared_to(Vector2(store.position_x[candidate], store.position_y[candidate]))
+		if distance_sq < best_distance_sq:
+			best_distance_sq = distance_sq
+			best_target = candidate
 	return best_target
 
 func _is_target_valid(store, entity_id: int, target_id: int) -> bool:
@@ -147,6 +156,12 @@ func _move_toward_target(store, entity_id: int, target_id: int, delta: float) ->
 	var direction := target - origin
 	if direction == Vector2.ZERO:
 		return
-	var movement: Vector2 = direction.normalized() * store.move_speed[entity_id] * delta
+	var distance := direction.length()
+	var engage_boost := 1.0
+	if distance > 8.0:
+		engage_boost = 1.45
+	elif distance > 4.0:
+		engage_boost = 1.22
+	var movement: Vector2 = direction.normalized() * store.move_speed[entity_id] * engage_boost * delta
 	store.position_x[entity_id] += movement.x
 	store.position_y[entity_id] += movement.y
