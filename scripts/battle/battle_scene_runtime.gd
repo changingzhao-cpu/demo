@@ -23,6 +23,8 @@ var _initial_layout_rng := RandomNumberGenerator.new()
 var _initial_layout_time := 0.0
 var _initial_layout_active := true
 var _initial_layout_positions: Dictionary = {}
+var _runtime_elapsed := 0.0
+var _last_runtime_view_debug: Dictionary = {}
 
 func _ready() -> void:
 	_initial_layout_rng.randomize()
@@ -54,6 +56,7 @@ func _process(delta: float) -> void:
 		if _initial_layout_time >= INIT_HOLD_SECONDS:
 			_initial_layout_active = false
 		return
+	_runtime_elapsed += delta
 	if _controller.has_method("tick_combat"):
 		_controller.call("tick_combat", delta)
 	var state := str(_controller.call("get_state"))
@@ -246,6 +249,7 @@ func _sync_runtime_screen_space_views() -> void:
 	if _controller == null:
 		return
 	_bind_runtime_views()
+	_last_runtime_view_debug = debug_get_runtime_view_snapshot()
 	if _controller.has_method("sync_unit_views_screen_space"):
 		_controller.call("sync_unit_views_screen_space", SCREEN_CENTER, SCREEN_SCALE)
 	else:
@@ -362,4 +366,10 @@ func _update_hud() -> void:
 		elif state == "settle":
 			_phase_hint.text = "Run ended. Restart"
 		else:
-			_phase_hint.text = _get_tempo_hint_text()
+			_phase_hint.text = "%s\n%.2fs" % [_get_tempo_hint_text(), _runtime_elapsed]
+
+func debug_get_last_runtime_view_debug() -> Dictionary:
+	return _last_runtime_view_debug.duplicate(true)
+
+func debug_get_runtime_elapsed() -> float:
+	return _runtime_elapsed
