@@ -1,12 +1,12 @@
 extends Node2D
 
 const EffectPoolScript = preload("res://scripts/presentation/effect_pool.gd")
-const SCREEN_CENTER := Vector2(640.0, 408.0)
-const SCREEN_SCALE := Vector2(28.0, 20.0)
+const SCREEN_CENTER := Vector2(640.0, 392.0)
+const SCREEN_SCALE := Vector2(62.0, 44.0)
 const INIT_DISPLAY_COUNT := 36
-const INIT_REGION_RADIUS := Vector2(132.0, 88.0)
-const INIT_MIN_DISTANCE := 12.0
-const INIT_JITTER := 5.0
+const INIT_REGION_RADIUS := Vector2(96.0, 64.0)
+const INIT_MIN_DISTANCE := 8.0
+const INIT_JITTER := 3.0
 const INIT_HOLD_SECONDS := 1.2
 
 @onready var _controller = $BattleController
@@ -133,7 +133,7 @@ func _generate_initial_layout() -> void:
 	_initial_layout_positions.clear()
 	if _controller == null or not _controller.has_method("get_visible_entity_screen_payloads"):
 		return
-	var payloads: Array = _controller.call("get_visible_entity_screen_payloads", INIT_DISPLAY_COUNT, SCREEN_CENTER, Vector2(44.0, 31.0))
+	var payloads: Array = _controller.call("get_visible_entity_screen_payloads", INIT_DISPLAY_COUNT, SCREEN_CENTER, SCREEN_SCALE)
 	var placed_points: Array[Vector2] = []
 	for payload in payloads:
 		var entity_id := int(payload.get("entity_id", -1))
@@ -166,7 +166,7 @@ func _fits_initial_spacing(candidate: Vector2, existing_points: Array[Vector2]) 
 func _apply_initial_layout_to_views() -> void:
 	if _controller == null:
 		return
-	var payloads: Array = _controller.call("get_visible_entity_screen_payloads", _unit_layer.get_child_count(), SCREEN_CENTER, Vector2(44.0, 31.0))
+	var payloads: Array = _controller.call("get_visible_entity_screen_payloads", _unit_layer.get_child_count(), SCREEN_CENTER, SCREEN_SCALE)
 	for payload in payloads:
 		var entity_id := int(payload.get("entity_id", -1))
 		if entity_id == -1:
