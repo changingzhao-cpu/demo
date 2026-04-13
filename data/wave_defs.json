@@ -1,10 +1,10 @@
 [
   {
     "wave": 1,
-    "enemy_count": 5,
+    "enemy_count": 24,
     "enemy_comp": ["warrior"],
-    "spawn_batch_size": 5,
-    "tags": ["intro"]
+    "spawn_batch_size": 24,
+    "tags": ["intro", "reference_layout"]
   },
   {
     "wave": 2,

@@ -15,7 +15,8 @@ func _test_battle_scene_remains_inside_main_frame_after_scale_adjustments(failur
 	_assert_true(battle_scene != null, "main scene should expose BattleScene instance for readability checks", failures)
 	if frame != null and battle_scene != null:
 		_assert_true(frame.size.x >= 1200.0, "main scene frame should remain wide enough after camera adjustments", failures)
-		_assert_true(battle_scene.position.y >= 90.0, "battle scene should remain visually centered inside the frame after scale changes", failures)
+		_assert_true(battle_scene.position.y >= 60.0, "battle scene should remain visually centered inside the frame after scale changes", failures)
+		_assert_true(battle_scene.position.y <= 96.0, "battle scene should not be pushed so far down that the battle view slips under the frame", failures)
 	instance.free()
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:

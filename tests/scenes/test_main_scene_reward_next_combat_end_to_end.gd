@@ -1,5 +1,6 @@
 extends RefCounted
 
+const TestCleanup = preload("res://tests/test_cleanup.gd")
 const MainScene = preload("res://scenes/main/main_scene.tscn")
 
 func run() -> Array[String]:
@@ -19,8 +20,7 @@ func _test_reward_selection_returns_to_next_combat_loop(failures: Array[String])
 	if battle_scene == null or controller == null or reward_panel == null or summary_label == null:
 		failures.append("main scene should expose battle scene, controller, reward panel, and summary label before reward-next-combat checks")
 		if instance.get_parent() != null:
-			main_loop.root.remove_child(instance)
-		instance.free()
+			await TestCleanup.release_tree_instance(main_loop, instance)
 		return
 	controller.call("handle_wave_clear")
 	await main_loop.process_frame
@@ -41,8 +41,7 @@ func _test_reward_selection_returns_to_next_combat_loop(failures: Array[String])
 		var next_report: Dictionary = controller.call("get_last_tick_report")
 		_assert_true(int(next_report.get("moved", 0)) > 0 or int(next_report.get("attacked", 0)) > 0, "next combat loop should resume active battle after reward selection", failures)
 		_assert_true(String(summary_label.text).contains("Combat"), "main scene summary should return to combat messaging after reward selection", failures)
-	main_loop.root.remove_child(instance)
-	instance.free()
+	await TestCleanup.release_tree_instance(main_loop, instance)
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

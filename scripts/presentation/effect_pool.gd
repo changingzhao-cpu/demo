@@ -12,6 +12,7 @@ const DEFAULT_SCALE := Vector2.ONE
 var _pool
 var _active_enemy_corpses: Array = []
 var _active_ally_corpses: Array = []
+var _active_visual_events: Array = []
 var _ally_corpse_limit: int = 8
 
 func _init(factory: Callable, prewarm_count: int, ally_corpse_limit: int = 8) -> void:
@@ -72,23 +73,24 @@ func spawn_ally_corpse():
 	return corpse
 
 func spawn_visual_event(effect_key: String, world_position: Vector2, team: String, ttl: float = 1.0):
-	var effect = spawn_ally_corpse() if team == "ally" else spawn_enemy_corpse(ttl)
+	var effect = play_effect(effect_key)
 	if effect == null:
 		return null
-	effect.ttl = -1.0 if team == "ally" else ttl
+	effect.ttl = max(ttl, 0.01)
 	effect.team = team
-	_apply_visual_payload(effect, world_position, team, effect_key, team == "ally")
+	_apply_visual_payload(effect, world_position, team, effect_key, false)
+	_active_visual_events.append(effect)
 	return effect
 
 func tick_corpses(delta: float) -> void:
-	var survivors: Array = []
+	var surviving_enemy_corpses: Array = []
 	for corpse in _active_enemy_corpses:
 		corpse.ttl -= delta
 		if corpse.ttl > 0.0:
-			survivors.append(corpse)
+			surviving_enemy_corpses.append(corpse)
 			continue
 		release_effect(corpse)
-	_active_enemy_corpses = survivors
+	_active_enemy_corpses = surviving_enemy_corpses
 
 	var active_allies: Array = []
 	for corpse in _active_ally_corpses:
@@ -96,10 +98,20 @@ func tick_corpses(delta: float) -> void:
 			active_allies.append(corpse)
 	_active_ally_corpses = active_allies
 
+	var surviving_visual_events: Array = []
+	for effect in _active_visual_events:
+		effect.ttl -= delta
+		if effect.ttl > 0.0:
+			surviving_visual_events.append(effect)
+			continue
+		release_effect(effect)
+	_active_visual_events = surviving_visual_events
+
 func get_active_effects() -> Array:
 	var active_effects: Array = []
 	active_effects.append_array(_active_enemy_corpses)
 	active_effects.append_array(_active_ally_corpses)
+	active_effects.append_array(_active_visual_events)
 	return active_effects
 
 func available_count() -> int:
@@ -115,12 +127,15 @@ func _apply_visual_payload(effect, world_position: Vector2, team: String, visual
 	_set_effect_property_if_present(effect, "position", world_position)
 	_set_effect_property_if_present(effect, "visual_kind", visual_kind)
 	_set_effect_property_if_present(effect, "persistent", persistent)
-	if team == "ally":
+	if visual_kind == "ally_corpse":
 		_set_effect_property_if_present(effect, "tint", ALLY_CORPSE_TINT)
 		_set_effect_property_if_present(effect, "scale", ALLY_CORPSE_SCALE)
-	else:
+	elif visual_kind == "enemy_corpse":
 		_set_effect_property_if_present(effect, "tint", ENEMY_CORPSE_TINT)
 		_set_effect_property_if_present(effect, "scale", ENEMY_CORPSE_SCALE)
+	else:
+		_set_effect_property_if_present(effect, "tint", DEFAULT_TINT)
+		_set_effect_property_if_present(effect, "scale", DEFAULT_SCALE)
 
 func _reset_visual_payload(effect) -> void:
 	_set_effect_property_if_present(effect, "position", Vector2.ZERO)
@@ -147,3 +162,6 @@ func _remove_active_reference(effect) -> void:
 	var ally_index := _active_ally_corpses.find(effect)
 	if ally_index != -1:
 		_active_ally_corpses.remove_at(ally_index)
+	var visual_index := _active_visual_events.find(effect)
+	if visual_index != -1:
+		_active_visual_events.remove_at(visual_index)

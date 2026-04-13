@@ -1,10 +1,21 @@
 extends RefCounted
 class_name BattleSimulation
 
-const DEFAULT_CHASE_DISTANCE := 12.0
-const DEFAULT_ATTACK_DAMAGE := 3.5
+const DEFAULT_CHASE_DISTANCE := 18.0
+const DEFAULT_ATTACK_DAMAGE := 10.0
 const DEFAULT_KNOCKBACK_DISTANCE := 0.42
 const DEFAULT_LAUNCH_HEIGHT := 0.26
+const ENGAGE_BUFFER := 0.18
+const PRECONTACT_SPACING_RADIUS := 1.85
+const PRECONTACT_SPACING_STEP := 0.22
+const SAME_TEAM_SPACING_RADIUS := 1.45
+const SAME_TEAM_SPACING_STEP := 0.18
+const ENEMY_CONTACT_RADIUS := 1.52
+const ENEMY_CONTACT_STEP := 0.15
+const FORMATION_LANE_STRENGTH := 0.26
+const MAX_MOVE_STEP_MULTIPLIER := 3.5
+const ALLY_TEAM_ID := 0
+const ENEMY_TEAM_ID := 1
 const UNIT_STATE_IDLE := 0
 const UNIT_STATE_ATTACK := 1
 const UNIT_STATE_ADVANCE := 3
@@ -55,42 +66,58 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		return
 
 	store.attack_cd[entity_id] = max(0.0, store.attack_cd[entity_id] - max(delta, 0.0))
-
 	var target_id: int = _resolve_target(store, entity_id)
 	store.target_id[entity_id] = target_id
 	if target_id == -1:
 		store.state[entity_id] = UNIT_STATE_IDLE
+		store.velocity_x[entity_id] = 0.0
+		store.velocity_y[entity_id] = 0.0
 		report["idle"] = int(report.get("idle", 0)) + 1
 		return
 
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
 	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
-	var distance_sq := origin.distance_squared_to(target)
-	if distance_sq <= max(0.0, store.attack_range_sq[entity_id]):
-		report["in_range"] = int(report.get("in_range", 0)) + 1
-		var target_was_alive := bool(store.alive[target_id])
-		var did_hit: bool = _attack_resolver.resolve_basic_attack(store, entity_id, target_id, DEFAULT_ATTACK_DAMAGE)
-		store.state[entity_id] = UNIT_STATE_ATTACK if did_hit else UNIT_STATE_IDLE
-		if did_hit:
-			report["attacked"] = int(report.get("attacked", 0)) + 1
-			_append_event(report, entity_id, target_id, "attack", origin, target)
-			var impact_direction := _resolve_impact_direction(origin, target)
-			var knockback_target := target + impact_direction * DEFAULT_KNOCKBACK_DISTANCE
-			_append_event(report, entity_id, target_id, "knockback", origin, knockback_target)
-			_append_event(report, entity_id, target_id, "launch", origin, target + Vector2(0.0, -DEFAULT_LAUNCH_HEIGHT))
-		if did_hit and target_was_alive and not store.alive[target_id]:
-			report["killed"] = int(report.get("killed", 0)) + 1
-			_append_event(report, entity_id, target_id, "kill", origin, target)
-			_grid.remove(target_id)
-		if not did_hit:
-			report["idle"] = int(report.get("idle", 0)) + 1
+	var attack_range := sqrt(maxf(0.0, store.attack_range_sq[entity_id]))
+	var engage_distance: float = attack_range + ENGAGE_BUFFER + store.radius[entity_id] + store.radius[target_id]
+	var distance := origin.distance_to(target)
+
+	if distance > engage_distance:
+		_apply_precontact_spacing(store, entity_id, target_id)
+		var before_move := Vector2(store.position_x[entity_id], store.position_y[entity_id])
+		_move_toward_target(store, entity_id, target_id, delta)
+		_apply_same_team_spacing(store, entity_id)
+		if before_move.distance_to(Vector2(store.position_x[entity_id], store.position_y[entity_id])) <= 0.001:
+			var nudge := signf(target.x - before_move.x)
+			if nudge == 0.0:
+				nudge = 1.0 if store.team_id[entity_id] == ALLY_TEAM_ID else -1.0
+			store.position_x[entity_id] += nudge * 0.02
+			store.velocity_x[entity_id] = nudge * 1.25
+		_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+		store.state[entity_id] = UNIT_STATE_ADVANCE
+		report["moved"] = int(report.get("moved", 0)) + 1
 		return
 
-	_move_toward_target(store, entity_id, target_id, delta)
-	_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
-	_push_resolver.call("resolve_pair", store, entity_id, target_id)
-	store.state[entity_id] = UNIT_STATE_ADVANCE
-	report["moved"] = int(report.get("moved", 0)) + 1
+	_apply_same_team_spacing(store, entity_id)
+	store.state[entity_id] = UNIT_STATE_ATTACK
+	store.velocity_x[entity_id] = 0.0
+	store.velocity_y[entity_id] = 0.0
+	report["in_range"] = int(report.get("in_range", 0)) + 1
+	var target_was_alive := bool(store.alive[target_id])
+	var did_hit: bool = _attack_resolver.resolve_basic_attack(store, entity_id, target_id, DEFAULT_ATTACK_DAMAGE)
+	if did_hit:
+		report["attacked"] = int(report.get("attacked", 0)) + 1
+		_append_event(report, entity_id, target_id, "attack", origin, target)
+		var impact_direction := _resolve_impact_direction(origin, target)
+		var knockback_target := target + impact_direction * DEFAULT_KNOCKBACK_DISTANCE
+		_append_event(report, entity_id, target_id, "knockback", origin, knockback_target)
+		_append_event(report, entity_id, target_id, "launch", origin, target + Vector2(0.0, -DEFAULT_LAUNCH_HEIGHT))
+	if did_hit and target_was_alive and not store.alive[target_id]:
+		report["killed"] = int(report.get("killed", 0)) + 1
+		_append_event(report, entity_id, target_id, "kill", origin, target)
+		_grid.remove(target_id)
+	if not did_hit:
+		report["idle"] = int(report.get("idle", 0)) + 1
+	grid_upsert_pair(store, entity_id, target_id)
 
 func _append_event(report: Dictionary, attacker_id: int, target_id: int, event_type: String, attacker_position: Vector2, target_position: Vector2) -> void:
 	var events: Array = report.get("events", [])
@@ -113,11 +140,14 @@ func _resolve_target(store, entity_id: int) -> int:
 	var cached_target: int = store.target_id[entity_id]
 	if _is_target_valid(store, entity_id, cached_target):
 		return cached_target
-
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
 	var best_target := -1
 	var best_distance_sq := INF
 	var nearby: Array[int] = _grid.query_neighbors(origin)
+	if nearby.is_empty():
+		for candidate in range(store.capacity):
+			if candidate != entity_id and store.alive[candidate]:
+				nearby.append(candidate)
 	for candidate in nearby:
 		if not _is_enemy_candidate(store, entity_id, candidate):
 			continue
@@ -155,13 +185,93 @@ func _move_toward_target(store, entity_id: int, target_id: int, delta: float) ->
 	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
 	var direction := target - origin
 	if direction == Vector2.ZERO:
+		store.velocity_x[entity_id] = 0.0
+		store.velocity_y[entity_id] = 0.0
 		return
 	var distance := direction.length()
-	var engage_boost := 1.0
-	if distance > 8.0:
-		engage_boost = 1.45
-	elif distance > 4.0:
-		engage_boost = 1.22
-	var movement: Vector2 = direction.normalized() * store.move_speed[entity_id] * engage_boost * delta
+	var forward := direction.normalized()
+	var lateral := Vector2(-forward.y, forward.x)
+	var lane_bias := sin(float(entity_id) * 1.37) * FORMATION_LANE_STRENGTH
+	var move_vector := (forward + lateral * lane_bias).normalized()
+	var step_length := minf(distance, store.move_speed[entity_id] * MAX_MOVE_STEP_MULTIPLIER * delta)
+	var movement := move_vector * step_length
 	store.position_x[entity_id] += movement.x
 	store.position_y[entity_id] += movement.y
+	store.velocity_x[entity_id] = movement.x / maxf(delta, 0.0001)
+	store.velocity_y[entity_id] = movement.y / maxf(delta, 0.0001)
+
+func _apply_precontact_spacing(store, entity_id: int, target_id: int) -> void:
+	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
+	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
+	var nearby: Array[int] = _grid.query_neighbors(origin)
+	var repulsion := Vector2.ZERO
+	for candidate in nearby:
+		if candidate == entity_id or candidate < 0 or candidate >= store.capacity:
+			continue
+		if not store.alive[candidate]:
+			continue
+		var candidate_position := Vector2(store.position_x[candidate], store.position_y[candidate])
+		var offset := origin - candidate_position
+		var distance := offset.length()
+		if distance <= 0.001 or distance >= PRECONTACT_SPACING_RADIUS:
+			continue
+		var weight := (PRECONTACT_SPACING_RADIUS - distance) / PRECONTACT_SPACING_RADIUS
+		if store.team_id[candidate] != store.team_id[entity_id]:
+			var shared_target_bias := 1.0
+			if candidate == target_id:
+				shared_target_bias = 0.42
+			weight *= 0.5 * shared_target_bias
+		repulsion += offset.normalized() * weight
+	if repulsion == Vector2.ZERO:
+		return
+	var step := repulsion.normalized() * minf(PRECONTACT_SPACING_STEP, repulsion.length() * 0.18)
+	store.position_x[entity_id] += step.x
+	store.position_y[entity_id] += step.y
+	_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+
+func _apply_same_team_spacing(store, entity_id: int) -> void:
+	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
+	var nearby: Array[int] = _grid.query_neighbors(origin)
+	for candidate in nearby:
+		if candidate == entity_id or candidate < 0 or candidate >= store.capacity:
+			continue
+		if not store.alive[candidate]:
+			continue
+		if store.team_id[candidate] != store.team_id[entity_id]:
+			continue
+		var candidate_position := Vector2(store.position_x[candidate], store.position_y[candidate])
+		var distance := origin.distance_to(candidate_position)
+		if distance >= SAME_TEAM_SPACING_RADIUS:
+			continue
+		_push_resolver.call("resolve_pair", store, entity_id, candidate)
+	_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+
+func _apply_enemy_contact_resolution(store, entity_id: int) -> void:
+	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
+	var nearby: Array[int] = _grid.query_neighbors(origin)
+	var repulsion := Vector2.ZERO
+	for candidate in nearby:
+		if candidate == entity_id or candidate < 0 or candidate >= store.capacity:
+			continue
+		if not store.alive[candidate]:
+			continue
+		if store.team_id[candidate] == store.team_id[entity_id]:
+			continue
+		var candidate_position := Vector2(store.position_x[candidate], store.position_y[candidate])
+		var offset := origin - candidate_position
+		var distance := offset.length()
+		if distance <= 0.001 or distance >= ENEMY_CONTACT_RADIUS:
+			continue
+		var weight := (ENEMY_CONTACT_RADIUS - distance) / ENEMY_CONTACT_RADIUS
+		repulsion += offset.normalized() * weight
+	if repulsion == Vector2.ZERO:
+		return
+	var step := repulsion.normalized() * minf(ENEMY_CONTACT_STEP, repulsion.length() * 0.16)
+	store.position_x[entity_id] += step.x
+	store.position_y[entity_id] += step.y
+	_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+
+func grid_upsert_pair(store, entity_id: int, target_id: int) -> void:
+	_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+	if target_id >= 0 and target_id < store.capacity and store.alive[target_id]:
+		_grid.upsert(target_id, Vector2(store.position_x[target_id], store.position_y[target_id]))

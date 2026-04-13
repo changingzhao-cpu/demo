@@ -89,5 +89,16 @@ func _apply_damage(store, target_id: int, damage: float) -> void:
 	if store.hp[target_id] > 0.0:
 		return
 
-	store.release(target_id)
 	store.hp[target_id] = 0.0
+	store.alive[target_id] = 0
+	store.target_id[target_id] = -1
+	store.state[target_id] = 4
+	store.velocity_x[target_id] = 0.0
+	store.velocity_y[target_id] = 0.0
+	store.move_speed[target_id] = 0.0
+	store.attack_cd[target_id] = 0.0
+	store.grid_id[target_id] = -1
+	store.bucket_id[target_id] = -1
+	store.active_count = max(0, store.active_count - 1)
+	if target_id not in store._free_ids:
+		store._free_ids.push_front(target_id)

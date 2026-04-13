@@ -5,6 +5,7 @@ const BattleScene = preload("res://scenes/battle/battle_scene.tscn")
 func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_battle_scene_consumes_controller_death_events_for_effects(failures)
+	_test_dead_unit_view_stops_rendering_as_alive(failures)
 	return failures
 
 func _test_battle_scene_consumes_controller_death_events_for_effects(failures: Array[String]) -> void:
@@ -27,6 +28,39 @@ func _test_battle_scene_consumes_controller_death_events_for_effects(failures: A
 		var effect_node = effect_layer.get_child(0)
 		_assert_eq(str(effect_node.get_meta("team")), "enemy", "death effect should keep enemy team metadata from the controller event", failures)
 		_assert_true(effect_node.position != Vector2.ZERO, "death effect should preserve the death position from the controller event", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
+
+func _test_dead_unit_view_stops_rendering_as_alive(failures: Array[String]) -> void:
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = BattleScene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	var unit_layer = instance.get_node_or_null("UnitLayer")
+	if controller == null or unit_layer == null:
+		failures.append("battle scene should expose controller and unit layer before dead view checks")
+		if instance.get_parent() != null:
+			main_loop.root.remove_child(instance)
+		instance.free()
+		return
+	var store = controller.call("get_entity_store")
+	var live_entity_ids: Array = controller.call("get_live_entity_ids")
+	var dead_entity_id := -1
+	for entity_id_variant in live_entity_ids:
+		var entity_id := int(entity_id_variant)
+		if store.team_id[entity_id] == 1:
+			store.hp[entity_id] = 0.1
+			dead_entity_id = entity_id
+			break
+	controller.call("advance_debug_frames", 60, 0.016)
+	await main_loop.process_frame
+	var lingering_visible := false
+	for child in unit_layer.get_children():
+		if child.has_method("get_entity_id") and int(child.call("get_entity_id")) == dead_entity_id and child is CanvasItem and child.visible:
+			lingering_visible = true
+			break
+	_assert_true(not lingering_visible, "dead unit views should stop rendering as alive after a kill", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
 

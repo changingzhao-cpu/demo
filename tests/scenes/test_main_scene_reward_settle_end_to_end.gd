@@ -1,5 +1,6 @@
 extends RefCounted
 
+const TestCleanup = preload("res://tests/test_cleanup.gd")
 const MainScene = preload("res://scenes/main/main_scene.tscn")
 
 func run() -> Array[String]:
@@ -18,8 +19,7 @@ func _test_main_scene_surfaces_reward_and_settle_end_to_end(failures: Array[Stri
 	if controller == null or summary_label == null or settle_hint == null:
 		failures.append("main scene should expose controller and summary labels before reward-settle end-to-end checks")
 		if instance.get_parent() != null:
-			main_loop.root.remove_child(instance)
-		instance.free()
+			await TestCleanup.release_tree_instance(main_loop, instance)
 		return
 	controller.call("handle_wave_clear")
 	await main_loop.process_frame
@@ -28,8 +28,7 @@ func _test_main_scene_surfaces_reward_and_settle_end_to_end(failures: Array[Stri
 	await main_loop.process_frame
 	_assert_true(String(summary_label.text).contains("Settle"), "main scene should surface settle status after run failure", failures)
 	_assert_true(String(settle_hint.text).contains("Restart"), "main scene should explain restart after settle", failures)
-	main_loop.root.remove_child(instance)
-	instance.free()
+	await TestCleanup.release_tree_instance(main_loop, instance)
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

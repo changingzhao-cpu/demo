@@ -20,10 +20,12 @@ func _test_boot_places_unit_views_inside_battlefield_region(failures: Array[Stri
 			main_loop.root.remove_child(instance)
 		instance.free()
 		return
-	_assert_true(ally_view.global_position.x > 120.0, "ally view should appear inside the visible battlefield instead of near the screen edge", failures)
-	_assert_true(enemy_view.global_position.x < 1160.0, "enemy view should appear inside the visible battlefield instead of offscreen", failures)
-	_assert_true(ally_view.global_position.y > 120.0, "ally view should appear vertically inside the battlefield", failures)
-	_assert_true(enemy_view.global_position.y > 120.0, "enemy view should appear vertically inside the battlefield", failures)
+	_assert_true(ally_view.global_position.x > 180.0, "ally view should appear well inside the visible battlefield instead of hugging the edge", failures)
+	_assert_true(enemy_view.global_position.x < 1100.0, "enemy view should appear well inside the visible battlefield instead of drifting offscreen", failures)
+	_assert_true(ally_view.global_position.y > 150.0, "ally view should appear vertically inside the main battlefield window", failures)
+	_assert_true(enemy_view.global_position.y > 150.0, "enemy view should appear vertically inside the main battlefield window", failures)
+	_assert_true(ally_view.global_position.y < 610.0, "ally view should stay inside the main battlefield window instead of slipping below the frame", failures)
+	_assert_true(enemy_view.global_position.y < 610.0, "enemy view should stay inside the main battlefield window instead of slipping below the frame", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
 

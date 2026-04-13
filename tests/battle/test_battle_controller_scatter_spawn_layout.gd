@@ -28,28 +28,32 @@ func _test_start_run_uses_scatter_layout_with_clear_density_difference(failures:
 			ally_positions.append(position)
 		elif store.team_id[entity_id] == ENEMY_TEAM_ID:
 			enemy_positions.append(position)
-	_assert_eq(ally_positions.size(), 6, "wave 1 should still seed six ally units for scatter layout checks", failures)
-	_assert_eq(enemy_positions.size(), 5, "wave 1 should still seed five enemies for scatter layout checks", failures)
-	if ally_positions.size() == 6:
-		_assert_true(_x_spread(ally_positions) >= 2.8, "ally scatter layout should spread across multiple forward lanes instead of a tight column pair", failures)
-		_assert_true(_min_pair_distance(ally_positions) > 1.1, "ally scatter layout should avoid overlapping starting positions", failures)
-		_assert_true(not _is_mechanical_grid(ally_positions), "ally scatter layout should not look like a mechanical grid", failures)
-		_assert_true(_x_spread(ally_positions) - _x_spread(enemy_positions) >= 0.35 if enemy_positions.size() == 5 else true, "ally scatter should remain visibly wider than the enemy swarm", failures)
-	if enemy_positions.size() == 5:
-		_assert_true(_x_spread(enemy_positions) <= 2.9, "enemy scatter layout should stay denser than allies", failures)
-		_assert_true(_min_pair_distance(enemy_positions) > 0.8, "enemy scatter layout should avoid overlapping starting positions", failures)
-		_assert_true(not _is_mechanical_grid(enemy_positions), "enemy scatter layout should not look like a mechanical grid", failures)
-	if ally_positions.size() == 6 and enemy_positions.size() == 5:
-		_assert_true(_average_x(ally_positions) < -6.0, "allies should still stage clearly on the left side", failures)
-		_assert_true(_average_x(enemy_positions) > 7.2, "enemies should still stage clearly on the right side", failures)
-		_assert_true(_x_spread(ally_positions) > _x_spread(enemy_positions), "ally scatter should be looser while enemy swarm remains denser", failures)
-		_assert_true(_average_pair_distance(ally_positions) > _average_pair_distance(enemy_positions), "ally scatter should keep lower density than the enemy swarm", failures)
-		_assert_true(_team_gap(ally_positions, enemy_positions) >= 11.5, "opening scatter should preserve a visible central engagement corridor", failures)
-		_assert_true(_rightmost_x(ally_positions) < _leftmost_x(enemy_positions), "opening formations should not overlap across the center lane", failures)
-		_assert_true(_rightmost_x(ally_positions) <= -3.6, "allies should not open too close to the center line", failures)
-		_assert_true(_leftmost_x(enemy_positions) >= 5.0, "enemies should not open too close to the center line", failures)
-		_assert_true(_y_spread(enemy_positions) <= 3.2, "enemy swarm should stay vertically compact instead of becoming a tall blob", failures)
-		_assert_true(_y_spread(ally_positions) >= 3.0, "allies should use multiple vertical lanes for a readable opening", failures)
+	_assert_eq(ally_positions.size(), 18, "wave 1 should seed a fuller ally group closer to the reference opening", failures)
+	_assert_eq(enemy_positions.size(), 24, "wave 1 should seed a fuller goose group closer to the reference opening", failures)
+	if ally_positions.size() == 18:
+		_assert_true(_x_spread(ally_positions) >= 15.0, "ally opening should spread across a broad arena width", failures)
+		_assert_true(_y_spread(ally_positions) >= 9.0, "ally opening should occupy multiple vertical lanes", failures)
+		_assert_true(_min_pair_distance(ally_positions) > 1.0, "ally opening should avoid overlapping start points", failures)
+		_assert_true(not _is_mechanical_grid(ally_positions), "ally opening should not read as a mechanical slot grid", failures)
+		_assert_true(_vertical_cluster_balance(ally_positions, 1.0) >= 5, "ally opening should break into several readable pockets", failures)
+	if enemy_positions.size() == 24:
+		_assert_true(_x_spread(enemy_positions) >= 15.0, "goose opening should also spread across a broad arena width", failures)
+		_assert_true(_y_spread(enemy_positions) >= 9.0, "goose opening should occupy multiple vertical lanes", failures)
+		_assert_true(_min_pair_distance(enemy_positions) > 0.9, "goose opening should avoid overlapping start points", failures)
+		_assert_true(not _is_mechanical_grid(enemy_positions), "goose opening should not read as a rigid slot strip", failures)
+		_assert_true(_vertical_cluster_balance(enemy_positions, 1.0) >= 5, "goose opening should break into several readable pockets", failures)
+	if ally_positions.size() == 18 and enemy_positions.size() == 24:
+		_assert_true(_minimum_center_distance(ally_positions, enemy_positions) >= 1.0, "opening formations should leave readable room before first contact", failures)
+		_assert_true(_minimum_center_distance(ally_positions, enemy_positions) <= 8.5, "opening formations should still feel engaged in the same arena", failures)
+		_assert_true(_average_pair_distance(ally_positions) > 4.8, "allies should open as a loose distributed group", failures)
+		_assert_true(_average_pair_distance(enemy_positions) > 4.0, "geese should open as a loose distributed swarm", failures)
+		_assert_true(_x_spread(ally_positions) >= 0.85 * _x_spread(enemy_positions), "ally opening should be comparably wide to the goose spread", failures)
+		_assert_true(absf(_average_x(ally_positions) - _average_x(enemy_positions)) <= 6.0, "opening should no longer split into two distant left-right camps", failures)
+		_assert_true(_row_cluster_count(ally_positions) >= 5, "ally opening should read as many local clusters, not one flat row", failures)
+		_assert_true(_row_cluster_count(enemy_positions) >= 5, "goose opening should read as many local clusters, not one flat row", failures)
+		_assert_true(_leftmost_x(enemy_positions) < _rightmost_x(ally_positions), "two sides should interleave inside the same arena instead of spawning as isolated camps", failures)
+		_assert_true(_team_gap(ally_positions, enemy_positions) < 0.0, "opening should intentionally overlap horizontally in arena space", failures)
+		_assert_true(_center_hole_radius(ally_positions, enemy_positions) >= 2.2, "opening should preserve a readable loose center pocket like the reference", failures)
 	controller.free()
 
 func _average_x(positions: Array[Vector2]) -> float:
@@ -99,6 +103,39 @@ func _rightmost_x(positions: Array[Vector2]) -> float:
 func _team_gap(ally_positions: Array[Vector2], enemy_positions: Array[Vector2]) -> float:
 	return _leftmost_x(enemy_positions) - _rightmost_x(ally_positions)
 
+func _minimum_center_distance(ally_positions: Array[Vector2], enemy_positions: Array[Vector2]) -> float:
+	var best := INF
+	for ally_position in ally_positions:
+		for enemy_position in enemy_positions:
+			best = minf(best, ally_position.distance_to(enemy_position))
+	return 0.0 if best == INF else best
+
+func _row_cluster_count(positions: Array[Vector2]) -> int:
+	if positions.is_empty():
+		return 0
+	var ys: Array[float] = []
+	for position in positions:
+		ys.append(position.y)
+	ys.sort()
+	var clusters := 1
+	for index in range(1, ys.size()):
+		if absf(ys[index] - ys[index - 1]) > 0.7:
+			clusters += 1
+	return clusters
+
+func _vertical_cluster_balance(positions: Array[Vector2], threshold: float) -> int:
+	if positions.is_empty():
+		return 0
+	var ys: Array[float] = []
+	for position in positions:
+		ys.append(position.y)
+	ys.sort()
+	var clusters := 1
+	for index in range(1, ys.size()):
+		if absf(ys[index] - ys[index - 1]) > threshold:
+			clusters += 1
+	return clusters
+
 func _min_pair_distance(positions: Array[Vector2]) -> float:
 	var best := INF
 	for index in range(positions.size()):
@@ -142,6 +179,21 @@ func _has_repeated_gap_pattern(values: Array[float]) -> bool:
 		if float(gap) > 0.0 and int(counts[gap]) >= values.size() - 2:
 			return true
 	return false
+
+func _center_hole_radius(ally_positions: Array[Vector2], enemy_positions: Array[Vector2]) -> float:
+	var positions: Array[Vector2] = []
+	positions.append_array(ally_positions)
+	positions.append_array(enemy_positions)
+	if positions.is_empty():
+		return 0.0
+	var center := Vector2.ZERO
+	for position in positions:
+		center += position
+	center /= float(positions.size())
+	var best := INF
+	for position in positions:
+		best = minf(best, position.distance_to(center))
+	return 0.0 if best == INF else best
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

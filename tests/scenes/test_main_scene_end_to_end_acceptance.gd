@@ -1,5 +1,6 @@
 extends RefCounted
 
+const TestCleanup = preload("res://tests/test_cleanup.gd")
 const MainScene = preload("res://scenes/main/main_scene.tscn")
 
 func run() -> Array[String]:
@@ -17,8 +18,7 @@ func _test_main_scene_surfaces_combat_and_reward_progression(failures: Array[Str
 	if battle_controller == null or summary_label == null:
 		failures.append("main scene should expose battle controller and summary label for end-to-end acceptance checks")
 		if instance.get_parent() != null:
-			main_loop.root.remove_child(instance)
-		instance.free()
+			await TestCleanup.release_tree_instance(main_loop, instance)
 		return
 	battle_controller.call("advance_debug_frames", 90, 0.016)
 	await main_loop.process_frame
@@ -27,8 +27,7 @@ func _test_main_scene_surfaces_combat_and_reward_progression(failures: Array[Str
 	battle_controller.call("handle_wave_clear")
 	await main_loop.process_frame
 	_assert_true(String(summary_label.text).contains("Reward"), "main scene should surface reward progression in the summary label", failures)
-	main_loop.root.remove_child(instance)
-	instance.free()
+	await TestCleanup.release_tree_instance(main_loop, instance)
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

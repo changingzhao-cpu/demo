@@ -8,6 +8,7 @@ func run() -> Array[String]:
 	_test_tick_combat_advances_simulation_work(failures)
 	_test_tick_enters_reward_when_enemies_are_gone(failures)
 	_test_tick_enters_settle_when_all_allies_are_gone(failures)
+	_test_tick_preserves_recent_death_data_before_cleanup(failures)
 	return failures
 
 func _test_tick_combat_advances_simulation_work(failures: Array[String]) -> void:
@@ -56,6 +57,33 @@ func _test_tick_enters_settle_when_all_allies_are_gone(failures: Array[String]) 
 			store.alive[entity_id] = 0
 	controller.call("tick_combat", 0.016)
 	_assert_eq(str(controller.get_state()), "settle", "tick_combat should enter settle when all allies are gone", failures)
+	controller.free()
+
+func _test_tick_preserves_recent_death_data_before_cleanup(failures: Array[String]) -> void:
+	var controller = BattleControllerScript.new(WAVE_DEFS_PATH)
+	controller.start_run()
+	var store = controller.call("get_entity_store")
+	var live_entity_ids: Array = controller.call("get_live_entity_ids")
+	var expected_team := -1
+	var expected_position := Vector2.ZERO
+	var forced_enemy_id := -1
+	for entity_id_variant in live_entity_ids:
+		var entity_id := int(entity_id_variant)
+		if store.team_id[entity_id] == 1:
+			expected_team = store.team_id[entity_id]
+			expected_position = Vector2(store.position_x[entity_id], store.position_y[entity_id])
+			forced_enemy_id = entity_id
+			break
+	if forced_enemy_id != -1:
+		store.alive[forced_enemy_id] = 0
+	controller.call("tick_combat", 0.016)
+	var death_events: Array = controller.call("get_recently_died_entities")
+	_assert_true(not death_events.is_empty(), "tick_combat should retain recent death events after a kill", failures)
+	if not death_events.is_empty():
+		var death_event: Dictionary = death_events[0]
+		_assert_eq(str(death_event.get("team", "")), "enemy" if expected_team == 1 else "ally", "death event should preserve the killed unit team before cleanup", failures)
+		_assert_true(death_event.get("position", Vector2.ZERO) != Vector2.ZERO, "death event should preserve the killed unit position before cleanup", failures)
+		_assert_true(Vector2(death_event.get("position", Vector2.ZERO)).distance_to(expected_position) < 0.8, "death event should stay near the killed unit's last position", failures)
 	controller.free()
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:

@@ -10,12 +10,19 @@ class DummyEffect:
 	var reset_count: int = 0
 	var ttl: float = 0.0
 	var team: String = ""
+	var position: Vector2 = Vector2.ZERO
+	var tint: Color = Color.WHITE
+	var scale: Vector2 = Vector2.ONE
+	var visual_kind: String = ""
+	var persistent: bool = false
 
 func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_enemy_death_event_spawns_temporary_corpse(failures)
 	_test_ally_death_event_spawns_persistent_corpse(failures)
 	_test_enemy_corpse_expires_after_tick(failures)
+	_test_visual_events_expire_and_release_after_ticks(failures)
+	_test_visual_event_burst_does_not_leave_all_effects_active(failures)
 	return failures
 
 func _test_enemy_death_event_spawns_temporary_corpse(failures: Array[String]) -> void:
@@ -48,6 +55,25 @@ func _test_enemy_corpse_expires_after_tick(failures: Array[String]) -> void:
 	var corpse = pool.call("on_enemy_unit_died", 0.2)
 	pool.tick_corpses(0.25)
 	_assert_false(corpse.active, "expired enemy corpse should be released back to the pool", failures)
+
+func _test_visual_events_expire_and_release_after_ticks(failures: Array[String]) -> void:
+	var pool = EffectPoolScript.new(_make_effect, 2, 2)
+	var effect = pool.call("spawn_visual_event", "hit_flash", Vector2(1.0, 2.0), "enemy", 0.12)
+	_assert_true(effect != null, "spawn_visual_event should create a short-lived visual effect", failures)
+	pool.tick_corpses(0.2)
+	if effect != null:
+		_assert_false(effect.active, "short-lived visual events should be released after their ttl elapses", failures)
+	var active_effects: Array = pool.call("get_active_effects")
+	_assert_eq(active_effects.size(), 0, "expired visual events should not remain in active effect lists", failures)
+
+func _test_visual_event_burst_does_not_leave_all_effects_active(failures: Array[String]) -> void:
+	var pool = EffectPoolScript.new(_make_effect, 4, 2)
+	for _index in range(6):
+		pool.call("spawn_visual_event", "hit_flash", Vector2.ZERO, "enemy", 0.08)
+		pool.call("spawn_visual_event", "skill_ring", Vector2.ZERO, "ally", 0.08)
+	pool.tick_corpses(0.2)
+	var active_effects: Array = pool.call("get_active_effects")
+	_assert_true(active_effects.size() <= 2, "visual event bursts should drain back down instead of leaving most effects active", failures)
 
 func _make_effect() -> DummyEffect:
 	return DummyEffect.new()

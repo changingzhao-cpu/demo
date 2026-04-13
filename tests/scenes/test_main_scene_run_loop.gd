@@ -1,5 +1,6 @@
 extends RefCounted
 
+const TestCleanup = preload("res://tests/test_cleanup.gd")
 const MainScene = preload("res://scenes/main/main_scene.tscn")
 
 func run() -> Array[String]:
@@ -18,8 +19,7 @@ func _test_main_scene_enters_combat_on_boot(failures: Array[String]) -> void:
 	_assert_true(controller != null, "main scene should expose battle controller after boot", failures)
 	if controller != null:
 		_assert_eq(str(controller.call("get_state")), "combat", "main scene should boot into combat", failures)
-	main_loop.root.remove_child(instance)
-	instance.free()
+	await TestCleanup.release_tree_instance(main_loop, instance)
 
 func _test_main_scene_supports_reward_to_next_wave_transition(failures: Array[String]) -> void:
 	var main_loop: SceneTree = Engine.get_main_loop()
@@ -44,8 +44,7 @@ func _test_main_scene_supports_reward_to_next_wave_transition(failures: Array[St
 		_assert_eq(str(controller.call("get_state")), "combat", "main scene should return to combat after reward selection", failures)
 		var current_wave = controller.call("get_current_wave")
 		_assert_eq(int(current_wave.get("wave", -1)), 2, "main scene should advance to wave 2 after reward selection", failures)
-	main_loop.root.remove_child(instance)
-	instance.free()
+	await TestCleanup.release_tree_instance(main_loop, instance)
 
 func _test_main_scene_preserves_ui_root_for_settle_phase(failures: Array[String]) -> void:
 	var main_loop: SceneTree = Engine.get_main_loop()
@@ -60,8 +59,7 @@ func _test_main_scene_preserves_ui_root_for_settle_phase(failures: Array[String]
 		await main_loop.process_frame
 		_assert_eq(str(controller.call("get_state")), "settle", "main scene should support settle state", failures)
 		_assert_true(ui_layer != null, "main scene should keep UiLayer available in settle state", failures)
-	main_loop.root.remove_child(instance)
-	instance.free()
+	await TestCleanup.release_tree_instance(main_loop, instance)
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

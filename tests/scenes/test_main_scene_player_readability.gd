@@ -1,5 +1,6 @@
 extends RefCounted
 
+const TestCleanup = preload("res://tests/test_cleanup.gd")
 const MAIN_SCENE_PATH := "res://scenes/main/main_scene.tscn"
 
 func _load_main_scene() -> PackedScene:
@@ -22,7 +23,7 @@ func _test_main_scene_contains_player_readable_shell_nodes(failures: Array[Strin
 	_assert_true(instance.get_node_or_null("RunHintLabel") != null, "main scene should contain a RunHintLabel", failures)
 	_assert_true(instance.get_node_or_null("BattleSceneFrame") != null, "main scene should contain a BattleSceneFrame", failures)
 	_assert_true(instance.get_node_or_null("SettleAnchor") != null, "main scene should keep a SettleAnchor node", failures)
-	instance.free()
+	instance.queue_free()
 
 func _test_main_scene_boot_shows_playable_context_without_debug_tools(failures: Array[String]) -> void:
 	var main_scene = _load_main_scene()
@@ -49,7 +50,7 @@ func _test_main_scene_boot_shows_playable_context_without_debug_tools(failures: 
 	if run_hint_label != null:
 		_assert_true(String(run_hint_label.text).contains("Reward"), "main scene hint should mention reward flow", failures)
 	main_loop.root.remove_child(instance)
-	instance.free()
+	instance.queue_free()
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

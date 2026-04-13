@@ -1,5 +1,6 @@
 extends RefCounted
 
+const TestCleanup = preload("res://tests/test_cleanup.gd")
 const MAIN_SCENE_PATH := "res://scenes/main/main_scene.tscn"
 
 func _load_main_scene() -> PackedScene:
@@ -20,7 +21,7 @@ func _test_main_scene_instantiates(failures: Array[String]) -> void:
 	var instance = main_scene.instantiate()
 	_assert_true(instance != null, "main scene should instantiate", failures)
 	if instance != null:
-		instance.free()
+		instance.queue_free()
 
 func _test_main_scene_contains_battle_scene(failures: Array[String]) -> void:
 	var main_scene = _load_main_scene()
@@ -50,8 +51,7 @@ func _test_main_scene_boots_battle_demo_on_ready(failures: Array[String]) -> voi
 			var current_wave = controller.call("get_current_wave")
 			_assert_eq(int(current_wave.get("wave", -1)), 1, "main scene should boot battle demo into wave 1", failures)
 			_assert_eq(str(controller.call("get_state")), "combat", "main scene should boot battle demo into combat state", failures)
-	main_loop.root.remove_child(instance)
-	instance.free()
+	await TestCleanup.release_tree_instance(main_loop, instance)
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

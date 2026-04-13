@@ -19,7 +19,7 @@ class DummyEffect:
 func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_enemy_visual_event_sets_runtime_visual_payload(failures)
-	_test_ally_visual_event_sets_persistent_visual_payload(failures)
+	_test_ally_visual_event_sets_runtime_visual_payload(failures)
 	_test_releasing_visual_effect_resets_visual_payload(failures)
 	return failures
 
@@ -38,16 +38,17 @@ func _test_enemy_visual_event_sets_runtime_visual_payload(failures: Array[String
 		_assert_eq(effect.scale, Vector2(0.85, 0.85), "enemy visual event should use the short-lived corpse scale", failures)
 		_assert_false(effect.persistent, "enemy corpse visual event should not be persistent", failures)
 
-func _test_ally_visual_event_sets_persistent_visual_payload(failures: Array[String]) -> void:
+func _test_ally_visual_event_sets_runtime_visual_payload(failures: Array[String]) -> void:
 	var pool = EffectPoolScript.new(_make_effect, 2, 2)
-	var effect = pool.call("spawn_visual_event", "ally_corpse", Vector2(-7.5, 3.0), "ally", -1.0)
+	var effect = pool.call("spawn_visual_event", "ally_corpse", Vector2(-7.5, 3.0), "ally", 0.2)
 	_assert_true(effect != null, "spawn_visual_event should create an effect for ally corpses", failures)
 	if effect != null:
 		_assert_eq(effect.team, "ally", "ally visual event should keep ally team metadata", failures)
 		_assert_eq(effect.visual_kind, "ally_corpse", "ally visual event should expose its visual kind", failures)
-		_assert_eq(effect.tint, Color(0.45, 0.85, 1.0, 0.4), "ally visual event should use the ally corpse tint", failures)
-		_assert_eq(effect.scale, Vector2(1.1, 1.1), "ally visual event should use the larger persistent corpse scale", failures)
-		_assert_true(effect.persistent, "ally corpse visual event should be persistent", failures)
+		_assert_eq(effect.tint, Color(0.45, 0.85, 1.0, 0.4), "ally visual event may still use ally corpse tint while remaining short-lived", failures)
+		_assert_eq(effect.scale, Vector2(1.1, 1.1), "ally visual event may still use ally corpse scale while remaining short-lived", failures)
+		_assert_false(effect.persistent, "ally corpse visual event should not be persistent when used as a short-lived visual event", failures)
+		_assert_true(effect.ttl > 0.0, "ally visual event should keep a positive ttl so it can be released", failures)
 
 func _test_releasing_visual_effect_resets_visual_payload(failures: Array[String]) -> void:
 	var pool = EffectPoolScript.new(_make_effect, 1, 1)

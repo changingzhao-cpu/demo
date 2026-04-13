@@ -18,10 +18,11 @@ func _test_boot_spreads_units_within_team_regions(failures: Array[String]) -> vo
 	_assert_eq(enemy_views.size(), 6, "battle scene should expose six enemy views for formation readability", failures)
 	if ally_views.size() == 6:
 		_assert_true(_min_pair_distance(ally_views) > 18.0, "ally formation should not visually collapse into a single cluster on boot", failures)
-		_assert_true(_average_x(ally_views) < 620.0, "ally formation should start on the left half of the battlefield", failures)
+		_assert_true(_average_x(ally_views) < 610.0, "ally formation should start on the left half of the battlefield", failures)
 	if enemy_views.size() == 6:
 		_assert_true(_min_pair_distance(enemy_views) > 18.0, "enemy formation should not visually collapse into a single cluster on boot", failures)
-		_assert_true(_average_x(enemy_views) > 660.0, "enemy formation should start on the right half of the battlefield", failures)
+		_assert_true(_average_x(enemy_views) > 670.0, "enemy formation should start on the right half of the battlefield", failures)
+	_assert_true(absf(_average_x(enemy_views) - _average_x(ally_views)) > 120.0 if ally_views.size() == 6 and enemy_views.size() == 6 else true, "opening should keep ally and enemy visible groups separated across the screen", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
 

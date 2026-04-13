@@ -85,15 +85,15 @@ autowrap_mode = 3
 
 [node name="BattleSceneFrame" type="ColorRect" parent="."]
 offset_left = 24.0
-offset_top = 136.0
+offset_top = 112.0
 offset_right = 1256.0
-offset_bottom = 688.0
+offset_bottom = 704.0
 color = Color(1, 1, 1, 0.05)
 mouse_filter = 2
 z_index = -2
 
 [node name="BattleScene" parent="." instance=ExtResource("1_battle")]
-position = Vector2(0, 96)
+position = Vector2(0, 72)
 
 [node name="SettleAnchor" type="Node" parent="."]
 position = Vector2(640, 688)

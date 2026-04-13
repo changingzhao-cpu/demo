@@ -35,6 +35,7 @@ func _test_reference_tempo_progresses_from_scatter_to_clash_to_impact(failures: 
 	var saw_non_scatter_hint := false
 	var max_ally_displacement := 0.0
 	var moved_signal_frames := 0
+	var late_attack_signal := false
 	for step in range(180):
 		await main_loop.process_frame
 		var report: Dictionary = controller.call("get_last_tick_report")
@@ -56,6 +57,8 @@ func _test_reference_tempo_progresses_from_scatter_to_clash_to_impact(failures: 
 			saw_attack_by_one_second = true
 		if step <= 60 and (int(report.get("in_range", 0)) > 0 or int(report.get("combat_event_count", 0)) > 0):
 			saw_contact_signal_by_one_second = true
+		if step >= 120 and (int(report.get("attacked", 0)) > 0 or int(report.get("combat_event_count", 0)) > 0):
+			late_attack_signal = true
 		if String(phase_hint.text) != "Scatter setup":
 			saw_non_scatter_hint = true
 	_assert_true(early_text.contains("Scatter"), "battle scene should present an early scatter/setup tempo hint", failures)
@@ -63,18 +66,35 @@ func _test_reference_tempo_progresses_from_scatter_to_clash_to_impact(failures: 
 	_assert_true(impact_text.contains("Impact") or impact_text.contains("Burst"), "battle scene should present a later impact hint by around 3 seconds", failures)
 	_assert_true(phase_hint.text.length() <= 36, "tempo HUD hint should stay compact during runtime acceptance", failures)
 	_assert_true(early_distribution_ok, "battle scene should keep visible left-right separation in the early scatter window", failures)
-	_assert_true(max_ally_displacement > 24.0, "battle scene should visibly auto-advance units instead of staying near-static", failures)
-	_assert_true(moved_signal_frames >= 3, "battle scene should show sustained movement frames instead of a single accidental twitch", failures)
-	_assert_true(ally_view.global_position.distance_to(start_position) > 18.0, "battle scene should move from scatter setup into active melee by the tempo acceptance window", failures)
+	_assert_true(max_ally_displacement > 40.0, "battle scene should visibly auto-advance units instead of staying near-static", failures)
+	_assert_true(moved_signal_frames >= 4, "battle scene should show sustained movement frames instead of a single accidental twitch", failures)
+	_assert_true(ally_view.global_position.distance_to(start_position) > 28.0, "battle scene should move from scatter setup into active melee by the tempo acceptance window", failures)
 	_assert_true(saw_attack_by_one_second, "battle scene should reach attack contact by around the first second", failures)
 	_assert_true(saw_contact_signal_by_one_second, "battle scene should expose stable contact signals by around the first second", failures)
 	_assert_true(clash_effect_count > 0 or moved_signal_frames > 10, "battle scene should not stay in a no-effects no-movement idle state into the clash window", failures)
 	_assert_true(saw_non_scatter_hint, "battle scene should not remain in scatter setup for the full runtime acceptance window", failures)
 	_assert_true(clash_effect_count > 0, "battle scene should already show combat effects by the clash phase", failures)
 	_assert_true(impact_effect_count >= clash_effect_count, "battle scene should sustain or intensify visible effects by the later impact phase", failures)
+	_assert_true(late_attack_signal, "battle scene should clearly progress into active combat by around the 3-second window", failures)
 	_assert_true(_count_visible_views(unit_layer) >= 8, "battle scene should still show multiple unit views instead of collapsing into unreadable blobs", failures)
+	_assert_true(_screen_coverage_is_reasonable(unit_layer), "battle scene should keep combat units in a readable central window instead of letting the backdrop dominate the recording", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
+
+func _screen_coverage_is_reasonable(unit_layer: Node) -> bool:
+	var min_x := INF
+	var max_x := -INF
+	var min_y := INF
+	var max_y := -INF
+	for child in unit_layer.get_children():
+		if child is Node2D and child.visible:
+			min_x = minf(min_x, child.global_position.x)
+			max_x = maxf(max_x, child.global_position.x)
+			min_y = minf(min_y, child.global_position.y)
+			max_y = maxf(max_y, child.global_position.y)
+	if min_x == INF or min_y == INF:
+		return false
+	return min_x > 160.0 and max_x < 1120.0 and min_y > 140.0 and max_y < 620.0
 
 func _has_side_separation(unit_layer: Node) -> bool:
 	var min_x := INF

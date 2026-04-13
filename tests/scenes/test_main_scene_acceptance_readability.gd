@@ -1,5 +1,6 @@
 extends RefCounted
 
+const TestCleanup = preload("res://tests/test_cleanup.gd")
 const MainScene = preload("res://scenes/main/main_scene.tscn")
 
 func run() -> Array[String]:
@@ -14,7 +15,7 @@ func _test_main_scene_exposes_acceptance_level_shell_nodes(failures: Array[Strin
 	_assert_true(instance.get_node_or_null("RunHintLabel") != null, "main scene should keep RunHintLabel for acceptance readability", failures)
 	_assert_true(instance.get_node_or_null("StatusSummaryLabel") != null, "main scene should expose a StatusSummaryLabel", failures)
 	_assert_true(instance.get_node_or_null("SettleHintLabel") != null, "main scene should expose a SettleHintLabel", failures)
-	instance.free()
+	instance.queue_free()
 
 func _test_main_scene_surfaces_reward_and_settle_guidance(failures: Array[String]) -> void:
 	var main_loop: SceneTree = Engine.get_main_loop()
@@ -27,8 +28,7 @@ func _test_main_scene_surfaces_reward_and_settle_guidance(failures: Array[String
 	if battle_controller == null or summary_label == null or settle_hint == null:
 		failures.append("main scene should expose controller and acceptance labels before runtime readability checks")
 		if instance.get_parent() != null:
-			main_loop.root.remove_child(instance)
-		instance.free()
+			await TestCleanup.release_tree_instance(main_loop, instance)
 		return
 	battle_controller.call("handle_wave_clear")
 	await main_loop.process_frame
@@ -38,7 +38,7 @@ func _test_main_scene_surfaces_reward_and_settle_guidance(failures: Array[String
 	_assert_true(String(summary_label.text).contains("Settle"), "main scene summary should mention Settle after run failure", failures)
 	_assert_true(String(settle_hint.text).contains("Restart"), "main scene settle hint should explain how to continue after the run ends", failures)
 	main_loop.root.remove_child(instance)
-	instance.free()
+	instance.queue_free()
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

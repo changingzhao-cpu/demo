@@ -28,10 +28,10 @@ func _test_dead_visual_sync_keeps_motion_feedback_observable(failures: Array[Str
 	view.call("enable_death_feedback", true)
 	if view.has_method("sync_from_entity_visual"):
 		view.call("sync_from_entity_visual", Vector2(-3.0, 6.0), false, 1, 1.25, -1.0)
-		_assert_true(view.visible, "dead visual sync should remain visible when death feedback is enabled", failures)
-		_assert_true(bool(view.call("is_showing_death_state")), "dead visual sync should still report death state", failures)
+		_assert_true(not view.visible, "dead visual sync should stop rendering the unit once it has died", failures)
+		_assert_true(not bool(view.call("is_showing_death_state")), "dead visual sync should not keep reporting an active visible death state", failures)
 		_assert_eq(float(view.call("get_visual_facing_sign")), -1.0, "enemy visual sync should preserve negative facing", failures)
-		_assert_true(float(view.call("get_visual_motion_strength")) > 0.0, "dead visual sync should keep the last motion intensity observable", failures)
+		_assert_eq(float(view.call("get_visual_motion_strength")), 0.0, "dead visual sync should clear motion intensity once the unit is gone", failures)
 	view.free()
 
 func _test_motion_feedback_stays_bounded_and_keeps_unit_readable(failures: Array[String]) -> void:
