@@ -197,6 +197,7 @@ func _find_bound_view(entity_id: int) -> Node2D:
 func _sync_runtime_screen_space_views() -> void:
 	if _controller == null:
 		return
+	_bind_runtime_views()
 	if _controller.has_method("sync_unit_views_screen_space"):
 		_controller.call("sync_unit_views_screen_space", SCREEN_CENTER, SCREEN_SCALE)
 	else:
