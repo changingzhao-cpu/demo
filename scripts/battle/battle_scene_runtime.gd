@@ -1,12 +1,12 @@
 extends Node2D
 
 const EffectPoolScript = preload("res://scripts/presentation/effect_pool.gd")
-const SCREEN_CENTER := Vector2(640.0, 388.0)
-const SCREEN_SCALE := Vector2(78.0, 56.0)
+const SCREEN_CENTER := Vector2(640.0, 382.0)
+const SCREEN_SCALE := Vector2(118.0, 84.0)
 const INIT_DISPLAY_COUNT := 42
-const INIT_REGION_RADIUS := Vector2(82.0, 56.0)
-const INIT_MIN_DISTANCE := 6.0
-const INIT_JITTER := 2.0
+const INIT_REGION_RADIUS := Vector2(56.0, 38.0)
+const INIT_MIN_DISTANCE := 3.0
+const INIT_JITTER := 1.0
 const INIT_HOLD_SECONDS := 1.2
 
 @onready var _controller = $BattleController
