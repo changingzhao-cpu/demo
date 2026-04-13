@@ -412,7 +412,7 @@ modulate = Color(1, 1, 1, 1)
 z_index = -2
 
 [node name="ArenaRim" type="Line2D" parent="."]
-visible = true
+visible = false
 position = Vector2(640, 422)
 width = 7.0
 default_color = Color(0.51, 0.24, 0.16, 0.28)

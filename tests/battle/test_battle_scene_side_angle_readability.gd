@@ -19,7 +19,7 @@ func _test_scene_conveys_side_angle_arena_readability(failures: Array[String]) -
 	var arena_rim = instance.get_node_or_null("ArenaRim")
 	_assert_true(arena_shadow == null or (arena_shadow is CanvasItem and not arena_shadow.visible), "battle scene should keep ArenaShadow hidden when only ArenaFloor is used", failures)
 	_assert_true(arena_floor is CanvasItem and arena_floor.visible, "battle scene should expose a visible ArenaFloor node for arena readability", failures)
-	_assert_true(arena_rim is CanvasItem and arena_rim.visible, "battle scene should expose a visible ArenaRim node for arena boundary readability", failures)
+	_assert_true(arena_rim == null or (arena_rim is CanvasItem and not arena_rim.visible), "battle scene should keep ArenaRim hidden when the floor texture already contains the arena outline", failures)
 	_assert_true(arena_floor is Sprite2D, "ArenaFloor should render as a Sprite2D when using the arena floor asset directly", failures)
 	if arena_floor is Sprite2D:
 		_assert_true(arena_floor.texture != null, "ArenaFloor should render with the arena floor texture", failures)
