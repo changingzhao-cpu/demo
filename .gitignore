@@ -41,3 +41,5 @@ coverage/
 
 # Optional exported presets override
 export_presets.cfg
+
+.worktrees/
