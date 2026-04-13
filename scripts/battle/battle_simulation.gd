@@ -140,6 +140,9 @@ func _resolve_target(store, entity_id: int) -> int:
 	var cached_target: int = store.target_id[entity_id]
 	if _is_target_valid(store, entity_id, cached_target):
 		return cached_target
+	return _acquire_target(store, entity_id)
+
+func _acquire_target(store, entity_id: int) -> int:
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
 	var best_target := -1
 	var best_distance_sq := INF

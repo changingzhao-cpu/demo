@@ -8,9 +8,41 @@ func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_nearest_target_selection(failures)
 	_test_cached_target_reused_without_retargeting(failures)
+	_test_valid_target_lock_is_kept_even_when_a_closer_enemy_appears(failures)
 	_test_out_of_range_target_reselects(failures)
 	_test_bucketed_updates_only_process_matching_bucket(failures)
 	return failures
+
+func _test_valid_target_lock_is_kept_even_when_a_closer_enemy_appears(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationScript.new(grid)
+	var attacker: int = store.allocate()
+	var locked_target: int = store.allocate()
+	var closer_target: int = store.allocate()
+	store.team_id[attacker] = 0
+	store.team_id[locked_target] = 1
+	store.team_id[closer_target] = 1
+	store.position_x[attacker] = 0.0
+	store.position_y[attacker] = 0.0
+	store.position_x[locked_target] = 6.0
+	store.position_y[locked_target] = 0.0
+	store.position_x[closer_target] = 2.0
+	store.position_y[closer_target] = 0.0
+	store.target_id[attacker] = locked_target
+	store.move_speed[attacker] = 4.0
+	grid.upsert(attacker, Vector2(0.0, 0.0))
+	grid.upsert(locked_target, Vector2(6.0, 0.0))
+	grid.upsert(closer_target, Vector2(2.0, 0.0))
+
+	store.position_x[locked_target] = 17.5
+	store.position_y[locked_target] = 0.0
+	grid.upsert(locked_target, Vector2(17.5, 0.0))
+	grid.upsert(closer_target, Vector2(2.0, 0.0))
+
+	simulation.tick_bucket(store, 0.1, 0, 1)
+	_assert_eq(store.target_id[attacker], locked_target, "valid target lock should be kept until a hard invalidation happens", failures)
+	_assert_true(store.target_id[attacker] != closer_target, "a closer enemy inside chase distance should not break an existing valid target lock", failures)
 
 func _test_nearest_target_selection(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
@@ -59,7 +91,7 @@ func _test_cached_target_reused_without_retargeting(failures: Array[String]) -> 
 	grid.upsert(closer_new_target, Vector2(2.0, 0.0))
 
 	simulation.tick_bucket(store, 0.1, 0, 1)
-	_assert_true(store.target_id[attacker] == cached_target or store.target_id[attacker] == closer_new_target, "targeting should keep a valid live enemy target within chase range instead of dropping target lock", failures)
+	_assert_eq(store.target_id[attacker], cached_target, "targeting should keep a valid locked enemy target within chase range instead of switching to a closer enemy", failures)
 
 func _test_out_of_range_target_reselects(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
