@@ -25,6 +25,7 @@ var _initial_layout_active := true
 var _initial_layout_positions: Dictionary = {}
 var _runtime_elapsed := 0.0
 var _last_runtime_view_debug: Dictionary = {}
+var _debug_markers: Array = []
 
 func _ready() -> void:
 	_initial_layout_rng.randomize()
@@ -41,8 +42,15 @@ func _finish_runtime_bootstrap() -> void:
 	_bind_runtime_views()
 	_generate_initial_layout()
 	_apply_initial_layout_to_views()
+	_update_debug_markers()
 	_update_hud()
 	_runtime_ready = true
+
+func _draw() -> void:
+	for marker in _debug_markers:
+		draw_circle(marker, 6.0, Color(0.1, 1.0, 0.2, 0.9))
+		draw_line(marker + Vector2(-10, 0), marker + Vector2(10, 0), Color(0.1, 1.0, 0.2, 0.9), 2.0)
+		draw_line(marker + Vector2(0, -10), marker + Vector2(0, 10), Color(0.1, 1.0, 0.2, 0.9), 2.0)
 
 func _process(delta: float) -> void:
 	if not _runtime_ready:
@@ -107,6 +115,19 @@ func _make_effect_record():
 		"visual_kind": "",
 		"persistent": false
 	}
+
+func _update_debug_markers() -> void:
+	_debug_markers.clear()
+	var views: Array = _last_runtime_view_debug.get("views", [])
+	for item in views:
+		if not bool(item.get("visible", false)):
+			continue
+		if int(item.get("entity_id", -1)) == -1:
+			continue
+		var global_position: Vector2 = item.get("global_position", Vector2.ZERO)
+		_debug_markers.append(global_position)
+		if _debug_markers.size() >= 6:
+			break
 
 func _bind_runtime_views() -> void:
 	if _controller == null or _unit_layer == null or not _controller.has_method("select_visible_entity_ids"):
@@ -251,6 +272,7 @@ func _sync_runtime_screen_space_views() -> void:
 		return
 	_bind_runtime_views()
 	_last_runtime_view_debug = debug_get_runtime_view_snapshot()
+	_update_debug_markers()
 	if _controller.has_method("sync_unit_views_screen_space"):
 		_controller.call("sync_unit_views_screen_space", SCREEN_CENTER, SCREEN_SCALE)
 	else:
@@ -378,7 +400,7 @@ func _update_hud() -> void:
 			var sample_pos: Vector2 = sample.get("position", Vector2.ZERO)
 			var sample_global: Vector2 = sample.get("global_position", Vector2.ZERO)
 			var sample_id := int(sample.get("entity_id", -1))
-			_phase_hint.text = "%s\n%.2fs\nV:%d B:%d\nE:%d P:(%.1f, %.1f) G:(%.1f, %.1f)" % [_get_tempo_hint_text(), _runtime_elapsed, debug_visible, debug_bound, sample_id, sample_pos.x, sample_pos.y, sample_global.x, sample_global.y]
+			_phase_hint.text = "%s\n%.2fs\nV:%d B:%d\nE:%d P:(%.1f, %.1f) G:(%.1f, %.1f)\nM:%d" % [_get_tempo_hint_text(), _runtime_elapsed, debug_visible, debug_bound, sample_id, sample_pos.x, sample_pos.y, sample_global.x, sample_global.y, _debug_markers.size()]
 
 func debug_get_last_runtime_view_debug() -> Dictionary:
 	return _last_runtime_view_debug.duplicate(true)
