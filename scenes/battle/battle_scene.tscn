@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/presentation/unit_view.gd" id="2_unit_view"]
 [ext_resource type="PackedScene" path="res://scenes/ui/reward_panel.tscn" id="3_reward_panel"]
 [ext_resource type="Texture2D" path="res://assets/battle/arena/arena_floor.png" id="4_arena_floor"]
+[ext_resource type="Script" path="res://scripts/battle/battle_scene_runtime.gd" id="5_battle_scene_runtime"]
 
 [sub_resource type="GDScript" id="GDScript_battle_scene"]
 script/source = "extends Node2D
@@ -338,7 +339,7 @@ func _update_hud() -> void:
 			_phase_hint.text = _get_tempo_hint_text()"
 
 [node name="BattleScene" type="Node2D"]
-script = SubResource("GDScript_battle_scene")
+script = ExtResource("5_battle_scene_runtime")
 
 [node name="BattlefieldBackdrop" type="ColorRect" parent="."]
 offset_left = 0.0
@@ -433,8 +434,8 @@ script = ExtResource("1_controller")
 wave_defs_path = "res://data/wave_defs.json"
 
 [node name="UnitLayer" type="Node2D" parent="."]
-position = Vector2(640, 408)
-scale = Vector2(28, 20)
+position = Vector2(0, 0)
+scale = Vector2(1, 1)
 z_index = 2
 
 [node name="UnitView0" type="Node2D" parent="UnitLayer"]
@@ -486,8 +487,8 @@ script = ExtResource("2_unit_view")
 script = ExtResource("2_unit_view")
 
 [node name="EffectLayer" type="Node2D" parent="."]
-position = Vector2(640, 408)
-scale = Vector2(28, 20)
+position = Vector2(0, 0)
+scale = Vector2(1, 1)
 z_index = 3
 
 [node name="UiLayer" type="CanvasLayer" parent="."]

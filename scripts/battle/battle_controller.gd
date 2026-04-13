@@ -254,6 +254,44 @@ func get_visible_entity_payloads(limit: int = VISIBLE_ENTITY_LIMIT) -> Array[Dic
 		payloads.append(payload)
 	return payloads
 
+func get_visible_entity_screen_payloads(limit: int = VISIBLE_ENTITY_LIMIT, screen_center: Vector2 = Vector2(640.0, 408.0), screen_scale: Vector2 = Vector2(28.0, 20.0)) -> Array[Dictionary]:
+	var payloads: Array[Dictionary] = []
+	for entity_id in select_visible_entity_ids(limit):
+		var payload := _get_entity_visual_payload(entity_id)
+		var world_position: Vector2 = payload.get("position", Vector2.ZERO)
+		payload["position"] = Vector2(screen_center.x + world_position.x * screen_scale.x, screen_center.y + world_position.y * screen_scale.y)
+		payload["entity_id"] = entity_id
+		payloads.append(payload)
+	return payloads
+
+func sync_unit_views_screen_space(screen_center: Vector2 = Vector2(640.0, 408.0), screen_scale: Vector2 = Vector2(28.0, 20.0)) -> void:
+	if _entity_store == null:
+		return
+	var payloads_by_entity: Dictionary = {}
+	for payload in get_visible_entity_screen_payloads(_unit_views_by_entity.size(), screen_center, screen_scale):
+		payloads_by_entity[int(payload.get("entity_id", -1))] = payload
+	for entity_id in _unit_views_by_entity.keys():
+		var parsed_entity_id := int(entity_id)
+		var view = _unit_views_by_entity[entity_id]
+		if not payloads_by_entity.has(parsed_entity_id):
+			continue
+		var payload: Dictionary = payloads_by_entity[parsed_entity_id]
+		if view != null and view.has_method("set_visual_unit_state"):
+			view.call("set_visual_unit_state", payload.unit_state)
+			if view.has_method("set_visual_motion"):
+				view.call("set_visual_motion", payload.facing_sign, payload.move_speed)
+			if view.has_method("set_visual_alive_state"):
+				view.call("set_visual_alive_state", payload.is_alive)
+		if view != null and view.has_method("sync_from_entity_visual"):
+			if view.has_method("set_visual_unit_state"):
+				view.call("sync_from_entity_visual", payload.position, payload.is_alive, payload.team_id, payload.move_speed, payload.facing_sign, payload.unit_state)
+			else:
+				view.call("sync_from_entity_visual", payload.position, payload.is_alive, payload.team_id, payload.move_speed, payload.facing_sign)
+	_apply_recent_combat_feedback_to_views()
+
+func get_debug_visible_entity_screen_payloads(limit: int = VISIBLE_ENTITY_LIMIT, screen_center: Vector2 = Vector2(640.0, 408.0), screen_scale: Vector2 = Vector2(28.0, 20.0)) -> Array[Dictionary]:
+	return get_visible_entity_screen_payloads(limit, screen_center, screen_scale)
+
 func _compare_visible_priority(a: int, b: int) -> bool:
 	var a_priority := _get_visible_priority(a)
 	var b_priority := _get_visible_priority(b)
