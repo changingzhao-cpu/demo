@@ -238,6 +238,8 @@ func debug_get_runtime_view_snapshot() -> Dictionary:
 			"position": child.position,
 			"global_position": child.global_position
 		}
+		if _controller != null and entity_id != -1 and _controller.has_method("get_entity_visual_state"):
+			snapshot["payload"] = _controller.call("get_entity_visual_state", entity_id)
 		if child.visible:
 			result["visible_views"] = int(result["visible_views"]) + 1
 		if entity_id != -1:
@@ -371,9 +373,14 @@ func _update_hud() -> void:
 			var debug_visible := int(_last_runtime_view_debug.get("visible_views", 0))
 			var debug_bound := int(_last_runtime_view_debug.get("bound_views", 0))
 			var views: Array = _last_runtime_view_debug.get("views", [])
-			var sample: Dictionary = views[0] if not views.is_empty() else {}
+			var sample: Dictionary = {}
+			for item in views:
+				if bool(item.get("visible", false)) and int(item.get("entity_id", -1)) != -1:
+					sample = item
+					break
 			var sample_pos: Vector2 = sample.get("position", Vector2.ZERO)
-			_phase_hint.text = "%s\n%.2fs\nV:%d B:%d\nP:(%.1f, %.1f)" % [_get_tempo_hint_text(), _runtime_elapsed, debug_visible, debug_bound, sample_pos.x, sample_pos.y]
+			var sample_id := int(sample.get("entity_id", -1))
+			_phase_hint.text = "%s\n%.2fs\nV:%d B:%d\nE:%d P:(%.1f, %.1f)" % [_get_tempo_hint_text(), _runtime_elapsed, debug_visible, debug_bound, sample_id, sample_pos.x, sample_pos.y]
 
 func debug_get_last_runtime_view_debug() -> Dictionary:
 	return _last_runtime_view_debug.duplicate(true)
