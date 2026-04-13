@@ -186,20 +186,6 @@ func _refresh_depth_sort_for_visible_views() -> void:
 		if child is Node2D and child.visible and child.has_method("refresh_depth_sort"):
 			child.call("refresh_depth_sort")
 
-func _sync_runtime_screen_space_views() -> void:
-	if _controller == null:
-		return
-	if _controller.has_method("sync_unit_views_screen_space"):
-		_controller.call("sync_unit_views_screen_space", SCREEN_CENTER, SCREEN_SCALE)
-	else:
-		_controller.call("sync_unit_views")
-	_refresh_depth_sort_for_visible_views()
-	if _effect_layer != null:
-		_effect_layer.position = Vector2.ZERO
-		_effect_layer.scale = Vector2.ONE
-
-func _tick_effect_feedback(delta: float) -> void:
-
 func _find_bound_view(entity_id: int) -> Node2D:
 	if _unit_layer == null:
 		return null
@@ -215,6 +201,7 @@ func _sync_runtime_screen_space_views() -> void:
 		_controller.call("sync_unit_views_screen_space", SCREEN_CENTER, SCREEN_SCALE)
 	else:
 		_controller.call("sync_unit_views")
+	_refresh_depth_sort_for_visible_views()
 	if _effect_layer != null:
 		_effect_layer.position = Vector2.ZERO
 		_effect_layer.scale = Vector2.ONE

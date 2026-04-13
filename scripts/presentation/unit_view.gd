@@ -14,11 +14,11 @@ const HIT_STATE_HOLD := 0.2
 const SOLDIER_IDLE_TEXTURE_PATH := "res://assets/battle/units/soldier_idle.png"
 const SOLDIER_ATTACK_TEXTURE_PATH := "res://assets/battle/units/soldier_attack.png"
 const GOOSE_IDLE_TEXTURE_PATH := "res://assets/battle/units/goose_idle.png"
-const GOOSE_ATTACK_TEXTURE_PATH := "res://assets/battle/units/goose_attack.png"
+const GOOSE_HIT_TEXTURE_PATH := "res://assets/battle/units/goose_hit.png"
 const SOLDIER_IDLE_TEXTURE = preload("res://assets/battle/units/soldier_idle.png")
 const SOLDIER_ATTACK_TEXTURE = preload("res://assets/battle/units/soldier_attack.png")
 const GOOSE_IDLE_TEXTURE = preload("res://assets/battle/units/goose_idle.png")
-const GOOSE_ATTACK_TEXTURE = preload("res://assets/battle/units/goose_attack.png")
+const GOOSE_HIT_TEXTURE = preload("res://assets/battle/units/goose_hit.png")
 const SOLDIER_SCALE := Vector2(0.96, 0.96)
 const GOOSE_SCALE := Vector2(0.72, 0.72)
 
@@ -40,10 +40,10 @@ const SOLDIER_HIT_POSE_ROTATION := 0.08
 const GOOSE_HIT_POSE_OFFSET := Vector2(-0.12, 0.02)
 const SOLDIER_DEPTH_ANCHOR_OFFSET := Vector2(0.0, 22.0)
 const GOOSE_DEPTH_ANCHOR_OFFSET := Vector2(0.0, 18.0)
-const DEPTH_Z_MULTIPLIER := 10.0
-const DEPTH_Z_BASE := 100
-const DEPTH_Z_CLAMP := 10000
-const DEPTH_SORT_BIAS_GOose := -2
+const DEPTH_Z_MULTIPLIER := 0.5
+const DEPTH_Z_BASE := 0
+const DEPTH_Z_CLAMP := 4096
+const DEPTH_SORT_BIAS_GOOSE := -2
 const DEPTH_SORT_BIAS_SOLDIER := 0
 
 var _entity_id: int = -1
@@ -164,10 +164,10 @@ func _resolve_visual_state() -> int:
 	return VISUAL_STATE_IDLE
 
 func _resolve_goose_body_texture(visual_state: int):
-	return GOOSE_ATTACK_TEXTURE if visual_state == VISUAL_STATE_ATTACK else GOOSE_IDLE_TEXTURE
+	return GOOSE_HIT_TEXTURE if visual_state == VISUAL_STATE_ATTACK else GOOSE_IDLE_TEXTURE
 
 func _resolve_goose_overlay_texture(visual_state: int):
-	return GOOSE_ATTACK_TEXTURE if visual_state == VISUAL_STATE_HIT else null
+	return GOOSE_HIT_TEXTURE if visual_state == VISUAL_STATE_HIT else null
 
 func _resolve_soldier_body_texture(visual_state: int):
 	return SOLDIER_ATTACK_TEXTURE if visual_state == VISUAL_STATE_ATTACK else SOLDIER_IDLE_TEXTURE
@@ -342,7 +342,7 @@ func get_depth_anchor_global_y() -> float:
 
 func refresh_depth_sort() -> void:
 	var anchor_y := get_depth_anchor_global_y()
-	var team_bias := DEPTH_SORT_BIAS_GOose if _is_enemy else DEPTH_SORT_BIAS_SOLDIER
+	var team_bias := DEPTH_SORT_BIAS_GOOSE if _is_enemy else DEPTH_SORT_BIAS_SOLDIER
 	z_index = clampi(int(round(anchor_y * DEPTH_Z_MULTIPLIER)) + DEPTH_Z_BASE + team_bias, -DEPTH_Z_CLAMP, DEPTH_Z_CLAMP)
 
 func is_showing_death_state() -> bool:
