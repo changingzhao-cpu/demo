@@ -379,8 +379,9 @@ func _update_hud() -> void:
 					sample = item
 					break
 			var sample_pos: Vector2 = sample.get("position", Vector2.ZERO)
+			var sample_global: Vector2 = sample.get("global_position", Vector2.ZERO)
 			var sample_id := int(sample.get("entity_id", -1))
-			_phase_hint.text = "%s\n%.2fs\nV:%d B:%d\nE:%d P:(%.1f, %.1f)" % [_get_tempo_hint_text(), _runtime_elapsed, debug_visible, debug_bound, sample_id, sample_pos.x, sample_pos.y]
+			_phase_hint.text = "%s\n%.2fs\nV:%d B:%d\nE:%d P:(%.1f, %.1f) G:(%.1f, %.1f)" % [_get_tempo_hint_text(), _runtime_elapsed, debug_visible, debug_bound, sample_id, sample_pos.x, sample_pos.y, sample_global.x, sample_global.y]
 
 func debug_get_last_runtime_view_debug() -> Dictionary:
 	return _last_runtime_view_debug.duplicate(true)
