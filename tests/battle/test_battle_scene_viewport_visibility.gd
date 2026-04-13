@@ -20,12 +20,18 @@ func _test_boot_places_unit_views_inside_battlefield_region(failures: Array[Stri
 			main_loop.root.remove_child(instance)
 		instance.free()
 		return
+	_assert_true(ally_view.visible, "ally view should be visible after runtime bootstrap", failures)
+	_assert_true(enemy_view.visible, "enemy view should be visible after runtime bootstrap", failures)
+	_assert_true(ally_view.scale.length() > 0.0, "ally view should keep a non-zero scale after runtime bootstrap", failures)
+	_assert_true(enemy_view.scale.length() > 0.0, "enemy view should keep a non-zero scale after runtime bootstrap", failures)
 	_assert_true(ally_view.global_position.x > 180.0, "ally view should appear well inside the visible battlefield instead of hugging the edge", failures)
 	_assert_true(enemy_view.global_position.x < 1100.0, "enemy view should appear well inside the visible battlefield instead of drifting offscreen", failures)
 	_assert_true(ally_view.global_position.y > 150.0, "ally view should appear vertically inside the main battlefield window", failures)
 	_assert_true(enemy_view.global_position.y > 150.0, "enemy view should appear vertically inside the main battlefield window", failures)
 	_assert_true(ally_view.global_position.y < 610.0, "ally view should stay inside the main battlefield window instead of slipping below the frame", failures)
 	_assert_true(enemy_view.global_position.y < 610.0, "enemy view should stay inside the main battlefield window instead of slipping below the frame", failures)
+	_assert_true(ally_view.get_node_or_null("BodySprite") != null and ally_view.get_node("BodySprite").visible, "ally body sprite should be visible after runtime bootstrap", failures)
+	_assert_true(enemy_view.get_node_or_null("BodySprite") != null and enemy_view.get_node("BodySprite").visible, "enemy body sprite should be visible after runtime bootstrap", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
 

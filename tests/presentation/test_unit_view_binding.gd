@@ -5,9 +5,19 @@ const UnitViewScript = preload("res://scripts/presentation/unit_view.gd")
 func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_bind_sets_entity_and_shows_view(failures)
+	_test_bind_creates_visible_body_sprite(failures)
 	_test_sync_position_updates_global_position(failures)
 	_test_unbind_hides_view_and_clears_entity(failures)
 	return failures
+
+func _test_bind_creates_visible_body_sprite(failures: Array[String]) -> void:
+	var view = UnitViewScript.new()
+	view.bind_entity(8)
+	var snapshot: Dictionary = view.call("debug_get_sprite_snapshot")
+	_assert_true(bool(snapshot.get("body_exists", false)), "bind_entity should create a BodySprite immediately", failures)
+	_assert_true(bool(snapshot.get("body_visible", false)), "bind_entity should make BodySprite visible immediately", failures)
+	_assert_true(String(snapshot.get("body_texture", "")) != "", "bind_entity should assign a body texture immediately", failures)
+	view.free()
 
 func _test_bind_sets_entity_and_shows_view(failures: Array[String]) -> void:
 	var view = UnitViewScript.new()

@@ -70,6 +70,7 @@ func _draw() -> void:
 		draw_line(Vector2(-VISUAL_RADIUS - 0.6, VISUAL_RADIUS + 0.45), Vector2(VISUAL_RADIUS + 0.6, -VISUAL_RADIUS - 0.45), Color(1.0, 1.0, 1.0, _visual_tint.a * 0.55), 1.1)
 
 func bind_entity(entity_id: int) -> void:
+	_ensure_sprite_nodes()
 	_entity_id = entity_id
 	_is_bound = true
 	_is_showing_death_state = false
@@ -77,6 +78,23 @@ func bind_entity(entity_id: int) -> void:
 	visible = true
 	_update_visual_tint()
 	_refresh_sprite_visuals()
+
+func debug_get_sprite_snapshot() -> Dictionary:
+	_ensure_sprite_nodes()
+	var body: Sprite2D = get_node_or_null("BodySprite")
+	var overlay: Sprite2D = get_node_or_null("HitOverlay")
+	return {
+		"view_visible": visible,
+		"bound": _is_bound,
+		"entity_id": _entity_id,
+		"body_exists": body != null,
+		"body_visible": body != null and body.visible,
+		"body_texture": body.texture.resource_path if body != null and body.texture != null else "",
+		"body_scale": body.scale if body != null else Vector2.ZERO,
+		"body_modulate": body.modulate if body != null else Color.TRANSPARENT,
+		"overlay_exists": overlay != null,
+		"overlay_visible": overlay != null and overlay.visible
+	}
 
 func unbind_entity() -> void:
 	_entity_id = -1
