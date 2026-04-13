@@ -75,6 +75,7 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	var target_id: int = _resolve_target(store, entity_id)
 	store.target_id[entity_id] = target_id
 	if target_id == -1:
+		_release_engagement_slot_if_needed(store, entity_id, target_id)
 		store.state[entity_id] = UNIT_STATE_IDLE
 		store.velocity_x[entity_id] = 0.0
 		store.velocity_y[entity_id] = 0.0
@@ -90,17 +91,27 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	var distance := origin.distance_to(engagement_target)
 
 	if distance > engage_distance:
-		_apply_precontact_spacing(store, entity_id, target_id)
 		_move_toward_position(store, entity_id, engagement_target, delta)
+		var moved_distance := origin.distance_to(Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+		_update_engagement_blocked_time(store, entity_id, moved_distance, delta)
 		_apply_same_team_spacing(store, entity_id)
 		_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
 		store.state[entity_id] = UNIT_STATE_ADVANCE
 		report["moved"] = int(report.get("moved", 0)) + 1
 		return
 
-	store.engagement_target[entity_id] = target_id
-	store.engagement_slot[entity_id] = slot_index
-	store.engagement_blocked_time[entity_id] = 0.0
+	_release_engagement_slot_if_needed(store, entity_id, target_id)
+	if store.engagement_slot[entity_id] == -1:
+		store.state[entity_id] = UNIT_STATE_IDLE
+		store.velocity_x[entity_id] = 0.0
+		store.velocity_y[entity_id] = 0.0
+		report["idle"] = int(report.get("idle", 0)) + 1
+		return
+
+	if store.engagement_target[entity_id] != target_id:
+		store.engagement_target[entity_id] = target_id
+		store.engagement_slot[entity_id] = slot_index
+		store.engagement_blocked_time[entity_id] = 0.0
 
 	if slot_index >= 0:
 		target = engagement_target
@@ -109,6 +120,12 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	store.state[entity_id] = UNIT_STATE_ATTACK
 	store.velocity_x[entity_id] = 0.0
 	store.velocity_y[entity_id] = 0.0
+	store.engagement_blocked_time[entity_id] = 0.0
+	store.engagement_target[entity_id] = target_id
+	store.engagement_slot[entity_id] = slot_index
+	if slot_index >= 0:
+		target = engagement_target
+
 	report["in_range"] = int(report.get("in_range", 0)) + 1
 	var target_was_alive := bool(store.alive[target_id])
 	var did_hit: bool = _attack_resolver.resolve_basic_attack(store, entity_id, target_id, DEFAULT_ATTACK_DAMAGE)
@@ -123,9 +140,11 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		report["killed"] = int(report.get("killed", 0)) + 1
 		_append_event(report, entity_id, target_id, "kill", origin, target)
 		_grid.remove(target_id)
+		_release_engagement_slot_if_needed(store, entity_id, -1)
 	if not did_hit:
 		report["idle"] = int(report.get("idle", 0)) + 1
 	grid_upsert_pair(store, entity_id, target_id)
+	return
 
 func _append_event(report: Dictionary, attacker_id: int, target_id: int, event_type: String, attacker_position: Vector2, target_position: Vector2) -> void:
 	var events: Array = report.get("events", [])
@@ -278,10 +297,29 @@ func _apply_same_team_spacing(store, entity_id: int) -> void:
 			continue
 		var candidate_position := Vector2(store.position_x[candidate], store.position_y[candidate])
 		var distance := origin.distance_to(candidate_position)
-		if distance >= SAME_TEAM_SPACING_RADIUS:
+		if distance <= 0.001 or distance >= 0.6:
 			continue
-		_push_resolver.call("resolve_pair", store, entity_id, candidate)
+		var offset := (origin - candidate_position).normalized()
+		store.position_x[entity_id] += offset.x * 0.04
+		store.position_y[entity_id] += offset.y * 0.04
+		origin = Vector2(store.position_x[entity_id], store.position_y[entity_id])
 	_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+
+func _update_engagement_blocked_time(store, entity_id: int, moved_distance: float, delta: float) -> void:
+	if moved_distance <= 0.01:
+		store.engagement_blocked_time[entity_id] += delta
+	else:
+		store.engagement_blocked_time[entity_id] = 0.0
+	if store.engagement_blocked_time[entity_id] >= 0.35:
+		store.engagement_slot[entity_id] = -1
+		store.engagement_blocked_time[entity_id] = 0.0
+		store.engagement_target[entity_id] = -1
+
+func _release_engagement_slot_if_needed(store, entity_id: int, target_id: int) -> void:
+	if target_id == -1 or not _is_target_valid(store, entity_id, target_id):
+		store.engagement_slot[entity_id] = -1
+		store.engagement_target[entity_id] = -1
+		store.engagement_blocked_time[entity_id] = 0.0
 
 func _apply_enemy_contact_resolution(store, entity_id: int) -> void:
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
