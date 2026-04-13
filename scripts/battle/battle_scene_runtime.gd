@@ -3,7 +3,11 @@ extends Node2D
 const EffectPoolScript = preload("res://scripts/presentation/effect_pool.gd")
 const SCREEN_CENTER := Vector2(640.0, 408.0)
 const SCREEN_SCALE := Vector2(28.0, 20.0)
-const ENEMY_SCREEN_SCALE_MULTIPLIER := 0.72
+const INIT_DISPLAY_COUNT := 36
+const INIT_REGION_RADIUS := Vector2(360.0, 210.0)
+const INIT_MIN_DISTANCE := 28.0
+const INIT_JITTER := 18.0
+const INIT_HOLD_SECONDS := 1.2
 
 @onready var _controller = $BattleController
 @onready var _unit_layer: Node2D = $UnitLayer
@@ -15,8 +19,13 @@ const ENEMY_SCREEN_SCALE_MULTIPLIER := 0.72
 
 var _effect_pool
 var _runtime_ready := false
+var _initial_layout_rng := RandomNumberGenerator.new()
+var _initial_layout_time := 0.0
+var _initial_layout_active := true
+var _initial_layout_positions: Dictionary = {}
 
 func _ready() -> void:
+	_initial_layout_rng.randomize()
 	_setup_effect_pool()
 	if _controller != null:
 		_controller.set_process(false)
@@ -28,9 +37,8 @@ func _ready() -> void:
 
 func _finish_runtime_bootstrap() -> void:
 	_bind_runtime_views()
-	_sync_runtime_screen_space_views()
-	_consume_death_feedback()
-	_consume_combat_feedback()
+	_generate_initial_layout()
+	_apply_initial_layout_to_views()
 	_update_hud()
 	_runtime_ready = true
 
@@ -38,6 +46,13 @@ func _process(delta: float) -> void:
 	if not _runtime_ready:
 		return
 	if _controller == null or _reward_panel == null:
+		return
+	if _initial_layout_active:
+		_initial_layout_time += delta
+		_apply_initial_layout_to_views()
+		_update_hud()
+		if _initial_layout_time >= INIT_HOLD_SECONDS:
+			_initial_layout_active = false
 		return
 	if _controller.has_method("tick_combat"):
 		_controller.call("tick_combat", delta)
@@ -54,6 +69,8 @@ func _process(delta: float) -> void:
 	_update_hud()
 
 func _get_tempo_hint_text() -> String:
+	if _initial_layout_active:
+		return "Clash phase"
 	if _controller == null:
 		return "Auto battle"
 	var report: Dictionary = _controller.call("get_last_tick_report")
@@ -112,6 +129,63 @@ func _bind_runtime_views() -> void:
 		if view.has_method("enable_death_feedback"):
 			view.call("enable_death_feedback", true)
 
+func _generate_initial_layout() -> void:
+	_initial_layout_positions.clear()
+	if _controller == null or not _controller.has_method("get_visible_entity_screen_payloads"):
+		return
+	var payloads: Array = _controller.call("get_visible_entity_screen_payloads", INIT_DISPLAY_COUNT, SCREEN_CENTER, Vector2(18.0, 13.0))
+	var placed_points: Array[Vector2] = []
+	for payload in payloads:
+		var entity_id := int(payload.get("entity_id", -1))
+		if entity_id == -1:
+			continue
+		var team_id := int(payload.get("team_id", -1))
+		var point := _sample_initial_point(placed_points, team_id)
+		placed_points.append(point)
+		_initial_layout_positions[entity_id] = point
+
+func _sample_initial_point(existing_points: Array[Vector2], team_id: int) -> Vector2:
+	for _attempt in range(400):
+		var angle := _initial_layout_rng.randf_range(0.0, TAU)
+		var radius_x := INIT_REGION_RADIUS.x * sqrt(_initial_layout_rng.randf())
+		var radius_y := INIT_REGION_RADIUS.y * sqrt(_initial_layout_rng.randf())
+		var candidate := SCREEN_CENTER + Vector2(cos(angle) * radius_x, sin(angle) * radius_y)
+		candidate.x += _initial_layout_rng.randf_range(-INIT_JITTER, INIT_JITTER)
+		candidate.y += _initial_layout_rng.randf_range(-INIT_JITTER, INIT_JITTER)
+		candidate.x += -14.0 if team_id == 0 else 14.0
+		if _fits_initial_spacing(candidate, existing_points):
+			return candidate
+	return SCREEN_CENTER + Vector2(_initial_layout_rng.randf_range(-160.0, 160.0), _initial_layout_rng.randf_range(-110.0, 110.0))
+
+func _fits_initial_spacing(candidate: Vector2, existing_points: Array[Vector2]) -> bool:
+	for point in existing_points:
+		if point.distance_to(candidate) < INIT_MIN_DISTANCE:
+			return false
+	return true
+
+func _apply_initial_layout_to_views() -> void:
+	if _controller == null:
+		return
+	var payloads: Array = _controller.call("get_visible_entity_screen_payloads", _unit_layer.get_child_count(), SCREEN_CENTER, Vector2(18.0, 13.0))
+	for payload in payloads:
+		var entity_id := int(payload.get("entity_id", -1))
+		if entity_id == -1:
+			continue
+		var mapped: Vector2 = _initial_layout_positions.get(entity_id, payload.get("position", SCREEN_CENTER))
+		var view: Node2D = _find_bound_view(entity_id)
+		if view == null:
+			continue
+		if view.has_method("sync_from_entity_visual"):
+			view.call("sync_from_entity_visual", mapped, true, int(payload.get("team_id", 0)), 0.0, float(payload.get("facing_sign", 1.0)), int(payload.get("unit_state", 0)))
+
+func _find_bound_view(entity_id: int) -> Node2D:
+	if _unit_layer == null:
+		return null
+	for child in _unit_layer.get_children():
+		if child is Node2D and child.has_method("get_entity_id") and int(child.call("get_entity_id")) == entity_id:
+			return child
+	return null
+
 func _sync_runtime_screen_space_views() -> void:
 	if _controller == null:
 		return
@@ -122,9 +196,6 @@ func _sync_runtime_screen_space_views() -> void:
 	if _effect_layer != null:
 		_effect_layer.position = Vector2.ZERO
 		_effect_layer.scale = Vector2.ONE
-		for child in _effect_layer.get_children():
-			if child is Node2D:
-				child.position = SCREEN_CENTER + Vector2(child.position.x * SCREEN_SCALE.x, child.position.y * SCREEN_SCALE.y)
 
 func _tick_effect_feedback(delta: float) -> void:
 	if _effect_pool != null and _effect_pool.has_method("tick_corpses"):
@@ -132,6 +203,8 @@ func _tick_effect_feedback(delta: float) -> void:
 	_sync_effect_nodes()
 
 func _consume_death_feedback() -> void:
+	if _initial_layout_active:
+		return
 	if _controller == null or _effect_pool == null or not _controller.has_method("consume_recently_died_entities"):
 		return
 	var death_events: Array = _controller.call("consume_recently_died_entities")
@@ -142,6 +215,8 @@ func _consume_death_feedback() -> void:
 	_sync_effect_nodes()
 
 func _consume_combat_feedback() -> void:
+	if _initial_layout_active:
+		return
 	if _controller == null or _effect_pool == null or not _controller.has_method("consume_recent_combat_events"):
 		return
 	var combat_events: Array = _controller.call("consume_recent_combat_events")
@@ -179,120 +254,28 @@ func _create_effect_node() -> Node2D:
 	body.offset_bottom = 8.0
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	node.add_child(body)
-	var shadow := ColorRect.new()
-	shadow.name = "Shadow"
-	shadow.visible = false
-	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	node.add_child(shadow)
-	var lift := ColorRect.new()
-	lift.name = "Lift"
-	lift.visible = false
-	lift.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	node.add_child(lift)
-	var trail := ColorRect.new()
-	trail.name = "Trail"
-	trail.visible = false
-	trail.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	node.add_child(trail)
-	var ring := ColorRect.new()
-	ring.name = "Ring"
-	ring.visible = false
-	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	node.add_child(ring)
-	var flash := ColorRect.new()
-	flash.name = "Flash"
-	flash.visible = false
-	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	node.add_child(flash)
 	_effect_layer.add_child(node)
 	return node
 
 func _update_effect_node(node: Node2D, effect) -> void:
 	if node == null or effect == null:
 		return
-	var visual_kind := str(effect.visual_kind)
 	node.visible = bool(effect.active)
 	node.position = SCREEN_CENTER + Vector2(effect.position.x * SCREEN_SCALE.x, effect.position.y * SCREEN_SCALE.y)
 	node.scale = effect.scale
-	node.set_meta("team", str(effect.team))
-	node.set_meta("visual_kind", visual_kind)
 	var body = node.get_node_or_null("Body")
-	if body != null:
-		if visual_kind == "skill_ring":
-			body.offset_left = -8.0
-			body.offset_top = -2.0
-			body.offset_right = 8.0
-			body.offset_bottom = 2.0
-			body.rotation = 0.0
-			body.color = Color(1.0, 0.82, 0.34, 0.24)
-		elif visual_kind == "launch_burst":
-			body.offset_left = -3.0
-			body.offset_top = -6.0
-			body.offset_right = 3.0
-			body.offset_bottom = 0.0
-			body.rotation = 0.0
-			body.color = Color(1.0, 0.72, 0.34, 0.38)
-		elif visual_kind == "knockback_trail":
-			body.offset_left = -5.0
-			body.offset_top = -1.0
-			body.offset_right = 5.0
-			body.offset_bottom = 1.0
-			body.rotation = 0.08
-			body.color = Color(0.96, 0.48, 0.4, 0.3)
-		elif visual_kind == "hit_flash":
-			body.offset_left = -2.0
-			body.offset_top = -2.0
-			body.offset_right = 2.0
-			body.offset_bottom = 2.0
-			body.rotation = 0.785398
-			body.color = Color(1.0, 1.0, 0.9, 0.34)
-		else:
-			body.offset_left = -5.0
-			body.offset_top = -5.0
-			body.offset_right = 5.0
-			body.offset_bottom = 5.0
-			body.rotation = 0.0
-			body.color = effect.tint
-	var shadow = node.get_node_or_null("Shadow")
-	if shadow is ColorRect:
-		shadow.visible = false
-	var lift = node.get_node_or_null("Lift")
-	if lift is ColorRect:
-		lift.visible = visual_kind == "launch_burst"
-		lift.offset_left = -1.0
-		lift.offset_top = -8.0
-		lift.offset_right = 1.0
-		lift.offset_bottom = 0.0
-		lift.color = Color(1.0, 0.9, 0.58, 0.2)
-		lift.rotation = 0.0
-	var trail = node.get_node_or_null("Trail")
-	if trail is ColorRect:
-		trail.visible = visual_kind == "knockback_trail"
-		trail.offset_left = -5.0
-		trail.offset_top = -0.8
-		trail.offset_right = 5.0
-		trail.offset_bottom = 0.8
-		trail.color = Color(1.0, 0.74, 0.42, 0.16)
-		trail.rotation = 0.08
-	var ring = node.get_node_or_null("Ring")
-	if ring is ColorRect:
-		ring.visible = false
-	var flash = node.get_node_or_null("Flash")
-	if flash is ColorRect:
-		flash.visible = visual_kind == "hit_flash"
-		flash.offset_left = -0.8
-		flash.offset_top = -4.0
-		flash.offset_right = 0.8
-		flash.offset_bottom = 4.0
-		flash.color = Color(1.0, 0.98, 0.76, 0.18)
-		flash.rotation = 0.785398
+	if body is ColorRect:
+		body.color = effect.tint
 
 func _on_reward_selected(_index: int) -> void:
 	if _controller == null or not _controller.has_method("claim_reward_and_advance"):
 		return
 	_controller.call("claim_reward_and_advance")
+	_initial_layout_active = true
+	_initial_layout_time = 0.0
 	_bind_runtime_views()
-	_sync_runtime_screen_space_views()
+	_generate_initial_layout()
+	_apply_initial_layout_to_views()
 	if _reward_panel != null:
 		_reward_panel.visible = false
 	_update_hud()

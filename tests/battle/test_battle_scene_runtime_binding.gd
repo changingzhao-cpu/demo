@@ -36,15 +36,14 @@ func _test_controller_bootstrap_exposes_unit_views(failures: Array[String]) -> v
 	_assert_true(controller != null, "battle scene should expose BattleController after entering tree", failures)
 	_assert_true(unit_layer != null, "battle scene should expose UnitLayer after entering tree", failures)
 	if controller != null and unit_layer != null:
-		_assert_true(controller.has_method("get_live_entity_ids"), "battle controller should expose live runtime entities for scene binding", failures)
-		_assert_true(controller.has_method("select_visible_entity_ids"), "battle scene runtime binding should expose visible-entity selection", failures)
 		var live_entity_ids: Array = controller.call("get_live_entity_ids")
 		_assert_true(live_entity_ids.size() > 0, "battle scene should expose live runtime entities", failures)
-		_assert_true(unit_layer.get_child_count() >= 12, "battle scene should expose a fixed readable pool of unit views", failures)
-		_assert_true(unit_layer.get_child_count() < live_entity_ids.size(), "battle scene should bind a readable subset rather than one view per entity", failures)
-		var visible_entity_ids: Array = controller.call("select_visible_entity_ids", unit_layer.get_child_count())
-		_assert_true(visible_entity_ids.size() <= unit_layer.get_child_count(), "visible entity binding should fit inside the pooled runtime views", failures)
-		_assert_true(visible_entity_ids.size() > 0, "visible entity binding should select a non-empty readable subset", failures)
+		_assert_true(unit_layer.get_child_count() >= 30, "battle scene should expose a larger initialization view pool", failures)
+		var visible_views := 0
+		for child in unit_layer.get_children():
+			if child.visible:
+				visible_views += 1
+		_assert_true(visible_views >= 30, "battle scene should show about 30 or more units on the initialization screen", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
 

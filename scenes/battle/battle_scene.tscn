@@ -486,6 +486,66 @@ script = ExtResource("2_unit_view")
 [node name="UnitView15" type="Node2D" parent="UnitLayer"]
 script = ExtResource("2_unit_view")
 
+[node name="UnitView16" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView17" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView18" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView19" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView20" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView21" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView22" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView23" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView24" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView25" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView26" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView27" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView28" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView29" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView30" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView31" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView32" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView33" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView34" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
+[node name="UnitView35" type="Node2D" parent="UnitLayer"]
+script = ExtResource("2_unit_view")
+
 [node name="EffectLayer" type="Node2D" parent="."]
 position = Vector2(0, 0)
 scale = Vector2(1, 1)
