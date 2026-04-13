@@ -9,7 +9,63 @@ func run() -> Array[String]:
 	_test_tick_bucket_applies_damage_when_target_is_in_range(failures)
 	_test_tick_bucket_can_kill_target_when_damage_is_lethal(failures)
 	_test_in_range_attack_does_not_push_entities_apart(failures)
+	_test_attacker_enters_attack_state_after_reaching_engagement_slot(failures)
+	_test_crowded_attackers_do_not_all_stall_without_attacking(failures)
 	return failures
+
+func _test_crowded_attackers_do_not_all_stall_without_attacking(failures: Array[String]) -> void:
+	var store = EntityStore.new(5)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationScript.new(grid)
+	var target: int = store.allocate()
+	store.team_id[target] = 1
+	store.alive[target] = 1
+	store.position_x[target] = 0.0
+	store.position_y[target] = 0.0
+	store.radius[target] = 0.65
+	store.max_hp[target] = 100.0
+	store.hp[target] = 100.0
+	grid.upsert(target, Vector2.ZERO)
+	var attackers: Array[int] = []
+	for index in range(4):
+		var attacker: int = store.allocate()
+		attackers.append(attacker)
+		_prepare_attacker(store, attacker)
+		store.position_x[attacker] = -3.0 - float(index) * 0.2
+		store.position_y[attacker] = float(index) * 0.4
+		grid.upsert(attacker, Vector2(store.position_x[attacker], store.position_y[attacker]))
+	for _step in range(12):
+		simulation.tick_bucket(store, 0.1, 0, 1)
+	var attackers_in_attack := 0
+	for attacker in attackers:
+		if store.state[attacker] == 1:
+			attackers_in_attack += 1
+	_assert_true(attackers_in_attack >= 1, "crowded attackers should not all stall without entering attack", failures)
+
+func _test_attacker_enters_attack_state_after_reaching_engagement_slot(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationScript.new(grid)
+	var attacker: int = store.allocate()
+	var target: int = store.allocate()
+	_prepare_attacker(store, attacker)
+	_prepare_target(store, target, 100.0)
+	store.position_x[attacker] = -1.4
+	store.position_y[attacker] = 0.0
+	store.position_x[target] = 0.0
+	store.position_y[target] = 0.0
+	store.attack_range_sq[attacker] = 0.25
+	grid.upsert(attacker, Vector2(-1.4, 0.0))
+	grid.upsert(target, Vector2(0.0, 0.0))
+	simulation.tick_bucket(store, 0.1, 0, 1)
+	_assert_eq(store.engagement_target[attacker], target, "attacker should claim the target as its engagement target", failures)
+	_assert_true(store.engagement_slot[attacker] >= 0, "attacker should claim an engagement slot before attacking", failures)
+	for _step in range(5):
+		simulation.tick_bucket(store, 0.1, 0, 1)
+	var slot_position: Vector2 = Vector2(store.position_x[target], store.position_y[target]) + BattleSimulationScript.ENGAGEMENT_SLOT_OFFSETS[store.engagement_slot[attacker]]
+	var attacker_position: Vector2 = Vector2(store.position_x[attacker], store.position_y[attacker])
+	_assert_true(attacker_position.distance_to(slot_position) < 0.35, "attacker should move toward its claimed engagement slot instead of only chasing target center", failures)
+	_assert_eq(store.state[attacker], 1, "attacker should enter attack state after reaching its engagement slot", failures)
 
 func _test_tick_bucket_applies_damage_when_target_is_in_range(failures: Array[String]) -> void:
 	var store = EntityStore.new(2)
