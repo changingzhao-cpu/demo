@@ -20,8 +20,16 @@ func _test_scene_contains_visual_battlefield_nodes(failures: Array[String]) -> v
 	_assert_true(instance.get_node_or_null("BattlefieldBackdrop") != null, "battle scene should contain a BattlefieldBackdrop node", failures)
 	var arena_ground = instance.get_node_or_null("ArenaGround")
 	var arena_ground_rim = instance.get_node_or_null("ArenaGroundRim")
+	var arena_floor = instance.get_node_or_null("ArenaFloor")
+	var arena_shadow = instance.get_node_or_null("ArenaShadow")
 	_assert_true(arena_ground == null or (arena_ground is CanvasItem and not arena_ground.visible), "battle scene should not let arena ground dominate the screen by default", failures)
 	_assert_true(arena_ground_rim == null or (arena_ground_rim is CanvasItem and not arena_ground_rim.visible), "battle scene should not let arena rim dominate the screen by default", failures)
+	_assert_true(arena_floor is CanvasItem and arena_floor.visible, "ArenaFloor should stay visible in the battle scene", failures)
+	_assert_true(arena_shadow is CanvasItem and arena_shadow.visible, "ArenaShadow should stay visible in the battle scene", failures)
+	if arena_floor is Polygon2D:
+		_assert_true(arena_floor.color.a <= 0.8, "ArenaFloor should remain softened so units stay readable", failures)
+	if arena_shadow is Polygon2D:
+		_assert_true(arena_shadow.color.a <= 0.2, "ArenaShadow should remain subtle so it does not overpower units", failures)
 	instance.free()
 
 func _test_runtime_views_expose_enemy_and_ally_visual_difference(failures: Array[String]) -> void:

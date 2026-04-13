@@ -397,24 +397,25 @@ mouse_filter = 2
 z_index = -4
 
 [node name="ArenaShadow" type="Polygon2D" parent="."]
-visible = false
+visible = true
 position = Vector2(644, 476)
 polygon = PackedVector2Array(-456, -116, -386, 6, -264, 82, 0, 118, 264, 82, 386, 6, 456, -116, 306, -158, 0, -188, -306, -158)
-color = Color(0.22, 0.12, 0.08, 0.0)
+color = Color(0.22, 0.12, 0.08, 0.12)
 z_index = -3
 
 [node name="ArenaFloor" type="Polygon2D" parent="."]
-visible = false
+visible = true
 position = Vector2(640, 422)
+texture = ExtResource("4_arena_floor")
 polygon = PackedVector2Array(-430, -110, -360, 14, -250, 76, 0, 110, 250, 76, 360, 14, 430, -110, 300, -156, 0, -184, -300, -156)
-color = Color(1, 0.96, 0.88, 0.0)
+color = Color(1, 1, 1, 0.72)
 z_index = -2
 
 [node name="ArenaRim" type="Line2D" parent="."]
-visible = false
+visible = true
 position = Vector2(640, 422)
 width = 7.0
-default_color = Color(0.51, 0.24, 0.16, 0.0)
+default_color = Color(0.51, 0.24, 0.16, 0.28)
 closed = true
 points = PackedVector2Array(-430, -110, -360, 14, -250, 76, 0, 110, 250, 76, 360, 14, 430, -110, 300, -156, 0, -184, -300, -156)
 z_index = -1
