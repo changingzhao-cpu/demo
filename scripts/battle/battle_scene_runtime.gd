@@ -366,7 +366,9 @@ func _update_hud() -> void:
 		elif state == "settle":
 			_phase_hint.text = "Run ended. Restart"
 		else:
-			_phase_hint.text = "%s\n%.2fs" % [_get_tempo_hint_text(), _runtime_elapsed]
+			var debug_visible := int(_last_runtime_view_debug.get("visible_views", 0))
+			var debug_bound := int(_last_runtime_view_debug.get("bound_views", 0))
+			_phase_hint.text = "%s\n%.2fs\nV:%d B:%d" % [_get_tempo_hint_text(), _runtime_elapsed, debug_visible, debug_bound]
 
 func debug_get_last_runtime_view_debug() -> Dictionary:
 	return _last_runtime_view_debug.duplicate(true)
