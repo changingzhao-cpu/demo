@@ -14,11 +14,11 @@ const HIT_STATE_HOLD := 0.2
 const SOLDIER_IDLE_TEXTURE_PATH := "res://assets/battle/units/soldier_idle.png"
 const SOLDIER_ATTACK_TEXTURE_PATH := "res://assets/battle/units/soldier_attack.png"
 const GOOSE_IDLE_TEXTURE_PATH := "res://assets/battle/units/goose_idle.png"
-const GOOSE_HIT_TEXTURE_PATH := "res://assets/battle/units/goose_hit.png"
+const GOOSE_ATTACK_TEXTURE_PATH := "res://assets/battle/units/goose_attack.png"
 const SOLDIER_IDLE_TEXTURE = preload("res://assets/battle/units/soldier_idle.png")
 const SOLDIER_ATTACK_TEXTURE = preload("res://assets/battle/units/soldier_attack.png")
 const GOOSE_IDLE_TEXTURE = preload("res://assets/battle/units/goose_idle.png")
-const GOOSE_HIT_TEXTURE = preload("res://assets/battle/units/goose_hit.png")
+const GOOSE_ATTACK_TEXTURE = preload("res://assets/battle/units/goose_attack.png")
 const SOLDIER_SCALE := Vector2(0.1, 0.1)
 const GOOSE_SCALE := Vector2(0.042, 0.042)
 
@@ -157,10 +157,10 @@ func _resolve_visual_state() -> int:
 	return VISUAL_STATE_IDLE
 
 func _resolve_goose_body_texture(visual_state: int):
-	return GOOSE_HIT_TEXTURE if visual_state == VISUAL_STATE_ATTACK else GOOSE_IDLE_TEXTURE
+	return GOOSE_ATTACK_TEXTURE if visual_state == VISUAL_STATE_ATTACK else GOOSE_IDLE_TEXTURE
 
 func _resolve_goose_overlay_texture(visual_state: int):
-	return GOOSE_HIT_TEXTURE if visual_state == VISUAL_STATE_HIT else null
+	return GOOSE_ATTACK_TEXTURE if visual_state == VISUAL_STATE_HIT else null
 
 func _resolve_soldier_body_texture(visual_state: int):
 	return SOLDIER_ATTACK_TEXTURE if visual_state == VISUAL_STATE_ATTACK else SOLDIER_IDLE_TEXTURE
