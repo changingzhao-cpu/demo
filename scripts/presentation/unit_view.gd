@@ -19,8 +19,8 @@ const SOLDIER_IDLE_TEXTURE = preload("res://assets/battle/units/soldier_idle.png
 const SOLDIER_ATTACK_TEXTURE = preload("res://assets/battle/units/soldier_attack.png")
 const GOOSE_IDLE_TEXTURE = preload("res://assets/battle/units/goose_idle.png")
 const GOOSE_ATTACK_TEXTURE = preload("res://assets/battle/units/goose_attack.png")
-const SOLDIER_SCALE := Vector2(0.42, 0.42)
-const GOOSE_SCALE := Vector2(0.21, 0.21)
+const SOLDIER_SCALE := Vector2(0.48, 0.48)
+const GOOSE_SCALE := Vector2(0.24, 0.24)
 
 const VISUAL_STATE_IDLE := 0
 const VISUAL_STATE_ATTACK := 1
