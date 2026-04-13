@@ -25,10 +25,10 @@ func _test_scene_conveys_side_angle_arena_readability(failures: Array[String]) -
 	_assert_true(unit_layer is Node2D, "battle scene should expose UnitLayer", failures)
 	_assert_true(camera is Camera2D, "battle scene should expose Camera2D", failures)
 	if unit_layer is Node2D:
-		_assert_true(unit_layer.position == Vector2.ZERO, "unit layer should stay in world space while display-chain diagnosis is in progress", failures)
-		_assert_true(is_equal_approx(unit_layer.scale.x, 1.0) and is_equal_approx(unit_layer.scale.y, 1.0), "unit layer should avoid side-angle scaling while runtime semantics are stabilized", failures)
+		_assert_true(unit_layer.position.y > 380.0, "unit layer should sit lower on screen to keep units readable in the popup window", failures)
+		_assert_true(unit_layer.scale.x > 20.0 and unit_layer.scale.y > 14.0, "unit layer should apply a visible world-to-screen presentation scale", failures)
 	if camera is Camera2D:
-		_assert_true(is_equal_approx(camera.zoom.x, 1.0) and is_equal_approx(camera.zoom.y, 1.0), "camera should stay neutral while popup-window display faults are isolated", failures)
+		_assert_true(is_equal_approx(camera.zoom.x, 1.0) and is_equal_approx(camera.zoom.y, 1.0), "camera should stay neutral while unit/effect layers provide the presentation scale", failures)
 	instance.free()
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
