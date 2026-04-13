@@ -42,6 +42,13 @@ func _test_runtime_keeps_units_visible_after_initial_layout(failures: Array[Stri
 				if bool(payload.get("is_alive", false)):
 					alive_selected += 1
 			_assert_true(alive_selected >= 12, "runtime visible selection should still point at live units after combat starts", failures)
+			var bound_visible_matches := 0
+			for child in unit_layer.get_children():
+				if child.visible and child.has_method("get_entity_id"):
+					var entity_id := int(child.call("get_entity_id"))
+					if selected.has(entity_id):
+						bound_visible_matches += 1
+			_assert_true(bound_visible_matches >= 12, "runtime visible views should remain bound to the selected live entities after combat starts", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
 

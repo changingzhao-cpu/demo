@@ -111,16 +111,15 @@ func _bind_runtime_views() -> void:
 	var child_count := _unit_layer.get_child_count()
 	var visible_entity_ids: Array = _controller.call("select_visible_entity_ids", child_count)
 	var bind_count := mini(visible_entity_ids.size(), child_count)
-	for index in range(child_count):
+	var used_entity_ids := {}
+	for index in range(bind_count):
+		var entity_id := int(visible_entity_ids[index])
+		used_entity_ids[entity_id] = true
 		var view = _unit_layer.get_child(index)
 		if _controller.has_method("unregister_unit_view_by_node"):
 			_controller.call("unregister_unit_view_by_node", view)
 		elif view.has_method("unbind_entity"):
 			view.call("unbind_entity")
-		if index >= bind_count:
-			view.visible = false
-			continue
-		var entity_id := int(visible_entity_ids[index])
 		if _controller.has_method("register_unit_view"):
 			_controller.call("register_unit_view", entity_id, view)
 		if view.has_method("apply_placeholder_style") and _controller.has_method("get_entity_visual_state"):
@@ -128,6 +127,28 @@ func _bind_runtime_views() -> void:
 			view.call("apply_placeholder_style", int(payload.get("team_id", 0)) == 1)
 		if view.has_method("enable_death_feedback"):
 			view.call("enable_death_feedback", true)
+	for index in range(bind_count, child_count):
+		var view = _unit_layer.get_child(index)
+		if _controller.has_method("unregister_unit_view_by_node"):
+			_controller.call("unregister_unit_view_by_node", view)
+		elif view.has_method("unbind_entity"):
+			view.call("unbind_entity")
+		view.visible = false
+	if _controller.has_method("unregister_unit_view_by_node"):
+		for child in _unit_layer.get_children():
+			if child.has_method("get_entity_id"):
+				var bound_entity_id := int(child.call("get_entity_id"))
+				if bound_entity_id != -1 and not used_entity_ids.has(bound_entity_id):
+					_controller.call("unregister_unit_view_by_node", child)
+					child.visible = false
+	elif _unit_layer != null:
+		for child in _unit_layer.get_children():
+			if child.has_method("get_entity_id"):
+				var bound_entity_id := int(child.call("get_entity_id"))
+				if bound_entity_id != -1 and not used_entity_ids.has(bound_entity_id):
+					if child.has_method("unbind_entity"):
+						child.call("unbind_entity")
+					child.visible = false
 
 func _generate_initial_layout() -> void:
 	_initial_layout_positions.clear()
