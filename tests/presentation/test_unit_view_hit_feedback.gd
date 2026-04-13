@@ -7,8 +7,13 @@ func run() -> Array[String]:
 	_test_hit_pulse_temporarily_boosts_motion_feedback(failures)
 	_test_attack_pulse_holds_attack_pose_long_enough_to_read(failures)
 	_test_goose_attack_pose_is_visibly_distinct_from_idle(failures)
+	_test_goose_attack_texture_is_loadable(failures)
 	_test_depth_anchor_sorting_uses_foot_points(failures)
 	return failures
+
+func _test_goose_attack_texture_is_loadable(failures: Array[String]) -> void:
+	var texture = ResourceLoader.load("res://assets/battle/units/goose_attack.png")
+	_assert_true(texture != null, "goose attack texture should be loadable through ResourceLoader", failures)
 
 func _test_depth_anchor_sorting_uses_foot_points(failures: Array[String]) -> void:
 	var front_goose = UnitViewScript.new()

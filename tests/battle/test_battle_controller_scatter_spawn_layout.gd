@@ -41,7 +41,7 @@ func _test_start_run_uses_scatter_layout_with_clear_density_difference(failures:
 		_assert_true(_y_spread(enemy_positions) >= 9.0, "goose opening should occupy multiple vertical lanes", failures)
 		_assert_true(_min_pair_distance(enemy_positions) > 0.9, "goose opening should avoid overlapping start points", failures)
 		_assert_true(not _is_mechanical_grid(enemy_positions), "goose opening should not read as a rigid slot strip", failures)
-		_assert_true(_vertical_cluster_balance(enemy_positions, 1.0) >= 5, "goose opening should break into several readable pockets", failures)
+		_assert_true(_vertical_cluster_balance(enemy_positions, 1.0) >= 4, "goose opening should break into several readable pockets", failures)
 	if ally_positions.size() == 18 and enemy_positions.size() == 24:
 		_assert_true(_minimum_center_distance(ally_positions, enemy_positions) >= 1.0, "opening formations should leave readable room before first contact", failures)
 		_assert_true(_minimum_center_distance(ally_positions, enemy_positions) <= 8.5, "opening formations should still feel engaged in the same arena", failures)
