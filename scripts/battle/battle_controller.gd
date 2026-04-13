@@ -509,21 +509,21 @@ func _build_band_candidate(team_id: int, index: int) -> Vector2:
 	var lane_index := float(index % int(lane_count))
 	var lane_ratio := lane_index / maxf(lane_count - 1.0, 1.0)
 	var pocket_phase := float(index / int(lane_count))
-	var y_cluster_wave := sin(pocket_phase * 1.7 + t * TAU) * (0.42 if team_id == ALLY_TEAM_ID else 1.08)
-	var y_base := lerpf(-5.7, 5.7, lane_ratio) + y_cluster_wave
-	if team_id == ENEMY_TEAM_ID:
-		y_base += (float(int(pocket_phase) % 5) - 2.0) * 0.34
-	var y_jitter := _rng.randf_range(-0.4, 0.4) if team_id == ALLY_TEAM_ID else _rng.randf_range(-0.45, 0.45)
+	var y_base := lerpf(-5.7, 5.7, lane_ratio)
+	var y_jitter := _rng.randf_range(-0.4, 0.4)
 	var x_base := lerpf(-10.4, 10.4, t)
 	var phase := sin((t * TAU * 2.0) + (0.6 if team_id == ALLY_TEAM_ID else 1.2))
-	var x_wave := phase * (1.1 if team_id == ALLY_TEAM_ID else 1.35)
-	var pocket_offset := cos(pocket_phase * 1.45 + lane_index * 0.82) * (0.55 if team_id == ALLY_TEAM_ID else 1.12)
+	var x_wave := phase * (1.1 if team_id == ALLY_TEAM_ID else 1.05)
+	var pocket_offset := cos(pocket_phase * 1.45 + lane_index * 0.82) * (0.55 if team_id == ALLY_TEAM_ID else 0.82)
 	var inward_bias := 1.15 if team_id == ALLY_TEAM_ID else -1.15
-	x_base += pocket_offset
 	if team_id == ENEMY_TEAM_ID:
-		y_base += (-1.15 if int(pocket_phase) % 3 == 0 else 0.0 if int(pocket_phase) % 3 == 1 else 1.12)
-		y_base += 0.55 if lane_index >= 4.0 else -0.3
-		y_base = clampf(y_base, -5.9, 5.9)
+		var enemy_pocket_index := index % 4
+		var enemy_pocket_centers := [-5.2, -1.9, 1.7, 5.1]
+		y_base = float(enemy_pocket_centers[enemy_pocket_index])
+		y_base += (0.42 if int(pocket_phase) % 2 == 0 else -0.42)
+		y_base += 0.22 if lane_index >= 4.0 else -0.18
+		y_jitter = _rng.randf_range(-0.08, 0.08)
+	x_base += pocket_offset
 	var candidate := Vector2(x_base + x_wave + inward_bias, y_base + y_jitter)
 	if candidate.distance_to(ARENA_CENTER) < SPAWN_CENTER_HOLE_RADIUS:
 		var push := (candidate - ARENA_CENTER).normalized()

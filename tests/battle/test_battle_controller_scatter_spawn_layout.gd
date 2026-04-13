@@ -8,7 +8,23 @@ const ENEMY_TEAM_ID := 1
 func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_start_run_uses_scatter_layout_with_clear_density_difference(failures)
+	_test_enemy_scatter_layout_stays_stable_across_multiple_runs(failures)
 	return failures
+
+func _test_enemy_scatter_layout_stays_stable_across_multiple_runs(failures: Array[String]) -> void:
+	for _iteration in range(8):
+		var controller = BattleControllerScript.new(WAVE_DEFS_PATH)
+		controller.start_run()
+		var store = controller.call("get_entity_store")
+		var live_entity_ids: Array = controller.call("get_live_entity_ids")
+		var enemy_positions: Array[Vector2] = []
+		for entity_id_variant in live_entity_ids:
+			var entity_id := int(entity_id_variant)
+			if store.team_id[entity_id] == ENEMY_TEAM_ID:
+				enemy_positions.append(Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+		var cluster_count := _vertical_cluster_balance(enemy_positions, 1.0)
+		_assert_true(cluster_count >= 4, "goose opening should consistently keep several readable pockets across runs", failures)
+		controller.free()
 
 func _test_start_run_uses_scatter_layout_with_clear_density_difference(failures: Array[String]) -> void:
 	var controller = BattleControllerScript.new(WAVE_DEFS_PATH)
