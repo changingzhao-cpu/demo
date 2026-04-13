@@ -214,7 +214,7 @@ func select_visible_entity_ids(limit: int = VISIBLE_ENTITY_LIMIT) -> Array[int]:
 		return _compare_visible_priority(a, b)
 	)
 	var selected: Array[int] = []
-	var per_side := maxi(1, limit / 2)
+	var per_side := maxi(1, int(limit / 2))
 	var ally_count := mini(per_side, allies.size())
 	var enemy_count := mini(per_side, enemies.size())
 	for index in range(ally_count):
@@ -508,7 +508,7 @@ func _build_band_candidate(team_id: int, index: int) -> Vector2:
 	var lane_count := 6.0 if team_id == ALLY_TEAM_ID else 7.0
 	var lane_index := float(index % int(lane_count))
 	var lane_ratio := lane_index / maxf(lane_count - 1.0, 1.0)
-	var pocket_phase := float(index / int(lane_count))
+	var pocket_phase := float(int(index / int(lane_count)))
 	var y_cluster_wave := sin(pocket_phase * 1.7 + t * TAU) * (0.42 if team_id == ALLY_TEAM_ID else 0.82)
 	var y_base := lerpf(-5.7, 5.7, lane_ratio) + y_cluster_wave
 	var y_jitter := _rng.randf_range(-0.4, 0.4)

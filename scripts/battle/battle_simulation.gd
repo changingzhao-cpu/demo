@@ -202,7 +202,7 @@ func _move_toward_target(store, entity_id: int, target_id: int, delta: float) ->
 
 func _apply_precontact_spacing(store, entity_id: int, target_id: int) -> void:
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
-	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
+	var _target := Vector2(store.position_x[target_id], store.position_y[target_id])
 	var nearby: Array[int] = _grid.query_neighbors(origin)
 	var repulsion := Vector2.ZERO
 	for candidate in nearby:
