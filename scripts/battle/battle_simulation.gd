@@ -20,6 +20,12 @@ const UNIT_STATE_IDLE := 0
 const UNIT_STATE_ATTACK := 1
 const UNIT_STATE_ADVANCE := 3
 const UNIT_STATE_DEAD := 4
+const ENGAGEMENT_SLOT_OFFSETS := [
+	Vector2(-1.2, 0.0),
+	Vector2(1.2, 0.0),
+	Vector2(0.0, -1.0),
+	Vector2(0.0, 1.0)
+]
 
 var _grid
 var _push_resolver = preload("res://scripts/battle/push_resolver.gd").new()
@@ -79,23 +85,25 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
 	var attack_range := sqrt(maxf(0.0, store.attack_range_sq[entity_id]))
 	var engage_distance: float = attack_range + ENGAGE_BUFFER + store.radius[entity_id] + store.radius[target_id]
-	var distance := origin.distance_to(target)
+	var slot_index := _resolve_engagement_slot(store, entity_id, target_id)
+	var engagement_target := _resolve_engagement_slot_position(store, target_id, slot_index) if slot_index >= 0 else target
+	var distance := origin.distance_to(engagement_target)
 
 	if distance > engage_distance:
 		_apply_precontact_spacing(store, entity_id, target_id)
-		var before_move := Vector2(store.position_x[entity_id], store.position_y[entity_id])
-		_move_toward_target(store, entity_id, target_id, delta)
+		_move_toward_position(store, entity_id, engagement_target, delta)
 		_apply_same_team_spacing(store, entity_id)
-		if before_move.distance_to(Vector2(store.position_x[entity_id], store.position_y[entity_id])) <= 0.001:
-			var nudge := signf(target.x - before_move.x)
-			if nudge == 0.0:
-				nudge = 1.0 if store.team_id[entity_id] == ALLY_TEAM_ID else -1.0
-			store.position_x[entity_id] += nudge * 0.02
-			store.velocity_x[entity_id] = nudge * 1.25
 		_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
 		store.state[entity_id] = UNIT_STATE_ADVANCE
 		report["moved"] = int(report.get("moved", 0)) + 1
 		return
+
+	store.engagement_target[entity_id] = target_id
+	store.engagement_slot[entity_id] = slot_index
+	store.engagement_blocked_time[entity_id] = 0.0
+
+	if slot_index >= 0:
+		target = engagement_target
 
 	_apply_same_team_spacing(store, entity_id)
 	store.state[entity_id] = UNIT_STATE_ATTACK
@@ -184,24 +192,50 @@ func _is_enemy_candidate(store, entity_id: int, candidate_id: int) -> bool:
 	return store.team_id[candidate_id] != store.team_id[entity_id]
 
 func _move_toward_target(store, entity_id: int, target_id: int, delta: float) -> void:
-	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
 	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
+	_move_toward_position(store, entity_id, target, delta)
+
+func _move_toward_position(store, entity_id: int, target: Vector2, delta: float) -> void:
+	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
 	var direction := target - origin
 	if direction == Vector2.ZERO:
 		store.velocity_x[entity_id] = 0.0
 		store.velocity_y[entity_id] = 0.0
 		return
 	var distance := direction.length()
-	var forward := direction.normalized()
-	var lateral := Vector2(-forward.y, forward.x)
-	var lane_bias := sin(float(entity_id) * 1.37) * FORMATION_LANE_STRENGTH
-	var move_vector := (forward + lateral * lane_bias).normalized()
+	var move_vector := direction.normalized()
 	var step_length := minf(distance, store.move_speed[entity_id] * MAX_MOVE_STEP_MULTIPLIER * delta)
 	var movement := move_vector * step_length
 	store.position_x[entity_id] += movement.x
 	store.position_y[entity_id] += movement.y
 	store.velocity_x[entity_id] = movement.x / maxf(delta, 0.0001)
 	store.velocity_y[entity_id] = movement.y / maxf(delta, 0.0001)
+
+func _resolve_engagement_slot(store, entity_id: int, target_id: int) -> int:
+	if store.engagement_target[entity_id] == target_id and store.engagement_slot[entity_id] >= 0:
+		return store.engagement_slot[entity_id]
+	for slot_index in range(ENGAGEMENT_SLOT_OFFSETS.size()):
+		if _is_engagement_slot_free(store, entity_id, target_id, slot_index):
+			store.engagement_target[entity_id] = target_id
+			store.engagement_slot[entity_id] = slot_index
+			return slot_index
+	store.engagement_target[entity_id] = target_id
+	store.engagement_slot[entity_id] = -1
+	return -1
+
+func _is_engagement_slot_free(store, entity_id: int, target_id: int, slot_index: int) -> bool:
+	for candidate in range(store.capacity):
+		if candidate == entity_id or not store.alive[candidate]:
+			continue
+		if store.team_id[candidate] != store.team_id[entity_id]:
+			continue
+		if store.engagement_target[candidate] == target_id and store.engagement_slot[candidate] == slot_index:
+			return false
+	return true
+
+func _resolve_engagement_slot_position(store, target_id: int, slot_index: int) -> Vector2:
+	var target_position := Vector2(store.position_x[target_id], store.position_y[target_id])
+	return target_position + ENGAGEMENT_SLOT_OFFSETS[slot_index]
 
 func _apply_precontact_spacing(store, entity_id: int, target_id: int) -> void:
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])

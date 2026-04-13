@@ -18,6 +18,9 @@ var attack_interval: PackedFloat32Array
 var move_speed: PackedFloat32Array
 var radius: PackedFloat32Array
 var target_id: PackedInt32Array
+var engagement_slot: PackedInt32Array
+var engagement_target: PackedInt32Array
+var engagement_blocked_time: PackedFloat32Array
 var state: PackedInt32Array
 var alive: PackedByteArray
 var bucket_id: PackedInt32Array
@@ -41,6 +44,9 @@ func _init(max_entities: int) -> void:
 	move_speed.resize(capacity)
 	radius.resize(capacity)
 	target_id.resize(capacity)
+	engagement_slot.resize(capacity)
+	engagement_target.resize(capacity)
+	engagement_blocked_time.resize(capacity)
 	state.resize(capacity)
 	alive.resize(capacity)
 	bucket_id.resize(capacity)
@@ -89,6 +95,9 @@ func _reset_slot(id: int) -> void:
 	move_speed[id] = 0.0
 	radius[id] = 0.0
 	target_id[id] = -1
+	engagement_slot[id] = -1
+	engagement_target[id] = -1
+	engagement_blocked_time[id] = 0.0
 	state[id] = 0
 	alive[id] = 0
 	bucket_id[id] = -1
