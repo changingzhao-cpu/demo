@@ -259,7 +259,10 @@ func get_visible_entity_screen_payloads(limit: int = VISIBLE_ENTITY_LIMIT, scree
 	for entity_id in select_visible_entity_ids(limit):
 		var payload := _get_entity_visual_payload(entity_id)
 		var world_position: Vector2 = payload.get("position", Vector2.ZERO)
-		payload["position"] = Vector2(screen_center.x + world_position.x * screen_scale.x, screen_center.y + world_position.y * screen_scale.y)
+		var team_id := int(payload.get("team_id", -1))
+		var effective_scale := screen_scale * (0.72 if team_id == ENEMY_TEAM_ID else 1.0)
+		var x_anchor := screen_center.x + 54.0 if team_id == ENEMY_TEAM_ID else screen_center.x - 18.0
+		payload["position"] = Vector2(x_anchor + world_position.x * effective_scale.x, screen_center.y + world_position.y * effective_scale.y)
 		payload["entity_id"] = entity_id
 		payloads.append(payload)
 	return payloads
@@ -307,11 +310,14 @@ func _get_visible_priority(entity_id: int) -> float:
 	var position := _get_entity_position(entity_id)
 	var team_id := _get_entity_team_id(entity_id)
 	var lane_target := -4.6 if team_id == ALLY_TEAM_ID else 4.6
-	var lane_bias := absf(position.x - lane_target) * 0.8
-	var y_bias := absf(position.y) * 0.45
+	var lane_bias := absf(position.x - lane_target) * (0.7 if team_id == ALLY_TEAM_ID else 0.55)
+	var y_bias := absf(position.y) * (0.45 if team_id == ALLY_TEAM_ID else 0.18)
 	var center_penalty := absf(position.x) * 0.08
+	var spread_bias := 0.0
+	if team_id == ENEMY_TEAM_ID:
+		spread_bias = -0.9 if absf(position.y) > 3.8 else -0.45 if absf(position.y) > 2.2 else 0.0
 	var state_bias := -2.1 if _get_entity_state(entity_id) == UNIT_STATE_ATTACK else -1.2 if _get_entity_state(entity_id) == UNIT_STATE_ADVANCE else 0.0
-	return lane_bias + y_bias + center_penalty + state_bias
+	return lane_bias + y_bias + center_penalty + state_bias + spread_bias
 
 func _get_entity_visual_payload(entity_id: int) -> Dictionary:
 	if _entity_store == null or entity_id < 0 or entity_id >= _entity_store.capacity:

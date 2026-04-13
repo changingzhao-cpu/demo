@@ -3,6 +3,7 @@ extends Node2D
 const EffectPoolScript = preload("res://scripts/presentation/effect_pool.gd")
 const SCREEN_CENTER := Vector2(640.0, 408.0)
 const SCREEN_SCALE := Vector2(28.0, 20.0)
+const ENEMY_SCREEN_SCALE_MULTIPLIER := 0.72
 
 @onready var _controller = $BattleController
 @onready var _unit_layer: Node2D = $UnitLayer
