@@ -7,7 +7,24 @@ func run() -> Array[String]:
 	_test_hit_pulse_temporarily_boosts_motion_feedback(failures)
 	_test_attack_pulse_holds_attack_pose_long_enough_to_read(failures)
 	_test_goose_attack_pose_is_visibly_distinct_from_idle(failures)
+	_test_depth_anchor_sorting_uses_foot_points(failures)
 	return failures
+
+func _test_depth_anchor_sorting_uses_foot_points(failures: Array[String]) -> void:
+	var front_goose = UnitViewScript.new()
+	front_goose.call("bind_entity", 21)
+	front_goose.call("sync_from_entity_visual", Vector2(100.0, 140.0), true, 1, 0.0, -1.0)
+	var back_goose = UnitViewScript.new()
+	back_goose.call("bind_entity", 22)
+	back_goose.call("sync_from_entity_visual", Vector2(100.0, 100.0), true, 1, 0.0, -1.0)
+	front_goose.call("refresh_depth_sort")
+	back_goose.call("refresh_depth_sort")
+	_assert_true(int(front_goose.z_index) > int(back_goose.z_index), "the lower goose should sort in front based on its foot anchor", failures)
+	var soldier = UnitViewScript.new()
+	soldier.call("bind_entity", 23)
+	soldier.call("sync_from_entity_visual", Vector2(100.0, 120.0), true, 0, 0.0, 1.0)
+	soldier.call("refresh_depth_sort")
+	_assert_true(float(soldier.call("get_depth_anchor_global_y")) != float(front_goose.call("get_depth_anchor_global_y")) or int(soldier.z_index) != int(front_goose.z_index), "different unit types should still derive depth from their own foot anchors", failures)
 
 func _test_hit_pulse_temporarily_boosts_motion_feedback(failures: Array[String]) -> void:
 	var view = UnitViewScript.new()

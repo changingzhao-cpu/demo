@@ -177,6 +177,28 @@ func _apply_initial_layout_to_views() -> void:
 			continue
 		if view.has_method("sync_from_entity_visual"):
 			view.call("sync_from_entity_visual", mapped, true, int(payload.get("team_id", 0)), 0.0, float(payload.get("facing_sign", 1.0)), int(payload.get("unit_state", 0)))
+	_refresh_depth_sort_for_visible_views()
+
+func _refresh_depth_sort_for_visible_views() -> void:
+	if _unit_layer == null:
+		return
+	for child in _unit_layer.get_children():
+		if child is Node2D and child.visible and child.has_method("refresh_depth_sort"):
+			child.call("refresh_depth_sort")
+
+func _sync_runtime_screen_space_views() -> void:
+	if _controller == null:
+		return
+	if _controller.has_method("sync_unit_views_screen_space"):
+		_controller.call("sync_unit_views_screen_space", SCREEN_CENTER, SCREEN_SCALE)
+	else:
+		_controller.call("sync_unit_views")
+	_refresh_depth_sort_for_visible_views()
+	if _effect_layer != null:
+		_effect_layer.position = Vector2.ZERO
+		_effect_layer.scale = Vector2.ONE
+
+func _tick_effect_feedback(delta: float) -> void:
 
 func _find_bound_view(entity_id: int) -> Node2D:
 	if _unit_layer == null:

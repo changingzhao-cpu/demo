@@ -38,6 +38,13 @@ const SOLDIER_ATTACK_POSE_ROTATION := -0.18
 const GOOSE_HIT_POSE_ROTATION := 0.1
 const SOLDIER_HIT_POSE_ROTATION := 0.08
 const GOOSE_HIT_POSE_OFFSET := Vector2(-0.12, 0.02)
+const SOLDIER_DEPTH_ANCHOR_OFFSET := Vector2(0.0, 22.0)
+const GOOSE_DEPTH_ANCHOR_OFFSET := Vector2(0.0, 18.0)
+const DEPTH_Z_MULTIPLIER := 10.0
+const DEPTH_Z_BASE := 100
+const DEPTH_Z_CLAMP := 10000
+const DEPTH_SORT_BIAS_GOose := -2
+const DEPTH_SORT_BIAS_SOLDIER := 0
 
 var _entity_id: int = -1
 var _is_bound := false
@@ -326,6 +333,17 @@ func get_visual_radius() -> float:
 
 func get_visual_tint() -> Color:
 	return _visual_tint
+
+func get_depth_anchor_offset() -> Vector2:
+	return GOOSE_DEPTH_ANCHOR_OFFSET if _is_enemy else SOLDIER_DEPTH_ANCHOR_OFFSET
+
+func get_depth_anchor_global_y() -> float:
+	return global_position.y + get_depth_anchor_offset().y
+
+func refresh_depth_sort() -> void:
+	var anchor_y := get_depth_anchor_global_y()
+	var team_bias := DEPTH_SORT_BIAS_GOose if _is_enemy else DEPTH_SORT_BIAS_SOLDIER
+	z_index = clampi(int(round(anchor_y * DEPTH_Z_MULTIPLIER)) + DEPTH_Z_BASE + team_bias, -DEPTH_Z_CLAMP, DEPTH_Z_CLAMP)
 
 func is_showing_death_state() -> bool:
 	return _is_showing_death_state
