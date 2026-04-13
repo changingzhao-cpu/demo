@@ -26,9 +26,12 @@ func _test_scene_contains_visual_battlefield_nodes(failures: Array[String]) -> v
 	_assert_true(arena_ground_rim == null or (arena_ground_rim is CanvasItem and not arena_ground_rim.visible), "battle scene should not let arena rim dominate the screen by default", failures)
 	_assert_true(arena_floor is CanvasItem and arena_floor.visible, "ArenaFloor should stay visible in the battle scene", failures)
 	_assert_true(arena_shadow == null or (arena_shadow is CanvasItem and not arena_shadow.visible), "ArenaShadow should stay hidden when only ArenaFloor is retained", failures)
-	if arena_floor is Polygon2D:
+	_assert_true(arena_floor is Sprite2D, "ArenaFloor should use a Sprite2D to display the arena floor asset directly", failures)
+	if arena_floor is Sprite2D:
 		_assert_true(arena_floor.texture != null, "ArenaFloor should use the arena floor texture directly", failures)
-		_assert_true(is_equal_approx(arena_floor.color.a, 1.0), "ArenaFloor should no longer use softened alpha", failures)
+		_assert_true(is_equal_approx(arena_floor.modulate.a, 1.0), "ArenaFloor should no longer use softened alpha", failures)
+		_assert_true(arena_floor.centered, "ArenaFloor should stay centered in the battle scene", failures)
+		_assert_true(arena_floor.position == Vector2(640, 360), "ArenaFloor should use screen-aligned placement for the arena background", failures)
 	instance.free()
 
 func _test_runtime_views_expose_enemy_and_ally_visual_difference(failures: Array[String]) -> void:
