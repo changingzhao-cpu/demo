@@ -215,6 +215,33 @@ func _find_bound_view(entity_id: int) -> Node2D:
 			return child
 	return null
 
+func debug_get_runtime_view_snapshot() -> Dictionary:
+	var result := {
+		"initial_layout_active": _initial_layout_active,
+		"runtime_ready": _runtime_ready,
+		"visible_views": 0,
+		"bound_views": 0,
+		"views": []
+	}
+	if _unit_layer == null:
+		return result
+	for child in _unit_layer.get_children():
+		if not child.has_method("get_entity_id"):
+			continue
+		var entity_id := int(child.call("get_entity_id"))
+		var snapshot := {
+			"entity_id": entity_id,
+			"visible": child.visible
+		}
+		if child.visible:
+			result["visible_views"] = int(result["visible_views"]) + 1
+		if entity_id != -1:
+			result["bound_views"] = int(result["bound_views"]) + 1
+		if child.has_method("debug_get_sprite_snapshot"):
+			snapshot["sprite"] = child.call("debug_get_sprite_snapshot")
+		result["views"].append(snapshot)
+	return result
+
 func _sync_runtime_screen_space_views() -> void:
 	if _controller == null:
 		return
