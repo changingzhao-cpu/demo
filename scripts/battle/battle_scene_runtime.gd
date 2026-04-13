@@ -142,15 +142,12 @@ func _bind_runtime_views() -> void:
 			if child.has_method("get_entity_id"):
 				var bound_entity_id := int(child.call("get_entity_id"))
 				if bound_entity_id != -1 and not used_entity_ids.has(bound_entity_id):
-					_controller.call("unregister_unit_view_by_node", child)
 					child.visible = false
 	elif _unit_layer != null:
 		for child in _unit_layer.get_children():
 			if child.has_method("get_entity_id"):
 				var bound_entity_id := int(child.call("get_entity_id"))
 				if bound_entity_id != -1 and not used_entity_ids.has(bound_entity_id):
-					if child.has_method("unbind_entity"):
-						child.call("unbind_entity")
 					child.visible = false
 
 func _generate_initial_layout() -> void:
