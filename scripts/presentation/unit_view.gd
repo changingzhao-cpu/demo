@@ -115,7 +115,7 @@ func sync_from_entity_visual(world_position: Vector2, is_alive: bool, team_id: i
 	if not _is_bound:
 		visible = false
 		return
-	var should_lock_position := _attack_frame_timer > 0.0 or _attack_pulse_strength > 0.0
+	var should_lock_position := is_alive and (_attack_frame_timer > 0.0 or _attack_pulse_strength > 0.0)
 	if not should_lock_position:
 		position = world_position
 	_is_enemy = team_id == 1

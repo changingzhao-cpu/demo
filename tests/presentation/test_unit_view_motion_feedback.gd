@@ -6,6 +6,7 @@ func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_visual_sync_exposes_facing_and_motion(failures)
 	_test_dead_visual_sync_keeps_motion_feedback_observable(failures)
+	_test_death_sync_overrides_attack_position_lock(failures)
 	_test_motion_feedback_stays_bounded_and_keeps_unit_readable(failures)
 	_test_attack_hold_locks_position_updates(failures)
 	return failures
@@ -33,6 +34,16 @@ func _test_dead_visual_sync_keeps_motion_feedback_observable(failures: Array[Str
 		_assert_true(not bool(view.call("is_showing_death_state")), "dead visual sync should not keep reporting an active visible death state", failures)
 		_assert_eq(float(view.call("get_visual_facing_sign")), -1.0, "enemy visual sync should preserve negative facing", failures)
 		_assert_eq(float(view.call("get_visual_motion_strength")), 0.0, "dead visual sync should clear motion intensity once the unit is gone", failures)
+	view.free()
+
+func _test_death_sync_overrides_attack_position_lock(failures: Array[String]) -> void:
+	var view = UnitViewScript.new()
+	view.bind_entity(31)
+	view.call("sync_from_entity_visual", Vector2(10.0, 10.0), true, 0, 0.0, 1.0, 0)
+	view.call("trigger_attack_pulse")
+	view.call("sync_from_entity_visual", Vector2(40.0, 10.0), false, 0, 0.0, 1.0, 0)
+	_assert_true(not view.visible, "death sync should hide a unit even if an attack position lock is active", failures)
+	_assert_eq(view.global_position, Vector2(40.0, 10.0), "death sync should still update to the final death position instead of freezing at the pre-attack lock position", failures)
 	view.free()
 
 func _test_motion_feedback_stays_bounded_and_keeps_unit_readable(failures: Array[String]) -> void:
