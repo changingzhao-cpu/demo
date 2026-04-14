@@ -45,7 +45,9 @@ func _initialize() -> void:
 			"controller_recent_combat_events_probe": _read_json("user://controller_recent_combat_events_probe.json"),
 			"controller_consume_combat_events_probe": _read_json("user://controller_consume_combat_events_probe.json"),
 			"unit_view_attack_pulse_probe_33": _read_json("user://unit_view_attack_pulse_probe_33.json"),
-			"unit_view_sync_probe_33": _read_json("user://unit_view_sync_probe_33.json")
+			"unit_view_sync_probe_33": _read_json("user://unit_view_sync_probe_33.json"),
+			"runtime_view_probe": _read_json("user://runtime_view_probe.json"),
+			"controller_recent_deaths_probe": _read_json("user://controller_recent_deaths_probe.json")
 		})
 		sample_index += 1
 	var controller := instance.get_node_or_null("BattleController")

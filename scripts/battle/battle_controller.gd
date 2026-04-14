@@ -709,6 +709,11 @@ func _record_recent_deaths() -> void:
 		if _has_recent_death_for_entity(entity_id):
 			continue
 		_recently_died_entities.append({"entity_id": entity_id, "team": "enemy" if _get_entity_team_id(entity_id) == ENEMY_TEAM_ID else "ally", "position": _get_entity_position(entity_id)})
+	if OS.is_debug_build():
+		var file := FileAccess.open("user://controller_recent_deaths_probe.json", FileAccess.WRITE)
+		if file != null:
+			file.store_string(JSON.stringify({"events": _recently_died_entities}, "\t"))
+			file.close()
 
 func _infer_movement_signal_from_runtime() -> void:
 	if _entity_store == null or _last_tick_report.is_empty():
