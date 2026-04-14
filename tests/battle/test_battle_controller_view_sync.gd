@@ -9,6 +9,7 @@ func run() -> Array[String]:
 	_test_sync_unit_views_updates_positions(failures)
 	_test_sync_unit_views_hides_dead_entities(failures)
 	_test_sync_unit_views_keeps_visual_radius_small_and_pulses_bounded(failures)
+	_test_battle_scene_screen_payloads_preserve_runtime_spread(failures)
 	return failures
 
 func _test_sync_unit_views_updates_positions(failures: Array[String]) -> void:
@@ -88,6 +89,37 @@ func _test_sync_unit_views_keeps_visual_radius_small_and_pulses_bounded(failures
 	ally_view.free()
 	enemy_view.free()
 	controller.free()
+
+func _test_battle_scene_screen_payloads_preserve_runtime_spread(failures: Array[String]) -> void:
+	var controller = BattleControllerScript.new(WAVE_DEFS_PATH)
+	controller.start_run()
+	if not controller.has_method("get_visible_entity_screen_payloads"):
+		failures.append("battle controller should expose battle scene screen payloads")
+		controller.free()
+		return
+	var payloads: Array = controller.call("get_visible_entity_screen_payloads", 32, Vector2(640.0, 392.0), Vector2(28.0, 20.0))
+	var ally_positions: Array[Vector2] = []
+	var enemy_positions: Array[Vector2] = []
+	for payload_variant in payloads:
+		var payload: Dictionary = payload_variant
+		var position: Vector2 = payload.get("position", Vector2.ZERO)
+		if int(payload.get("team_id", -1)) == 0:
+			ally_positions.append(position)
+		elif int(payload.get("team_id", -1)) == 1:
+			enemy_positions.append(position)
+	_assert_true(_x_spread(ally_positions) >= 180.0, "battle scene ally screen payloads should preserve visible horizontal spread instead of collapsing near one anchor", failures)
+	_assert_true(_x_spread(enemy_positions) >= 180.0, "battle scene enemy screen payloads should preserve visible horizontal spread instead of collapsing near one anchor", failures)
+	controller.free()
+
+func _x_spread(positions: Array[Vector2]) -> float:
+	if positions.is_empty():
+		return 0.0
+	var min_x := positions[0].x
+	var max_x := positions[0].x
+	for position in positions:
+		min_x = minf(min_x, position.x)
+		max_x = maxf(max_x, position.x)
+	return max_x - min_x
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

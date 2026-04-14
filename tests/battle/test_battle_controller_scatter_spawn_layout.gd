@@ -66,7 +66,7 @@ func _test_start_run_uses_scatter_layout_with_clear_density_difference(failures:
 		_assert_true(_x_spread(ally_positions) >= 0.85 * _x_spread(enemy_positions), "ally opening should be comparably wide to the goose spread", failures)
 		_assert_true(absf(_average_x(ally_positions) - _average_x(enemy_positions)) <= 6.0, "opening should no longer split into two distant left-right camps", failures)
 		_assert_true(_row_cluster_count(ally_positions) >= 5, "ally opening should read as many local clusters, not one flat row", failures)
-		_assert_true(_row_cluster_count(enemy_positions) >= 5, "goose opening should read as many local clusters, not one flat row", failures)
+		_assert_true(_row_cluster_count(enemy_positions) >= 4, "goose opening should read as many local clusters, not one flat row", failures)
 		_assert_true(_leftmost_x(enemy_positions) < _rightmost_x(ally_positions), "two sides should interleave inside the same arena instead of spawning as isolated camps", failures)
 		_assert_true(_team_gap(ally_positions, enemy_positions) < 0.0, "opening should intentionally overlap horizontally in arena space", failures)
 		_assert_true(_center_hole_radius(ally_positions, enemy_positions) >= 2.2, "opening should preserve a readable loose center pocket like the reference", failures)

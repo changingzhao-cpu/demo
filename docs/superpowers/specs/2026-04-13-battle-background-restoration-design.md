@@ -1,60 +1,60 @@
-# Battle Background Restoration Design
+# 战斗背景恢复设计
 
-## Goal
-Restore the battle arena background so the scene no longer feels like characters are fighting on an empty stage, while preserving the current unit readability and depth-ordering behavior that has already been accepted.
+## 目标
+恢复战斗场景中的 arena 背景，让画面不再像角色悬浮在空白舞台上，同时保持当前已验收通过的单位辨识度与前后遮挡层级效果。
 
-## Scope
-This change only covers battle scene background presentation in `scenes/battle/battle_scene.tscn` and related runtime validation. It does not change unit size, spawn layout, combat pacing, or unit overlap sorting.
+## 范围
+本次改动只覆盖 `scenes/battle/battle_scene.tscn` 中的战斗背景表现及其相关验收，不调整单位尺寸、出生分布、战斗节奏或单位深度排序逻辑。
 
-## Recommended Approach
-Restore the full arena presentation stack, but keep it visually subordinate to the units.
+## 推荐方案
+恢复完整的 arena 表现层，但整体保持弱化，让角色仍然是画面主体。
 
-This means:
-- Re-enable the currently hidden arena nodes, including `ArenaFloor` and supporting decorative arena elements.
-- Keep all arena visuals behind the unit layer.
-- Use weak/soft presentation values so the arena is visible but does not compete with unit silhouettes.
-- Preserve the current runtime script and unit depth-sort behavior.
+具体包含：
+- 重新启用当前被隐藏的 arena 节点，包括 `ArenaFloor` 及其配套装饰节点。
+- 所有 arena 视觉元素保持在单位层之下。
+- 通过较弱的视觉参数让背景可见，但不与角色主体争抢注意力。
+- 保持现有 runtime 脚本和单位深度排序逻辑不变。
 
-## Alternatives Considered
+## 备选方案
 
-### 1. Restore only `ArenaFloor`
-- Smallest change.
-- Lowest risk.
-- Rejected because the user explicitly wants the complete battlefield back, not only the floor texture.
+### 方案一：只恢复 `ArenaFloor`
+- 改动最小。
+- 风险最低。
+- 不采用，因为用户明确希望恢复完整战场，而不只是单独一块地板。
 
-### 2. Restore full arena with weak styling
-- Restores scene completeness.
-- Keeps units as the main visual subject.
-- Recommended because it matches the user request and minimizes regression risk to unit readability.
+### 方案二：恢复完整场地，并整体弱化
+- 可以恢复场景完整性。
+- 仍能保持角色是主要视觉焦点。
+- 这是推荐方案，因为它最符合当前诉求，且对现有角色可读性的回归风险最低。
 
-### 3. Add runtime toggles for arena visibility
-- More flexible.
-- Adds implementation complexity and unnecessary branching.
-- Rejected as over-scoped for the current request.
+### 方案三：增加运行时背景开关
+- 灵活性更高。
+- 会引入额外复杂度和不必要分支。
+- 不采用，因为超出了当前需求范围。
 
-## Design Details
+## 设计细节
 
-### Scene composition
-The arena-related nodes in `battle_scene.tscn` that are currently hidden should be restored to visible state. These nodes remain static scene dressing and should not be managed by runtime combat logic.
+### 场景构成
+`battle_scene.tscn` 中当前被隐藏的 arena 相关节点将恢复为可见。这些节点继续作为静态场景装饰存在，不交由战斗 runtime 逻辑动态控制。
 
-### Visual hierarchy
-The arena must remain visually behind all units and combat effects that need to read clearly. Unit readability remains the top priority.
+### 视觉层级
+arena 必须始终位于单位与关键战斗特效之下。单位可读性仍然是最高优先级。
 
-### Styling rule
-If any restored arena node feels too strong after re-enabling, weaken it through existing scene properties such as modulation, transparency, or subtle sizing/position tuning. Do not introduce a new background system.
+### 风格规则
+如果重新启用后的某些 arena 节点视觉存在感过强，则优先通过现有场景属性进行弱化，例如调制色、透明度、轻微尺寸或位置微调；不新增新的背景系统。
 
-### Runtime behavior
-No new runtime switching logic is needed. The arena should be present both during the initialization presentation state and the active combat state.
+### 运行时行为
+不引入新的运行时切换逻辑。arena 在初始化展示阶段和正式战斗阶段都保持可见。
 
-## Testing Strategy
-- Verify the battle scene shows a visible arena background in the initial frame.
-- Verify the restored background does not hide or visually overpower the characters.
-- Verify accepted unit overlap sorting still reads correctly on top of the restored arena.
-- Run the existing Godot startup and test commands after scene changes.
+## 验证策略
+- 确认战斗场景初始帧中可以看到 arena 背景。
+- 确认恢复后的背景不会遮挡角色，也不会压过角色主体辨识。
+- 确认已验收通过的单位前后遮挡关系在背景恢复后仍然成立。
+- 在场景改动后运行现有 Godot 启动与测试命令。
 
-## Success Criteria
-- `ArenaFloor` is visible in the battle scene.
-- The broader arena presentation is visible again, not just isolated units on a blank field.
-- Units remain the dominant readable element.
-- Previously accepted depth ordering remains intact.
-- Scene startup and test verification succeed.
+## 验收标准
+- `ArenaFloor` 在战斗场景中可见。
+- 战斗场景重新具备完整 arena 表现，而不是只有单位漂浮在空白背景上。
+- 角色仍然是主要可读对象。
+- 之前确认正确的深度遮挡效果保持不变。
+- 场景启动与测试验证通过。

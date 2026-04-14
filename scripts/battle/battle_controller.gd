@@ -69,6 +69,8 @@ var _simulation
 var _live_entity_ids: Array[int] = []
 var _unit_views_by_entity: Dictionary = {}
 var _last_tick_report: Dictionary = {}
+var _runtime_elapsed_seconds := 0.0
+var _first_attack_time_by_entity: Dictionary = {}
 var _recently_died_entities: Array[Dictionary] = []
 var _recent_combat_events: Array[Dictionary] = []
 var _tick_bucket_index := 0
@@ -258,12 +260,12 @@ func get_visible_entity_screen_payloads(limit: int = VISIBLE_ENTITY_LIMIT, scree
 	var payloads: Array[Dictionary] = []
 	for entity_id in select_visible_entity_ids(limit):
 		var payload := _get_entity_visual_payload(entity_id)
+		payload["entity_id"] = entity_id
 		var world_position: Vector2 = payload.get("position", Vector2.ZERO)
 		var team_id := int(payload.get("team_id", -1))
 		var effective_scale := screen_scale * (0.72 if team_id == ENEMY_TEAM_ID else 1.0)
 		var x_anchor := screen_center.x + 54.0 if team_id == ENEMY_TEAM_ID else screen_center.x - 18.0
 		payload["position"] = Vector2(x_anchor + world_position.x * effective_scale.x, screen_center.y + world_position.y * effective_scale.y)
-		payload["entity_id"] = entity_id
 		payloads.append(payload)
 	return payloads
 
@@ -371,7 +373,35 @@ func sync_unit_views() -> void:
 		_refresh_view_runtime_state(view, parsed_entity_id)
 	_apply_recent_combat_feedback_to_views()
 
+func sync_unit_views_for_battle_scene(screen_center: Vector2 = Vector2(640.0, 392.0), screen_scale: Vector2 = Vector2(0.12, 0.12)) -> void:
+	if _entity_store == null:
+		return
+	var payloads_by_entity: Dictionary = {}
+	for payload in get_visible_entity_screen_payloads(_unit_views_by_entity.size(), screen_center, screen_scale):
+		payloads_by_entity[int(payload.get("entity_id", -1))] = payload
+	for entity_id in _unit_views_by_entity.keys():
+		var parsed_entity_id := int(entity_id)
+		var view = _unit_views_by_entity[entity_id]
+		if not payloads_by_entity.has(parsed_entity_id):
+			continue
+		var payload: Dictionary = payloads_by_entity[parsed_entity_id]
+		if view != null and view.has_method("set_visual_unit_state"):
+			view.call("set_visual_unit_state", payload.unit_state)
+			if view.has_method("set_visual_motion"):
+				view.call("set_visual_motion", payload.facing_sign, payload.move_speed)
+			if view.has_method("set_visual_alive_state"):
+				view.call("set_visual_alive_state", payload.is_alive)
+		if view != null and view.has_method("sync_from_entity_visual"):
+			if view.has_method("set_visual_unit_state"):
+				view.call("sync_from_entity_visual", payload.position, payload.is_alive, payload.team_id, payload.move_speed, payload.facing_sign, payload.unit_state)
+			else:
+				view.call("sync_from_entity_visual", payload.position, payload.is_alive, payload.team_id, payload.move_speed, payload.facing_sign)
+	_apply_recent_combat_feedback_to_views()
+
 func tick_combat(delta: float) -> void:
+	_runtime_elapsed_seconds += max(0.0, delta)
+	if OS.is_debug_build():
+		_debug_dump_tick_probe("before")
 	if get_state() != "combat":
 		_last_tick_report = {"processed": 0, "state": get_state(), "death_count": _recently_died_entities.size()}
 		return
@@ -381,21 +411,64 @@ func tick_combat(delta: float) -> void:
 	_tick_accumulator += max(0.0, delta)
 	while _tick_accumulator >= _tick_interval:
 		_last_tick_report = _simulation.tick_bucket_with_report(_entity_store, _tick_interval, _tick_bucket_index, _tick_bucket_count)
+		_record_first_attack_times(_last_tick_report)
 		_tick_bucket_index = (_tick_bucket_index + 1) % _tick_bucket_count
 		_tick_accumulator -= _tick_interval
 		_collect_recent_combat_events(_last_tick_report)
 		_record_recent_deaths()
 		_infer_movement_signal_from_runtime()
 		_update_combat_state_after_tick()
+		if OS.is_debug_build():
+			_debug_dump_tick_probe("after")
 		if get_state() != "combat":
 			break
 	_refresh_last_tick_report()
-	sync_unit_views()
+
+func _record_first_attack_times(report: Dictionary) -> void:
+	var events: Array = report.get("events", [])
+	for event in events:
+		if str(event.get("type", "")) != "attack":
+			continue
+		var attacker_id := int(event.get("attacker_id", -1))
+		if attacker_id == -1 or _first_attack_time_by_entity.has(attacker_id):
+			continue
+		_first_attack_time_by_entity[attacker_id] = _runtime_elapsed_seconds
+
+func debug_get_first_attack_times() -> Dictionary:
+	return _first_attack_time_by_entity.duplicate(true)
+
+func _debug_dump_tick_probe(stage: String) -> void:
+	if _entity_store == null:
+		return
+	var sample: Array = []
+	for entity_id in _live_entity_ids:
+		if sample.size() >= 8:
+			break
+		sample.append({
+			"entity_id": entity_id,
+			"alive": _entity_is_alive(entity_id),
+			"team_id": _get_entity_team_id(entity_id),
+			"state": _get_entity_state(entity_id),
+			"target_id": int(_entity_store.target_id[entity_id]),
+			"position": _get_entity_position(entity_id),
+			"velocity": Vector2(_entity_store.velocity_x[entity_id], _entity_store.velocity_y[entity_id])
+		})
+	var file := FileAccess.open("user://tick_probe_%s.json" % stage, FileAccess.WRITE)
+	if file != null:
+		file.store_string(JSON.stringify({
+			"stage": stage,
+			"tick_report": _last_tick_report,
+			"tick_accumulator": _tick_accumulator,
+			"tick_interval": _tick_interval,
+			"tick_bucket_index": _tick_bucket_index,
+			"state": get_state(),
+			"sample": sample
+		}, "\t"))
+		file.close()
 
 func force_refresh_runtime_state() -> void:
 	_record_recent_deaths()
 	_refresh_last_tick_report()
-	sync_unit_views()
 
 func mark_first_enemy_dead_for_debug() -> void:
 	for entity_id in _live_entity_ids:

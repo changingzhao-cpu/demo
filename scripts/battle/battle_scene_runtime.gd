@@ -2,7 +2,7 @@ extends Node2D
 
 const EffectPoolScript = preload("res://scripts/presentation/effect_pool.gd")
 const SCREEN_CENTER := Vector2(640.0, 392.0)
-const SCREEN_SCALE := Vector2(600.0, 428.0)
+const SCREEN_SCALE := Vector2(28.0, 20.0)
 const INIT_DISPLAY_COUNT := 42
 const INIT_REGION_RADIUS := Vector2(344.0, 220.0)
 const INIT_MIN_DISTANCE := 9.0
@@ -23,9 +23,6 @@ var _initial_layout_rng := RandomNumberGenerator.new()
 var _initial_layout_time := 0.0
 var _initial_layout_active := true
 var _initial_layout_positions: Dictionary = {}
-var _runtime_elapsed := 0.0
-var _last_runtime_view_debug: Dictionary = {}
-var _debug_markers: Array = []
 
 func _ready() -> void:
 	_initial_layout_rng.randomize()
@@ -42,15 +39,8 @@ func _finish_runtime_bootstrap() -> void:
 	_bind_runtime_views()
 	_generate_initial_layout()
 	_apply_initial_layout_to_views()
-	_update_debug_markers()
 	_update_hud()
 	_runtime_ready = true
-
-func _draw() -> void:
-	for marker in _debug_markers:
-		draw_circle(marker, 6.0, Color(0.1, 1.0, 0.2, 0.9))
-		draw_line(marker + Vector2(-10, 0), marker + Vector2(10, 0), Color(0.1, 1.0, 0.2, 0.9), 2.0)
-		draw_line(marker + Vector2(0, -10), marker + Vector2(0, 10), Color(0.1, 1.0, 0.2, 0.9), 2.0)
 
 func _process(delta: float) -> void:
 	if not _runtime_ready:
@@ -64,7 +54,6 @@ func _process(delta: float) -> void:
 		if _initial_layout_time >= INIT_HOLD_SECONDS:
 			_initial_layout_active = false
 		return
-	_runtime_elapsed += delta
 	if _controller.has_method("tick_combat"):
 		_controller.call("tick_combat", delta)
 	var state := str(_controller.call("get_state"))
@@ -115,19 +104,6 @@ func _make_effect_record():
 		"visual_kind": "",
 		"persistent": false
 	}
-
-func _update_debug_markers() -> void:
-	_debug_markers.clear()
-	var views: Array = _last_runtime_view_debug.get("views", [])
-	for item in views:
-		if not bool(item.get("visible", false)):
-			continue
-		if int(item.get("entity_id", -1)) == -1:
-			continue
-		var global_position: Vector2 = item.get("global_position", Vector2.ZERO)
-		_debug_markers.append(global_position)
-		if _debug_markers.size() >= 6:
-			break
 
 func _bind_runtime_views() -> void:
 	if _controller == null or _unit_layer == null or not _controller.has_method("select_visible_entity_ids"):
@@ -213,13 +189,103 @@ func _apply_initial_layout_to_views() -> void:
 		var entity_id := int(payload.get("entity_id", -1))
 		if entity_id == -1:
 			continue
-		var mapped: Vector2 = _initial_layout_positions.get(entity_id, payload.get("position", SCREEN_CENTER))
+		var target_screen_position: Vector2 = _initial_layout_positions.get(entity_id, payload.get("position", SCREEN_CENTER))
 		var view: Node2D = _find_bound_view(entity_id)
 		if view == null:
 			continue
 		if view.has_method("sync_from_entity_visual"):
-			view.call("sync_from_entity_visual", mapped, true, int(payload.get("team_id", 0)), 0.0, float(payload.get("facing_sign", 1.0)), int(payload.get("unit_state", 0)))
+			view.call("sync_from_entity_visual", target_screen_position, true, int(payload.get("team_id", 0)), 0.0, float(payload.get("facing_sign", 1.0)), int(payload.get("unit_state", 0)))
 	_refresh_depth_sort_for_visible_views()
+
+func _map_world_to_runtime_screen(world_position: Vector2, team_id: int) -> Vector2:
+	var effective_scale := SCREEN_SCALE * (0.72 if team_id == 1 else 1.0)
+	var x_anchor := SCREEN_CENTER.x + 54.0 if team_id == 1 else SCREEN_CENTER.x - 18.0
+	return Vector2(x_anchor + world_position.x * effective_scale.x, SCREEN_CENTER.y + world_position.y * effective_scale.y)
+
+func _capture_initial_layout_world_mapping() -> void:
+	if _controller == null:
+		return
+	var payloads: Array = _controller.call("get_visible_entity_payloads", _unit_layer.get_child_count()) if _controller.has_method("get_visible_entity_payloads") else []
+	for payload in payloads:
+		var entity_id := int(payload.get("entity_id", -1))
+		if entity_id == -1:
+			continue
+		var team_id := int(payload.get("team_id", 0))
+		var world_position: Vector2 = payload.get("position", Vector2.ZERO)
+		var current_screen_position := _map_world_to_runtime_screen(world_position, team_id)
+		var target_screen_position: Vector2 = _initial_layout_positions.get(entity_id, current_screen_position)
+		var effective_scale := SCREEN_SCALE * (0.72 if team_id == 1 else 1.0)
+		var x_anchor := SCREEN_CENTER.x + 54.0 if team_id == 1 else SCREEN_CENTER.x - 18.0
+		var remapped_world := Vector2(
+			(target_screen_position.x - x_anchor) / maxf(effective_scale.x, 0.0001),
+			(target_screen_position.y - SCREEN_CENTER.y) / maxf(effective_scale.y, 0.0001)
+		)
+		if _controller.has_method("set_entity_world_position"):
+			_controller.call("set_entity_world_position", entity_id, remapped_world)
+		elif _controller.has_method("get_entity_store"):
+			var store = _controller.call("get_entity_store")
+			store.position_x[entity_id] = remapped_world.x
+			store.position_y[entity_id] = remapped_world.y
+			if _controller.has_method("refresh_entity_in_spatial_grid"):
+				_controller.call("refresh_entity_in_spatial_grid", entity_id)
+	_refresh_depth_sort_for_visible_views()
+
+func _sync_runtime_screen_space_views() -> void:
+	if _controller == null:
+		return
+	if OS.is_debug_build() and _controller.has_method("get_visible_entity_screen_payloads"):
+		var payload_probe: Array = _controller.call("get_visible_entity_screen_payloads", 6, SCREEN_CENTER, SCREEN_SCALE)
+		var probe_file := FileAccess.open("user://runtime_payload_probe.json", FileAccess.WRITE)
+		if probe_file != null:
+			probe_file.store_string(JSON.stringify({"payloads": payload_probe}, "\t"))
+			probe_file.close()
+	if _controller.has_method("sync_unit_views_for_battle_scene"):
+		_controller.call("sync_unit_views_for_battle_scene", SCREEN_CENTER, SCREEN_SCALE)
+	elif _controller.has_method("sync_unit_views_screen_space"):
+		_controller.call("sync_unit_views_screen_space", SCREEN_CENTER, SCREEN_SCALE)
+	else:
+		_controller.call("sync_unit_views")
+	_refresh_depth_sort_for_visible_views()
+	if _effect_layer != null:
+		_effect_layer.position = Vector2.ZERO
+		_effect_layer.scale = Vector2.ONE
+	if OS.is_debug_build() and _unit_layer != null:
+		var view_entries: Array = []
+		for child in _unit_layer.get_children():
+			if child is Node2D and child.visible and child.has_method("get_entity_id"):
+				view_entries.append({
+					"entity_id": int(child.call("get_entity_id")),
+					"position": child.global_position
+				})
+		var view_file := FileAccess.open("user://runtime_view_probe.json", FileAccess.WRITE)
+		if view_file != null:
+			view_file.store_string(JSON.stringify({"views": view_entries}, "\t"))
+			view_file.close()
+	if _effect_layer != null:
+		_effect_layer.position = Vector2.ZERO
+		_effect_layer.scale = Vector2.ONE
+
+func _debug_dump_transition_probe(stage: String) -> void:
+	if _unit_layer == null or _controller == null:
+		return
+	var entries: Array = []
+	for child in _unit_layer.get_children():
+		if not child.has_method("get_entity_id"):
+			continue
+		var entity_id := int(child.call("get_entity_id"))
+		if entity_id == -1:
+			continue
+		entries.append({
+			"entity_id": entity_id,
+			"visible": child.visible,
+			"position": child.position,
+			"global_position": child.global_position
+		})
+	var path := "user://transition_%s_probe.json" % stage
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file != null:
+		file.store_string(JSON.stringify({"stage": stage, "entries": entries}, "\t"))
+		file.close()
 
 func _refresh_depth_sort_for_visible_views() -> void:
 	if _unit_layer == null:
@@ -235,52 +301,6 @@ func _find_bound_view(entity_id: int) -> Node2D:
 		if child is Node2D and child.has_method("get_entity_id") and int(child.call("get_entity_id")) == entity_id:
 			return child
 	return null
-
-func debug_get_runtime_view_snapshot() -> Dictionary:
-	var result := {
-		"initial_layout_active": _initial_layout_active,
-		"runtime_ready": _runtime_ready,
-		"visible_views": 0,
-		"bound_views": 0,
-		"views": []
-	}
-	if _unit_layer == null:
-		return result
-	for child in _unit_layer.get_children():
-		if not child.has_method("get_entity_id"):
-			continue
-		var entity_id := int(child.call("get_entity_id"))
-		var snapshot := {
-			"entity_id": entity_id,
-			"visible": child.visible,
-			"position": child.position,
-			"global_position": child.global_position
-		}
-		if _controller != null and entity_id != -1 and _controller.has_method("get_entity_visual_state"):
-			snapshot["payload"] = _controller.call("get_entity_visual_state", entity_id)
-		if child.visible:
-			result["visible_views"] = int(result["visible_views"]) + 1
-		if entity_id != -1:
-			result["bound_views"] = int(result["bound_views"]) + 1
-		if child.has_method("debug_get_sprite_snapshot"):
-			snapshot["sprite"] = child.call("debug_get_sprite_snapshot")
-		result["views"].append(snapshot)
-	return result
-
-func _sync_runtime_screen_space_views() -> void:
-	if _controller == null:
-		return
-	_bind_runtime_views()
-	_last_runtime_view_debug = debug_get_runtime_view_snapshot()
-	_update_debug_markers()
-	if _controller.has_method("sync_unit_views_screen_space"):
-		_controller.call("sync_unit_views_screen_space", SCREEN_CENTER, SCREEN_SCALE)
-	else:
-		_controller.call("sync_unit_views")
-	_refresh_depth_sort_for_visible_views()
-	if _effect_layer != null:
-		_effect_layer.position = Vector2.ZERO
-		_effect_layer.scale = Vector2.ONE
 
 func _tick_effect_feedback(delta: float) -> void:
 	if _effect_pool != null and _effect_pool.has_method("tick_corpses"):
@@ -389,21 +409,4 @@ func _update_hud() -> void:
 		elif state == "settle":
 			_phase_hint.text = "Run ended. Restart"
 		else:
-			var debug_visible := int(_last_runtime_view_debug.get("visible_views", 0))
-			var debug_bound := int(_last_runtime_view_debug.get("bound_views", 0))
-			var views: Array = _last_runtime_view_debug.get("views", [])
-			var sample: Dictionary = {}
-			for item in views:
-				if bool(item.get("visible", false)) and int(item.get("entity_id", -1)) != -1:
-					sample = item
-					break
-			var sample_pos: Vector2 = sample.get("position", Vector2.ZERO)
-			var sample_global: Vector2 = sample.get("global_position", Vector2.ZERO)
-			var sample_id := int(sample.get("entity_id", -1))
-			_phase_hint.text = "%s\n%.2fs\nV:%d B:%d\nE:%d P:(%.1f, %.1f) G:(%.1f, %.1f)\nM:%d" % [_get_tempo_hint_text(), _runtime_elapsed, debug_visible, debug_bound, sample_id, sample_pos.x, sample_pos.y, sample_global.x, sample_global.y, _debug_markers.size()]
-
-func debug_get_last_runtime_view_debug() -> Dictionary:
-	return _last_runtime_view_debug.duplicate(true)
-
-func debug_get_runtime_elapsed() -> float:
-	return _runtime_elapsed
+			_phase_hint.text = _get_tempo_hint_text()
