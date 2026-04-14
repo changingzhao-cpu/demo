@@ -11,6 +11,7 @@ func run() -> Array[String]:
 	_test_attack_hold_locks_position_updates(failures)
 	_test_alive_label_reflects_bound_and_death_state(failures)
 	_test_dead_runtime_sync_hides_view_and_marks_label_dead(failures)
+	_test_facing_flip_matches_left_facing_source_art(failures)
 	return failures
 
 func _test_visual_sync_exposes_facing_and_motion(failures: Array[String]) -> void:
@@ -100,6 +101,22 @@ func _test_dead_runtime_sync_hides_view_and_marks_label_dead(failures: Array[Str
 		_assert_eq(label.text, "17:0", "dead runtime sync should flip the debug label to entity_id:0", failures)
 		_assert_true(label.visible, "dead runtime sync should keep the debug label visible for inspection", failures)
 	view.free()
+
+func _test_facing_flip_matches_left_facing_source_art(failures: Array[String]) -> void:
+	var left_view = UnitViewScript.new()
+	left_view.bind_entity(1)
+	left_view.call("sync_from_entity_visual", Vector2.ZERO, true, 0, 0.0, -1.0, 0)
+	var left_body = left_view.get_node_or_null("BodySprite")
+	if left_body is Sprite2D:
+		_assert_true(left_body.scale.x > 0.0, "left-facing source art should keep positive scale.x without horizontal flip", failures)
+	left_view.free()
+	var right_view = UnitViewScript.new()
+	right_view.bind_entity(2)
+	right_view.call("sync_from_entity_visual", Vector2.ZERO, true, 0, 0.0, 1.0, 0)
+	var right_body = right_view.get_node_or_null("BodySprite")
+	if right_body is Sprite2D:
+		_assert_true(right_body.scale.x < 0.0, "right-facing presentation should horizontally flip left-facing source art", failures)
+	right_view.free()
 
 func await_if_needed(_view) -> void:
 	pass

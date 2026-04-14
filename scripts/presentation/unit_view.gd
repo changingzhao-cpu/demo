@@ -191,7 +191,7 @@ func _resolve_body_offset(visual_state: int) -> Vector2:
 
 func _resolve_body_scale() -> Vector2:
 	var base_scale := GOOSE_SCALE if _is_enemy else SOLDIER_SCALE
-	var scale := base_scale * Vector2(-1.0 if _visual_facing_sign < 0.0 else 1.0, 1.0)
+	var scale := base_scale * Vector2(-1.0 if _visual_facing_sign > 0.0 else 1.0, 1.0)
 	var visual_state := _resolve_visual_state()
 	if visual_state == VISUAL_STATE_ATTACK:
 		scale *= Vector2(1.14, 0.94)
@@ -200,7 +200,7 @@ func _resolve_body_scale() -> Vector2:
 	return scale
 
 func _resolve_overlay_scale() -> Vector2:
-	return GOOSE_SCALE * Vector2(-1.0 if _visual_facing_sign < 0.0 else 1.0, 1.0) * Vector2(1.05, 1.05)
+	return GOOSE_SCALE * Vector2(-1.0 if _visual_facing_sign > 0.0 else 1.0, 1.0) * Vector2(1.05, 1.05)
 
 func get_visual_facing_sign() -> float:
 	return _visual_facing_sign
@@ -453,7 +453,7 @@ func _refresh_sprite_visuals() -> void:
 	if visual_state == VISUAL_STATE_IDLE:
 		body.position = Vector2.ZERO
 		body.rotation = 0.0
-		body.scale = (GOOSE_SCALE if _is_enemy else SOLDIER_SCALE) * Vector2(-1.0 if _visual_facing_sign < 0.0 else 1.0, 1.0)
+		body.scale = (GOOSE_SCALE if _is_enemy else SOLDIER_SCALE) * Vector2(-1.0 if _visual_facing_sign > 0.0 else 1.0, 1.0)
 	body.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	hit_overlay.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	if visual_state == VISUAL_STATE_DEAD:
@@ -499,6 +499,6 @@ func _reset_visual_state() -> void:
 	queue_redraw()
 
 func _apply_body_pose(body: Sprite2D, offset: Vector2, rotation_value: float) -> void:
-	var facing_scale := -1.0 if _visual_facing_sign < 0.0 else 1.0
+	var facing_scale := -1.0 if _visual_facing_sign > 0.0 else 1.0
 	body.position = Vector2(offset.x * facing_scale, offset.y)
 	body.rotation = rotation_value * facing_scale

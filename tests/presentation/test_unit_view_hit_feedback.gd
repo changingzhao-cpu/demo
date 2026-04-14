@@ -53,7 +53,7 @@ func _test_attack_pulse_holds_attack_pose_long_enough_to_read(failures: Array[St
 		var attack_texture = view.get_node("BodySprite").texture
 		view.call("set_visual_motion", -1.0, 0.0)
 		_assert_true(view.get_node("BodySprite").texture == attack_texture, "attack pose should stay visible long enough to read instead of flashing away immediately", failures)
-		_assert_true(view.get_node("BodySprite").scale.x < 0.0, "soldier sprite should flip with facing so attack direction is readable", failures)
+		_assert_true(view.get_node("BodySprite").scale.x > 0.0, "left-facing source art should keep positive scale.x when facing left", failures)
 
 func _test_attack_pose_recovers_to_idle_without_new_attack_state(failures: Array[String]) -> void:
 	var view = UnitViewScript.new()
