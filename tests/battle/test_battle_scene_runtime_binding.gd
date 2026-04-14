@@ -16,6 +16,7 @@ func run() -> Array[String]:
 	_test_runtime_view_spread_matches_controller_payload_spread(failures)
 	_test_fixed_initial_layout_is_deterministic_across_instances(failures)
 	_test_initial_layout_syncs_bound_entities_26_and_40_before_combat_starts(failures)
+	_test_initial_binding_keeps_slot_entity_ids_stable_across_instances(failures)
 	return failures
 
 func _test_initial_layout_uses_runtime_combat_positions(failures: Array[String]) -> void:
@@ -209,6 +210,41 @@ func _test_initial_layout_syncs_bound_entities_26_and_40_before_combat_starts(fa
 	_assert_true(missing_initial_sync.is_empty(), "initial layout should sync bound entities 26 and 40 before combat starts instead of leaving them at the origin", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
+
+func _test_initial_binding_keeps_slot_entity_ids_stable_across_instances(failures: Array[String]) -> void:
+	var battle_scene = _load_battle_scene()
+	_assert_true(battle_scene != null, "battle scene should load before slot stability checks", failures)
+	if battle_scene == null:
+		return
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var first_instance = battle_scene.instantiate()
+	var second_instance = battle_scene.instantiate()
+	main_loop.root.add_child(first_instance)
+	await main_loop.process_frame
+	var first_ids := _collect_bound_entity_ids_by_slot(first_instance.get_node_or_null("UnitLayer"))
+	main_loop.root.remove_child(first_instance)
+	first_instance.free()
+	main_loop.root.add_child(second_instance)
+	await main_loop.process_frame
+	var second_ids := _collect_bound_entity_ids_by_slot(second_instance.get_node_or_null("UnitLayer"))
+	var compared_slots := mini(first_ids.size(), second_ids.size())
+	_assert_true(compared_slots >= 12, "slot stability check should compare enough initial bound views", failures)
+	var stable_slots := 0
+	for index in range(compared_slots):
+		if first_ids[index] == second_ids[index]:
+			stable_slots += 1
+	_assert_true(stable_slots == compared_slots, "initial view slots should keep the same entity ids across scene instances", failures)
+	main_loop.root.remove_child(second_instance)
+	second_instance.free()
+
+func _collect_bound_entity_ids_by_slot(unit_layer) -> Array[int]:
+	var ids: Array[int] = []
+	if unit_layer == null:
+		return ids
+	for child in unit_layer.get_children():
+		if child.has_method("get_entity_id"):
+			ids.append(int(child.call("get_entity_id")))
+	return ids
 
 func _test_runtime_keeps_units_visible_after_initial_layout(failures: Array[String]) -> void:
 	var battle_scene = _load_battle_scene()

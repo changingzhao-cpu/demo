@@ -205,6 +205,54 @@ func unregister_unit_view_by_node(view) -> void:
 			return
 
 func select_visible_entity_ids(limit: int = VISIBLE_ENTITY_LIMIT) -> Array[int]:
+	return get_stable_visible_entity_ids(limit)
+
+func get_stable_visible_entity_ids(limit: int = VISIBLE_ENTITY_LIMIT) -> Array[int]:
+	var allies: Array[int] = []
+	var enemies: Array[int] = []
+	for entity_id in _live_entity_ids:
+		if not _entity_is_alive(entity_id):
+			continue
+		if _get_entity_team_id(entity_id) == ALLY_TEAM_ID:
+			allies.append(entity_id)
+		elif _get_entity_team_id(entity_id) == ENEMY_TEAM_ID:
+			enemies.append(entity_id)
+	allies.sort()
+	enemies.sort()
+	var selected: Array[int] = []
+	var per_side := maxi(1, limit / 2)
+	var ally_count := mini(per_side, allies.size())
+	var enemy_count := mini(per_side, enemies.size())
+	for index in range(ally_count):
+		selected.append(allies[index])
+	for index in range(enemy_count):
+		selected.append(enemies[index])
+	var remaining := limit - selected.size()
+	var extra_index := 0
+	while remaining > 0 and (ally_count + extra_index < allies.size() or enemy_count + extra_index < enemies.size()):
+		if ally_count + extra_index < allies.size():
+			selected.append(allies[ally_count + extra_index])
+			remaining -= 1
+			if remaining <= 0:
+				break
+		if enemy_count + extra_index < enemies.size():
+			selected.append(enemies[enemy_count + extra_index])
+			remaining -= 1
+		extra_index += 1
+	return selected
+
+func get_debug_binding_summary(limit: int = VISIBLE_ENTITY_LIMIT) -> Dictionary:
+	var selected := select_visible_entity_ids(limit)
+	var ally_count := 0
+	var enemy_count := 0
+	for entity_id in selected:
+		if _get_entity_team_id(entity_id) == ALLY_TEAM_ID:
+			ally_count += 1
+		elif _get_entity_team_id(entity_id) == ENEMY_TEAM_ID:
+			enemy_count += 1
+	return {"selected_count": selected.size(), "ally_count": ally_count, "enemy_count": enemy_count, "entity_ids": selected}
+
+func get_priority_visible_entity_ids(limit: int = VISIBLE_ENTITY_LIMIT) -> Array[int]:
 	var allies: Array[int] = []
 	var enemies: Array[int] = []
 	for entity_id in _live_entity_ids:
@@ -241,17 +289,6 @@ func select_visible_entity_ids(limit: int = VISIBLE_ENTITY_LIMIT) -> Array[int]:
 			remaining -= 1
 		extra_index += 1
 	return selected
-
-func get_debug_binding_summary(limit: int = VISIBLE_ENTITY_LIMIT) -> Dictionary:
-	var selected := select_visible_entity_ids(limit)
-	var ally_count := 0
-	var enemy_count := 0
-	for entity_id in selected:
-		if _get_entity_team_id(entity_id) == ALLY_TEAM_ID:
-			ally_count += 1
-		elif _get_entity_team_id(entity_id) == ENEMY_TEAM_ID:
-			enemy_count += 1
-	return {"selected_count": selected.size(), "ally_count": ally_count, "enemy_count": enemy_count, "entity_ids": selected}
 
 func get_visible_entity_payloads(limit: int = VISIBLE_ENTITY_LIMIT) -> Array[Dictionary]:
 	var payloads: Array[Dictionary] = []
