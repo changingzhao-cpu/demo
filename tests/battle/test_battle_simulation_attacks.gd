@@ -12,6 +12,7 @@ func run() -> Array[String]:
 	_test_attacker_enters_attack_state_after_reaching_engagement_slot(failures)
 	_test_crowded_attackers_do_not_all_stall_without_attacking(failures)
 	_test_attacker_keeps_attacking_with_small_distance_jitter(failures)
+	_test_attack_center_distance_stays_within_1_2(failures)
 	return failures
 
 func _test_crowded_attackers_do_not_all_stall_without_attacking(failures: Array[String]) -> void:
@@ -168,6 +169,29 @@ func _test_attacker_keeps_attacking_with_small_distance_jitter(failures: Array[S
 	grid.upsert(target, Vector2(store.position_x[target], store.position_y[target]))
 	simulation.tick_bucket(store, 0.1, 0, 1)
 	_assert_eq(store.state[attacker], 1, "attacker should keep attacking under small contact jitter instead of dropping back to chase", failures)
+
+func _test_attack_center_distance_stays_within_1_2(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationScript.new(grid)
+	var attacker: int = store.allocate()
+	var target: int = store.allocate()
+	_prepare_attacker(store, attacker)
+	_prepare_target(store, target, 100.0)
+	store.position_x[attacker] = -1.4
+	store.position_y[attacker] = 0.0
+	store.position_x[target] = 0.0
+	store.position_y[target] = 0.0
+	store.attack_range_sq[attacker] = 0.25
+	grid.upsert(attacker, Vector2(store.position_x[attacker], store.position_y[attacker]))
+	grid.upsert(target, Vector2.ZERO)
+	for _step in range(6):
+		simulation.tick_bucket(store, 0.1, 0, 1)
+	var attacker_position := Vector2(store.position_x[attacker], store.position_y[attacker])
+	var target_position := Vector2(store.position_x[target], store.position_y[target])
+	var attack_distance := attacker_position.distance_to(target_position)
+	_assert_eq(store.state[attacker], 1, "attacker should still enter attack state after tightening center distance", failures)
+	_assert_true(attack_distance <= 1.205, "attack center distance should stay within 1.2 once the attacker enters attack state (actual=%s)" % str(attack_distance), failures)
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

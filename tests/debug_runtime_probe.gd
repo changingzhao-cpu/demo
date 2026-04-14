@@ -2,7 +2,7 @@ extends SceneTree
 
 const BATTLE_SCENE_PATH := "res://scenes/battle/battle_scene.tscn"
 const OUTPUT_PATH := "user://runtime_probe.json"
-const SAMPLE_TIMES := [0.0, 0.01, 0.03, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0]
+const SAMPLE_TIMES := [0.0, 0.01, 0.03, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0]
 const INITIAL_PROBE := "user://transition_initial_probe.json"
 const RUNTIME_PROBE := "user://transition_runtime_probe.json"
 
@@ -38,7 +38,7 @@ func _initialize() -> void:
 		var controller := instance.get_node_or_null("BattleController")
 		var unit_layer := instance.get_node_or_null("UnitLayer")
 		var tracked_entities: Dictionary = {}
-		for tracked_id in [10, 17, 26, 40]:
+		for tracked_id in [9, 10, 17, 26, 35, 40]:
 			var entity_payload: Dictionary = controller.call("debug_get_entity_diagnostic", tracked_id) if controller != null and controller.has_method("debug_get_entity_diagnostic") else {"entity_id": tracked_id, "exists": false}
 			var entity_view_snapshot: Dictionary = {}
 			if unit_layer != null:
@@ -55,6 +55,24 @@ func _initialize() -> void:
 				"controller": entity_payload,
 				"view": entity_view_snapshot
 			}
+		var recent_events_probe: Dictionary = _read_json("user://controller_recent_combat_events_probe.json")
+		var pair_distance_35_to_9 = null
+		var attacks_on_9: Array = []
+		for event_variant in recent_events_probe.get("events", []):
+			var event: Dictionary = event_variant
+			if int(event.get("attacker_id", -1)) == 35 and int(event.get("target_id", -1)) == 9 and str(event.get("type", "")) == "attack":
+				var attacker_position_35: Vector2 = event.get("attacker_position", Vector2.ZERO)
+				var target_position_35: Vector2 = event.get("target_position", Vector2.ZERO)
+				pair_distance_35_to_9 = attacker_position_35.distance_to(target_position_35)
+			if int(event.get("target_id", -1)) == 9 and str(event.get("type", "")) == "attack":
+				var attacker_position_9: Vector2 = event.get("attacker_position", Vector2.ZERO)
+				var target_position_9: Vector2 = event.get("target_position", Vector2.ZERO)
+				attacks_on_9.append({
+					"attacker_id": int(event.get("attacker_id", -1)),
+					"distance": attacker_position_9.distance_to(target_position_9),
+					"attacker_position": attacker_position_9,
+					"target_position": target_position_9
+				})
 		samples.append({
 			"time": elapsed,
 			"tick_before": _read_json("user://tick_probe_before.json"),
@@ -62,13 +80,15 @@ func _initialize() -> void:
 			"view_probe": _read_json("user://runtime_view_probe.json"),
 			"combat_feedback_probe": _read_json("user://combat_feedback_probe.json"),
 			"combat_pulse_probe": _read_json("user://combat_pulse_probe.json"),
-			"controller_recent_combat_events_probe": _read_json("user://controller_recent_combat_events_probe.json"),
+			"controller_recent_combat_events_probe": recent_events_probe,
 			"controller_consume_combat_events_probe": _read_json("user://controller_consume_combat_events_probe.json"),
 			"unit_view_attack_pulse_probe_33": _read_json("user://unit_view_attack_pulse_probe_33.json"),
 			"unit_view_sync_probe_33": _read_json("user://unit_view_sync_probe_33.json"),
 			"runtime_view_probe": _read_json("user://runtime_view_probe.json"),
 			"controller_recent_deaths_probe": _read_json("user://controller_recent_deaths_probe.json"),
-			"tracked_entities": tracked_entities
+			"tracked_entities": tracked_entities,
+			"pair_distance_35_to_9": pair_distance_35_to_9,
+			"attacks_on_9": attacks_on_9
 		})
 		sample_index += 1
 	var controller := instance.get_node_or_null("BattleController")
@@ -80,7 +100,8 @@ func _initialize() -> void:
 		"tick_before": FileAccess.get_file_as_string("user://tick_probe_before.json"),
 		"tick_after": FileAccess.get_file_as_string("user://tick_probe_after.json"),
 		"initial_to_runtime_delta": FileAccess.get_file_as_string("user://initial_to_runtime_delta_probe.json"),
-		"first_attack_times": attack_times
+		"first_attack_times": attack_times,
+		"full_attack_history_probe": _read_json("user://controller_full_attack_history_probe.json")
 	}
 	var file := FileAccess.open(OUTPUT_PATH, FileAccess.WRITE)
 	if file == null:

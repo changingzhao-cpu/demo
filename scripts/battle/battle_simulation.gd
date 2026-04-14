@@ -7,6 +7,7 @@ const DEFAULT_KNOCKBACK_DISTANCE := 0.42
 const DEFAULT_LAUNCH_HEIGHT := 0.26
 const ATTACK_TRIGGER_BUFFER := 0.18
 const ATTACK_STICKY_MARGIN := 0.22
+const ENGAGEMENT_CENTER_DISTANCE := 1.2
 const PRECONTACT_SPACING_RADIUS := 1.85
 const PRECONTACT_SPACING_STEP := 0.22
 const SAME_TEAM_SPACING_RADIUS := 1.45
@@ -22,10 +23,10 @@ const UNIT_STATE_ATTACK := 1
 const UNIT_STATE_ADVANCE := 3
 const UNIT_STATE_DEAD := 4
 const ENGAGEMENT_SLOT_OFFSETS := [
-	Vector2(-1.08, 0.0),
-	Vector2(1.08, 0.0),
-	Vector2(0.0, -0.92),
-	Vector2(0.0, 0.92)
+	Vector2(-1.0, 0.0),
+	Vector2(1.0, 0.0),
+	Vector2(0.0, -0.83),
+	Vector2(0.0, 0.83)
 ]
 
 var _grid
@@ -102,6 +103,17 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		store.state[entity_id] = UNIT_STATE_ADVANCE
 		report["moved"] = int(report.get("moved", 0)) + 1
 		return
+	_clamp_to_engagement_anchor(store, entity_id, engagement_target)
+	_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+	origin = Vector2(store.position_x[entity_id], store.position_y[entity_id])
+	if origin.distance_to(engagement_target) > 0.001:
+		store.state[entity_id] = UNIT_STATE_ADVANCE
+		report["moved"] = int(report.get("moved", 0)) + 1
+		return
+	if slot_index >= 0:
+		target = engagement_target
+
+	_apply_same_team_spacing(store, entity_id)
 
 	_release_engagement_slot_if_needed(store, entity_id, target_id)
 	if store.engagement_slot[entity_id] == -1:
@@ -262,7 +274,15 @@ func _is_engagement_slot_free(store, entity_id: int, target_id: int, slot_index:
 
 func _resolve_engagement_slot_position(store, target_id: int, slot_index: int) -> Vector2:
 	var target_position := Vector2(store.position_x[target_id], store.position_y[target_id])
-	return target_position + ENGAGEMENT_SLOT_OFFSETS[slot_index]
+	var raw_offset: Vector2 = ENGAGEMENT_SLOT_OFFSETS[slot_index]
+	var normalized_offset: Vector2 = raw_offset.normalized() if raw_offset != Vector2.ZERO else Vector2.LEFT
+	return target_position + normalized_offset * ENGAGEMENT_CENTER_DISTANCE
+
+func _clamp_to_engagement_anchor(store, entity_id: int, engagement_target: Vector2) -> void:
+	store.position_x[entity_id] = engagement_target.x
+	store.position_y[entity_id] = engagement_target.y
+	store.velocity_x[entity_id] = 0.0
+	store.velocity_y[entity_id] = 0.0
 
 func _apply_precontact_spacing(store, entity_id: int, target_id: int) -> void:
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])

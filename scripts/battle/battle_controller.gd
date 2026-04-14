@@ -73,6 +73,7 @@ var _runtime_elapsed_seconds := 0.0
 var _first_attack_time_by_entity: Dictionary = {}
 var _recently_died_entities: Array[Dictionary] = []
 var _recent_combat_events: Array[Dictionary] = []
+var _full_attack_history: Array[Dictionary] = []
 var _tick_bucket_index := 0
 var _tick_bucket_count := 4
 var _tick_accumulator := 0.0
@@ -750,6 +751,7 @@ func _setup_runtime_for_wave(wave: Dictionary) -> void:
 	_unit_views_by_entity.clear()
 	_recently_died_entities.clear()
 	_recent_combat_events.clear()
+	_full_attack_history.clear()
 	_last_tick_report = {}
 	_tick_bucket_index = 0
 	_tick_accumulator = 0.0
@@ -799,8 +801,11 @@ func _infer_movement_signal_from_runtime() -> void:
 func _collect_recent_combat_events(report: Dictionary) -> void:
 	var events: Array = report.get("events", [])
 	for event in events:
-		_recent_combat_events.append(event.duplicate(true))
-		_apply_combat_event_to_bound_views(event)
+		var copied_event: Dictionary = event.duplicate(true)
+		_recent_combat_events.append(copied_event)
+		if str(copied_event.get("type", "")) == "attack":
+			_full_attack_history.append(copied_event)
+		_apply_combat_event_to_bound_views(copied_event)
 	while _recent_combat_events.size() > MAX_RECENT_COMBAT_EVENTS:
 		_recent_combat_events.pop_front()
 	if OS.is_debug_build():
@@ -808,6 +813,10 @@ func _collect_recent_combat_events(report: Dictionary) -> void:
 		if file != null:
 			file.store_string(JSON.stringify({"events": _recent_combat_events}, "\t"))
 			file.close()
+		var attack_history_file := FileAccess.open("user://controller_full_attack_history_probe.json", FileAccess.WRITE)
+		if attack_history_file != null:
+			attack_history_file.store_string(JSON.stringify({"events": _full_attack_history}, "\t"))
+			attack_history_file.close()
 
 func _apply_combat_event_to_bound_views(event: Dictionary) -> void:
 	var event_type := str(event.get("type", ""))
