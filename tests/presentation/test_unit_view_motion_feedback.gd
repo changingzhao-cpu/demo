@@ -9,6 +9,7 @@ func run() -> Array[String]:
 	_test_death_sync_overrides_attack_position_lock(failures)
 	_test_motion_feedback_stays_bounded_and_keeps_unit_readable(failures)
 	_test_attack_hold_locks_position_updates(failures)
+	_test_alive_label_reflects_bound_and_death_state(failures)
 	return failures
 
 func _test_visual_sync_exposes_facing_and_motion(failures: Array[String]) -> void:
@@ -72,6 +73,23 @@ func _test_attack_hold_locks_position_updates(failures: Array[String]) -> void:
 	view.call("sync_from_entity_visual", Vector2(40.0, 10.0), true, 0, 6.0, 1.0, 3)
 	_assert_eq(view.global_position, Vector2(10.0, 10.0), "unit should hold its current screen position while the attack pose is still active", failures)
 	view.free()
+
+func _test_alive_label_reflects_bound_and_death_state(failures: Array[String]) -> void:
+	var view = UnitViewScript.new()
+	view.bind_entity(42)
+	await_if_needed(view)
+	var label = view.get_node_or_null("AliveLabel")
+	_assert_true(label is Label, "unit view should create an AliveLabel for head-top status debugging", failures)
+	if label is Label:
+		_assert_eq(label.text, "1", "bound living unit should show 1 above its head", failures)
+	view.call("sync_from_entity_visual", Vector2(5.0, 5.0), false, 0, 0.0, 1.0, 0)
+	if label is Label:
+		_assert_eq(label.text, "0", "dead unit should show 0 above its head", failures)
+		_assert_true(label.visible, "alive label should remain visible after death so the debug marker can be inspected", failures)
+	view.free()
+
+func await_if_needed(_view) -> void:
+	pass
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

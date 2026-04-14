@@ -45,6 +45,8 @@ const DEPTH_Z_BASE := 0
 const DEPTH_Z_CLAMP := 4096
 const DEPTH_SORT_BIAS_GOOSE := -2
 const DEPTH_SORT_BIAS_SOLDIER := 0
+const ALIVE_LABEL_OFFSET := Vector2(-6.0, -42.0)
+const ALIVE_LABEL_SIZE := Vector2(24.0, 16.0)
 
 var _entity_id: int = -1
 var _is_bound := false
@@ -86,23 +88,6 @@ func bind_entity(entity_id: int) -> void:
 	_update_visual_tint()
 	_refresh_sprite_visuals()
 
-func debug_get_sprite_snapshot() -> Dictionary:
-	_ensure_sprite_nodes()
-	var body: Sprite2D = get_node_or_null("BodySprite")
-	var overlay: Sprite2D = get_node_or_null("HitOverlay")
-	return {
-		"view_visible": visible,
-		"bound": _is_bound,
-		"entity_id": _entity_id,
-		"body_exists": body != null,
-		"body_visible": body != null and body.visible,
-		"body_texture": body.texture.resource_path if body != null and body.texture != null else "",
-		"body_scale": body.scale if body != null else Vector2.ZERO,
-		"body_modulate": body.modulate if body != null else Color.TRANSPARENT,
-		"overlay_exists": overlay != null,
-		"overlay_visible": overlay != null and overlay.visible
-	}
-
 func unbind_entity() -> void:
 	_entity_id = -1
 	_is_bound = false
@@ -114,6 +99,7 @@ func sync_from_entity(world_position: Vector2, is_alive: bool) -> void:
 func sync_from_entity_visual(world_position: Vector2, is_alive: bool, team_id: int, move_speed: float, facing_sign: float, unit_state: int = UNIT_STATE_IDLE) -> void:
 	if not _is_bound:
 		visible = false
+		_update_alive_label()
 		return
 	var should_lock_position := is_alive and (_attack_frame_timer > 0.0 or _attack_pulse_strength > 0.0)
 	if not should_lock_position:
@@ -317,6 +303,27 @@ func debug_get_pose_snapshot() -> Dictionary:
 		"showing_hit": _is_showing_hit_pose()
 	}
 
+func debug_get_sprite_snapshot() -> Dictionary:
+	_ensure_sprite_nodes()
+	var body: Sprite2D = get_node_or_null("BodySprite")
+	var overlay: Sprite2D = get_node_or_null("HitOverlay")
+	var alive_label: Label = get_node_or_null("AliveLabel")
+	return {
+		"view_visible": visible,
+		"bound": _is_bound,
+		"entity_id": _entity_id,
+		"body_exists": body != null,
+		"body_visible": body != null and body.visible,
+		"body_texture": body.texture.resource_path if body != null and body.texture != null else "",
+		"body_scale": body.scale if body != null else Vector2.ZERO,
+		"body_modulate": body.modulate if body != null else Color.TRANSPARENT,
+		"overlay_exists": overlay != null,
+		"overlay_visible": overlay != null and overlay.visible,
+		"alive_label_exists": alive_label != null,
+		"alive_label_text": alive_label.text if alive_label != null else "",
+		"alive_label_visible": alive_label.visible if alive_label != null else false
+	}
+
 func set_visual_alive_state(is_alive: bool) -> void:
 	_is_showing_death_state = not is_alive and _supports_death_feedback
 	visible = is_alive or _is_showing_death_state
@@ -389,11 +396,28 @@ func _ensure_sprite_nodes() -> void:
 		overlay.centered = true
 		overlay.visible = false
 		add_child(overlay)
+	if get_node_or_null("AliveLabel") == null:
+		var label := Label.new()
+		label.name = "AliveLabel"
+		label.position = ALIVE_LABEL_OFFSET
+		label.size = ALIVE_LABEL_SIZE
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.z_index = 1
+		add_child(label)
+	_update_alive_label()
 
-func _apply_body_pose(body: Sprite2D, offset: Vector2, rotation_value: float) -> void:
-	var facing_scale := -1.0 if _visual_facing_sign < 0.0 else 1.0
-	body.position = Vector2(offset.x * facing_scale, offset.y)
-	body.rotation = rotation_value * facing_scale
+func _update_alive_label() -> void:
+	var label = get_node_or_null("AliveLabel")
+	if label is Label:
+		label.text = "1" if _is_bound and visible else "0"
+		label.visible = _is_bound
+		label.modulate = Color(0.2, 1.0, 0.2, 1.0) if visible else Color(1.0, 0.25, 0.25, 1.0)
+		label.add_theme_color_override("font_color", label.modulate)
+		label.add_theme_font_size_override("font_size", 14)
+		label.add_theme_constant_override("outline_size", 2)
+		label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 1.0))
 
 func _refresh_sprite_visuals() -> void:
 	var body: Sprite2D = get_node_or_null("BodySprite")
@@ -402,6 +426,7 @@ func _refresh_sprite_visuals() -> void:
 		return
 	body.visible = visible and _is_bound
 	hit_overlay.visible = false
+	_update_alive_label()
 	if not body.visible:
 		return
 	var visual_state := _resolve_visual_state()
@@ -425,7 +450,7 @@ func _refresh_sprite_visuals() -> void:
 	if visual_state == VISUAL_STATE_IDLE:
 		body.position = Vector2.ZERO
 		body.rotation = 0.0
-		body.scale = (_resolve_body_scale() / Vector2(1.14, 0.94)) if _resolve_body_scale() != Vector2.ZERO and (body.scale.x != 0.0 and body.scale.y != 0.0) and false else (GOOSE_SCALE if _is_enemy else SOLDIER_SCALE) * Vector2(-1.0 if _visual_facing_sign < 0.0 else 1.0, 1.0)
+		body.scale = (GOOSE_SCALE if _is_enemy else SOLDIER_SCALE) * Vector2(-1.0 if _visual_facing_sign < 0.0 else 1.0, 1.0)
 	body.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	hit_overlay.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	if visual_state == VISUAL_STATE_DEAD:
@@ -442,8 +467,8 @@ func _update_visual_tint() -> void:
 	else:
 		_visual_tint = ENEMY_TINT if _is_enemy else BOUND_TINT
 		if _is_showing_death_state:
-			_visual_tint = Color(_visual_tint.r, _visual_tint.g, _visual_tint.b, DEAD_ALPHA)
-	modulate = Color.WHITE
+			_visual_tint.a = DEAD_ALPHA
+	_update_alive_label()
 	queue_redraw()
 
 func _reset_visual_state() -> void:
@@ -466,5 +491,11 @@ func _reset_visual_state() -> void:
 	_body_pose_offset = Vector2.ZERO
 	_body_pose_rotation = 0.0
 	modulate = Color.WHITE
+	_update_alive_label()
 	_refresh_sprite_visuals()
 	queue_redraw()
+
+func _apply_body_pose(body: Sprite2D, offset: Vector2, rotation_value: float) -> void:
+	var facing_scale := -1.0 if _visual_facing_sign < 0.0 else 1.0
+	body.position = Vector2(offset.x * facing_scale, offset.y)
+	body.rotation = rotation_value * facing_scale
