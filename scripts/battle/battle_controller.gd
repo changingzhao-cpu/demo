@@ -858,7 +858,7 @@ func _spawn_team(unit_count: int, team_id: int) -> void:
 		_entity_store.unit_type_id[entity_id] = 0
 		_entity_store.hp[entity_id] = 100.0
 		_entity_store.max_hp[entity_id] = 100.0
-		_entity_store.attack_range_sq[entity_id] = 0.04
+		_entity_store.attack_range_sq[entity_id] = 0.0
 		_entity_store.attack_interval[entity_id] = 0.5
 		_entity_store.attack_cd[entity_id] = _rng.randf_range(0.0, 0.12)
 		_entity_store.move_speed[entity_id] = _rng.randf_range(5.6, 6.4)
