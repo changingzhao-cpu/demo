@@ -10,6 +10,7 @@ func run() -> Array[String]:
 	_test_motion_feedback_stays_bounded_and_keeps_unit_readable(failures)
 	_test_attack_hold_locks_position_updates(failures)
 	_test_alive_label_reflects_bound_and_death_state(failures)
+	_test_dead_runtime_sync_hides_view_and_marks_label_dead(failures)
 	return failures
 
 func _test_visual_sync_exposes_facing_and_motion(failures: Array[String]) -> void:
@@ -86,6 +87,18 @@ func _test_alive_label_reflects_bound_and_death_state(failures: Array[String]) -
 	if label is Label:
 		_assert_eq(label.text, "42:0", "dead unit should show entity id and dead state above its head", failures)
 		_assert_true(label.visible, "alive label should remain visible after death so the debug marker can be inspected", failures)
+	view.free()
+
+func _test_dead_runtime_sync_hides_view_and_marks_label_dead(failures: Array[String]) -> void:
+	var view = UnitViewScript.new()
+	view.bind_entity(17)
+	await_if_needed(view)
+	view.call("set_visual_alive_state", false)
+	var label = view.get_node_or_null("AliveLabel")
+	_assert_true(not view.visible, "dead runtime sync should hide the unit view instead of leaving a visible corpse placeholder", failures)
+	if label is Label:
+		_assert_eq(label.text, "17:0", "dead runtime sync should flip the debug label to entity_id:0", failures)
+		_assert_true(label.visible, "dead runtime sync should keep the debug label visible for inspection", failures)
 	view.free()
 
 func await_if_needed(_view) -> void:

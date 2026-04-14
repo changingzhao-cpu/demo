@@ -56,11 +56,27 @@ func _test_dead_unit_view_stops_rendering_as_alive(failures: Array[String]) -> v
 	controller.call("advance_debug_frames", 60, 0.016)
 	await main_loop.process_frame
 	var lingering_visible := false
-	for child in unit_layer.get_children():
-		if child.has_method("get_entity_id") and int(child.call("get_entity_id")) == dead_entity_id and child is CanvasItem and child.visible:
-			lingering_visible = true
+	var dead_label_text := ""
+	var saw_dead_bound_view := false
+	for _step in range(240):
+		controller.call("advance_debug_frames", 1, 0.016)
+		await main_loop.process_frame
+		for child in unit_layer.get_children():
+			if not child.has_method("get_entity_id") or int(child.call("get_entity_id")) != dead_entity_id:
+				continue
+			if child.has_method("debug_get_sprite_snapshot"):
+				var snapshot: Dictionary = child.call("debug_get_sprite_snapshot")
+				dead_label_text = str(snapshot.get("alive_label_text", ""))
+			if child.has_method("is_bound") and bool(child.call("is_bound")):
+				saw_dead_bound_view = true
+				if child is CanvasItem and child.visible:
+					lingering_visible = true
 			break
+		if saw_dead_bound_view:
+			break
+	_assert_true(saw_dead_bound_view, "battle scene should keep the killed entity bound long enough to inspect its death visual sync", failures)
 	_assert_true(not lingering_visible, "dead unit views should stop rendering as alive after a kill", failures)
+	_assert_eq(dead_label_text, "%s:0" % str(dead_entity_id), "dead unit view label should flip to entity_id:0 after a kill", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
 

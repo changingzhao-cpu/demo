@@ -2,7 +2,7 @@ extends SceneTree
 
 const BATTLE_SCENE_PATH := "res://scenes/battle/battle_scene.tscn"
 const OUTPUT_PATH := "user://runtime_probe.json"
-const SAMPLE_TIMES := [0.0, 0.01, 0.03, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 3.0, 4.0]
+const SAMPLE_TIMES := [0.0, 0.01, 0.03, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
 const INITIAL_PROBE := "user://transition_initial_probe.json"
 const RUNTIME_PROBE := "user://transition_runtime_probe.json"
 
@@ -35,6 +35,26 @@ func _initialize() -> void:
 			await create_timer(step).timeout
 			elapsed += step
 			continue
+		var controller := instance.get_node_or_null("BattleController")
+		var unit_layer := instance.get_node_or_null("UnitLayer")
+		var tracked_entities: Dictionary = {}
+		for tracked_id in [10, 17]:
+			var entity_payload: Dictionary = controller.call("debug_get_entity_diagnostic", tracked_id) if controller != null and controller.has_method("debug_get_entity_diagnostic") else {"entity_id": tracked_id, "exists": false}
+			var entity_view_snapshot: Dictionary = {}
+			if unit_layer != null:
+				for child in unit_layer.get_children():
+					if child.has_method("get_entity_id") and int(child.call("get_entity_id")) == tracked_id:
+						entity_view_snapshot = {
+							"visible": child.visible,
+							"global_position": child.global_position,
+							"sprite": child.call("debug_get_sprite_snapshot") if child.has_method("debug_get_sprite_snapshot") else {},
+							"pose": child.call("debug_get_pose_snapshot") if child.has_method("debug_get_pose_snapshot") else {}
+						}
+						break
+			tracked_entities[str(tracked_id)] = {
+				"controller": entity_payload,
+				"view": entity_view_snapshot
+			}
 		samples.append({
 			"time": elapsed,
 			"tick_before": _read_json("user://tick_probe_before.json"),
@@ -47,7 +67,8 @@ func _initialize() -> void:
 			"unit_view_attack_pulse_probe_33": _read_json("user://unit_view_attack_pulse_probe_33.json"),
 			"unit_view_sync_probe_33": _read_json("user://unit_view_sync_probe_33.json"),
 			"runtime_view_probe": _read_json("user://runtime_view_probe.json"),
-			"controller_recent_deaths_probe": _read_json("user://controller_recent_deaths_probe.json")
+			"controller_recent_deaths_probe": _read_json("user://controller_recent_deaths_probe.json"),
+			"tracked_entities": tracked_entities
 		})
 		sample_index += 1
 	var controller := instance.get_node_or_null("BattleController")

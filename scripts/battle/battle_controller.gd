@@ -383,15 +383,16 @@ func sync_unit_views() -> void:
 func sync_unit_views_for_battle_scene(screen_center: Vector2 = Vector2(640.0, 392.0), screen_scale: Vector2 = Vector2(0.12, 0.12)) -> void:
 	if _entity_store == null:
 		return
-	var payloads_by_entity: Dictionary = {}
-	for payload in get_visible_entity_screen_payloads(_unit_views_by_entity.size(), screen_center, screen_scale):
-		payloads_by_entity[int(payload.get("entity_id", -1))] = payload
 	for entity_id in _unit_views_by_entity.keys():
 		var parsed_entity_id := int(entity_id)
 		var view = _unit_views_by_entity[entity_id]
-		if not payloads_by_entity.has(parsed_entity_id):
-			continue
-		var payload: Dictionary = payloads_by_entity[parsed_entity_id]
+		var payload := _get_entity_visual_payload(parsed_entity_id)
+		payload["entity_id"] = parsed_entity_id
+		var world_position: Vector2 = payload.get("position", Vector2.ZERO)
+		var team_id := int(payload.get("team_id", -1))
+		var effective_scale := screen_scale * (0.72 if team_id == ENEMY_TEAM_ID else 1.0)
+		var x_anchor := screen_center.x + 54.0 if team_id == ENEMY_TEAM_ID else screen_center.x - 18.0
+		payload["position"] = Vector2(x_anchor + world_position.x * effective_scale.x, screen_center.y + world_position.y * effective_scale.y)
 		if view != null and view.has_method("set_visual_unit_state"):
 			view.call("set_visual_unit_state", payload.unit_state)
 			if view.has_method("set_visual_motion"):
@@ -512,6 +513,30 @@ func debug_get_runtime_snapshot() -> Dictionary:
 
 func debug_get_entity_visual_payload(entity_id: int) -> Dictionary:
 	return _get_entity_visual_payload(entity_id)
+
+func debug_get_entity_diagnostic(entity_id: int) -> Dictionary:
+	if _entity_store == null or entity_id < 0 or entity_id >= _entity_store.capacity:
+		return {"entity_id": entity_id, "exists": false}
+	var recent_events: Array = []
+	for event in _recent_combat_events:
+		if int(event.get("attacker_id", -1)) == entity_id or int(event.get("target_id", -1)) == entity_id:
+			recent_events.append(event.duplicate(true))
+	return {
+		"entity_id": entity_id,
+		"exists": true,
+		"alive": _entity_is_alive(entity_id),
+		"team_id": _get_entity_team_id(entity_id),
+		"state": _get_entity_state(entity_id),
+		"target_id": int(_entity_store.target_id[entity_id]),
+		"position": _get_entity_position(entity_id),
+		"velocity": Vector2(_entity_store.velocity_x[entity_id], _entity_store.velocity_y[entity_id]),
+		"move_speed": _get_entity_move_speed(entity_id),
+		"attack_cd": float(_entity_store.attack_cd[entity_id]),
+		"hp": float(_entity_store.hp[entity_id]),
+		"max_hp": float(_entity_store.max_hp[entity_id]),
+		"bucket_id": int(_entity_store.bucket_id[entity_id]),
+		"recent_events": recent_events
+	}
 
 func debug_get_spawn_positions() -> Dictionary:
 	var allies: Array[Vector2] = []
