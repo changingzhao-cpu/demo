@@ -5,7 +5,8 @@ const DEFAULT_CHASE_DISTANCE := 18.0
 const DEFAULT_ATTACK_DAMAGE := 10.0
 const DEFAULT_KNOCKBACK_DISTANCE := 0.42
 const DEFAULT_LAUNCH_HEIGHT := 0.26
-const ENGAGE_BUFFER := 0.1
+const ATTACK_TRIGGER_BUFFER := 0.18
+const ATTACK_STICKY_MARGIN := 0.22
 const PRECONTACT_SPACING_RADIUS := 1.85
 const PRECONTACT_SPACING_STEP := 0.22
 const SAME_TEAM_SPACING_RADIUS := 1.45
@@ -21,10 +22,10 @@ const UNIT_STATE_ATTACK := 1
 const UNIT_STATE_ADVANCE := 3
 const UNIT_STATE_DEAD := 4
 const ENGAGEMENT_SLOT_OFFSETS := [
-	Vector2(-1.2, 0.0),
-	Vector2(1.2, 0.0),
-	Vector2(0.0, -1.0),
-	Vector2(0.0, 1.0)
+	Vector2(-1.08, 0.0),
+	Vector2(1.08, 0.0),
+	Vector2(0.0, -0.92),
+	Vector2(0.0, 0.92)
 ]
 
 var _grid
@@ -85,12 +86,14 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
 	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
 	var attack_range := sqrt(maxf(0.0, store.attack_range_sq[entity_id]))
-	var engage_distance: float = attack_range + ENGAGE_BUFFER + store.radius[entity_id] + store.radius[target_id]
 	var slot_index := _resolve_engagement_slot(store, entity_id, target_id)
 	var engagement_target := _resolve_engagement_slot_position(store, target_id, slot_index) if slot_index >= 0 else target
 	var distance := origin.distance_to(engagement_target)
+	var trigger_distance: float = _get_attack_trigger_distance(store, entity_id, target_id, false)
+	var sticky_distance: float = _get_attack_trigger_distance(store, entity_id, target_id, true)
+	var allowed_distance := sticky_distance if store.state[entity_id] == UNIT_STATE_ATTACK else trigger_distance
 
-	if distance > engage_distance:
+	if distance > allowed_distance:
 		_move_toward_position(store, entity_id, engagement_target, delta)
 		var moved_distance := origin.distance_to(Vector2(store.position_x[entity_id], store.position_y[entity_id]))
 		_update_engagement_blocked_time(store, entity_id, moved_distance, delta)
@@ -156,6 +159,11 @@ func _append_event(report: Dictionary, attacker_id: int, target_id: int, event_t
 		"target_position": target_position
 	})
 	report["events"] = events
+
+func _get_attack_trigger_distance(store, entity_id: int, target_id: int, include_sticky_margin: bool) -> float:
+	var attack_range := sqrt(maxf(0.0, store.attack_range_sq[entity_id]))
+	var sticky_margin := ATTACK_STICKY_MARGIN if include_sticky_margin else 0.0
+	return attack_range + ATTACK_TRIGGER_BUFFER + sticky_margin + store.radius[entity_id] + store.radius[target_id]
 
 func _resolve_impact_direction(origin: Vector2, target: Vector2) -> Vector2:
 	var direction := target - origin
