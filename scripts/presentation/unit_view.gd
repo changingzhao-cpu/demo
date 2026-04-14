@@ -293,6 +293,18 @@ func get_attack_pose_hold() -> float:
 func get_hit_pose_hold() -> float:
 	return _hit_frame_timer
 
+func debug_get_pose_snapshot() -> Dictionary:
+	return {
+		"entity_id": _entity_id,
+		"unit_state": _visual_unit_state,
+		"attack_hold": _attack_frame_timer,
+		"hit_hold": _hit_frame_timer,
+		"attack_pulse": _attack_pulse_strength,
+		"hit_pulse": _hit_pulse_strength,
+		"showing_attack": _is_showing_attack_pose(),
+		"showing_hit": _is_showing_hit_pose()
+	}
+
 func set_visual_alive_state(is_alive: bool) -> void:
 	_is_showing_death_state = not is_alive and _supports_death_feedback
 	visible = is_alive or _is_showing_death_state

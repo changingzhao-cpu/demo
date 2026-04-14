@@ -324,13 +324,15 @@ func _get_visible_priority(entity_id: int) -> float:
 func _get_entity_visual_payload(entity_id: int) -> Dictionary:
 	if _entity_store == null or entity_id < 0 or entity_id >= _entity_store.capacity:
 		return {"position": Vector2.ZERO, "is_alive": false, "team_id": -1, "move_speed": 0.0, "facing_sign": 0.0, "unit_state": UNIT_STATE_IDLE}
+	var runtime_state := _get_entity_state(entity_id)
+	var visual_state := UNIT_STATE_IDLE if runtime_state == UNIT_STATE_ATTACK else runtime_state
 	return {
 		"position": _get_entity_position(entity_id),
 		"is_alive": _entity_is_alive(entity_id),
 		"team_id": _get_entity_team_id(entity_id),
 		"move_speed": _get_entity_move_speed(entity_id),
 		"facing_sign": _get_entity_facing_sign(entity_id),
-		"unit_state": _get_entity_state(entity_id)
+		"unit_state": visual_state
 	}
 
 func _push_visual_sync_call(view, entity_id: int) -> void:

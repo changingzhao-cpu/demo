@@ -255,7 +255,8 @@ func _sync_runtime_screen_space_views() -> void:
 			if child is Node2D and child.visible and child.has_method("get_entity_id"):
 				view_entries.append({
 					"entity_id": int(child.call("get_entity_id")),
-					"position": child.global_position
+					"position": child.global_position,
+					"pose": child.call("debug_get_pose_snapshot") if child.has_method("debug_get_pose_snapshot") else {}
 				})
 		var view_file := FileAccess.open("user://runtime_view_probe.json", FileAccess.WRITE)
 		if view_file != null:
