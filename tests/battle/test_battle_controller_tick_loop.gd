@@ -9,6 +9,7 @@ func run() -> Array[String]:
 	_test_tick_enters_reward_when_enemies_are_gone(failures)
 	_test_tick_enters_settle_when_all_allies_are_gone(failures)
 	_test_tick_preserves_recent_death_data_before_cleanup(failures)
+	_test_attack_lock_blocks_immediate_movement(failures)
 	return failures
 
 func _test_tick_combat_advances_simulation_work(failures: Array[String]) -> void:
@@ -84,6 +85,40 @@ func _test_tick_preserves_recent_death_data_before_cleanup(failures: Array[Strin
 		_assert_eq(str(death_event.get("team", "")), "enemy" if expected_team == 1 else "ally", "death event should preserve the killed unit team before cleanup", failures)
 		_assert_true(death_event.get("position", Vector2.ZERO) != Vector2.ZERO, "death event should preserve the killed unit position before cleanup", failures)
 		_assert_true(Vector2(death_event.get("position", Vector2.ZERO)).distance_to(expected_position) < 0.8, "death event should stay near the killed unit's last position", failures)
+	controller.free()
+
+func _test_attack_lock_blocks_immediate_movement(failures: Array[String]) -> void:
+	var controller = BattleControllerScript.new(WAVE_DEFS_PATH)
+	controller.start_run()
+	var store = controller.call("get_entity_store")
+	var live_entity_ids: Array = controller.call("get_live_entity_ids")
+	var attacker_id := -1
+	var target_id := -1
+	for entity_id_variant in live_entity_ids:
+		var entity_id := int(entity_id_variant)
+		if store.team_id[entity_id] == 0:
+			attacker_id = entity_id
+			break
+	for entity_id_variant in live_entity_ids:
+		var entity_id := int(entity_id_variant)
+		if store.team_id[entity_id] == 1:
+			target_id = entity_id
+			break
+	if attacker_id == -1 or target_id == -1:
+		failures.append("tick loop attack lock test requires ally and enemy entities")
+		controller.free()
+		return
+	store.position_x[attacker_id] = 0.0
+	store.position_y[attacker_id] = 0.0
+	store.position_x[target_id] = 1.0
+	store.position_y[target_id] = 0.0
+	store.target_id[attacker_id] = target_id
+	store.attack_cd[attacker_id] = 0.0
+	controller.call("tick_combat", 0.016)
+	var locked_position := Vector2(store.position_x[attacker_id], store.position_y[attacker_id])
+	controller.call("tick_combat", 0.016)
+	var after_followup_tick := Vector2(store.position_x[attacker_id], store.position_y[attacker_id])
+	_assert_true(locked_position.distance_to(after_followup_tick) <= 0.001, "unit should remain locked in place immediately after attacking instead of moving before the attack pose finishes", failures)
 	controller.free()
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:

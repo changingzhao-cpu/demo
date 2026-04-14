@@ -115,7 +115,9 @@ func sync_from_entity_visual(world_position: Vector2, is_alive: bool, team_id: i
 	if not _is_bound:
 		visible = false
 		return
-	position = world_position
+	var should_lock_position := _attack_frame_timer > 0.0 or _attack_pulse_strength > 0.0
+	if not should_lock_position:
+		position = world_position
 	_is_enemy = team_id == 1
 	_visual_facing_sign = facing_sign if absf(facing_sign) > 0.0 else (-1.0 if _is_enemy else 1.0)
 	_visual_motion_strength = clampf(absf(move_speed) / 2.0, 0.0, MAX_MOTION_STRENGTH)

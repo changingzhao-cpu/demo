@@ -7,6 +7,7 @@ func run() -> Array[String]:
 	_test_visual_sync_exposes_facing_and_motion(failures)
 	_test_dead_visual_sync_keeps_motion_feedback_observable(failures)
 	_test_motion_feedback_stays_bounded_and_keeps_unit_readable(failures)
+	_test_attack_hold_locks_position_updates(failures)
 	return failures
 
 func _test_visual_sync_exposes_facing_and_motion(failures: Array[String]) -> void:
@@ -51,6 +52,15 @@ func _test_motion_feedback_stays_bounded_and_keeps_unit_readable(failures: Array
 	_assert_true(float(enemy_view.call("get_visual_radius")) <= 3.2, "enemy moving unit should keep a compact readable radius", failures)
 	_assert_eq(float(enemy_view.call("get_visual_facing_sign")), -1.0, "enemy motion feedback should preserve readable reverse facing", failures)
 	enemy_view.free()
+
+func _test_attack_hold_locks_position_updates(failures: Array[String]) -> void:
+	var view = UnitViewScript.new()
+	view.bind_entity(21)
+	view.call("sync_from_entity_visual", Vector2(10.0, 10.0), true, 0, 0.0, 1.0, 0)
+	view.call("trigger_attack_pulse")
+	view.call("sync_from_entity_visual", Vector2(40.0, 10.0), true, 0, 6.0, 1.0, 3)
+	_assert_eq(view.global_position, Vector2(10.0, 10.0), "unit should hold its current screen position while the attack pose is still active", failures)
+	view.free()
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:
