@@ -862,7 +862,7 @@ func _spawn_team(unit_count: int, team_id: int) -> void:
 		_entity_store.attack_interval[entity_id] = 0.5
 		_entity_store.attack_cd[entity_id] = _rng.randf_range(0.0, 0.12)
 		_entity_store.move_speed[entity_id] = _rng.randf_range(5.6, 6.4)
-		_entity_store.radius[entity_id] = 0.72
+		_entity_store.radius[entity_id] = 0.6
 		var spawn_position := _get_spawn_position(index, team_id, own_positions, other_positions)
 		own_positions.append(spawn_position)
 		_entity_store.position_x[entity_id] = spawn_position.x
