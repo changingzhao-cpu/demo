@@ -125,6 +125,11 @@ func sync_from_entity_visual(world_position: Vector2, is_alive: bool, team_id: i
 		_attack_frame_timer = maxf(_attack_frame_timer, ATTACK_STATE_HOLD)
 	_is_showing_death_state = false
 	visible = is_alive
+	if OS.is_debug_build():
+		var file := FileAccess.open("user://unit_view_sync_probe_%s.json" % str(_entity_id), FileAccess.WRITE)
+		if file != null:
+			file.store_string(JSON.stringify(debug_get_pose_snapshot(), "\t"))
+			file.close()
 	_update_visual_tint()
 	_refresh_sprite_visuals()
 	queue_redraw()
@@ -225,6 +230,11 @@ func trigger_attack_pulse() -> void:
 	_attack_pulse_strength = ATTACK_PULSE_BONUS
 	_attack_frame_timer = maxf(_attack_frame_timer, ATTACK_STATE_HOLD)
 	_visual_unit_state = UNIT_STATE_ATTACK
+	if OS.is_debug_build():
+		var file := FileAccess.open("user://unit_view_attack_pulse_probe_%s.json" % str(_entity_id), FileAccess.WRITE)
+		if file != null:
+			file.store_string(JSON.stringify(debug_get_pose_snapshot(), "\t"))
+			file.close()
 	_refresh_sprite_visuals()
 	queue_redraw()
 

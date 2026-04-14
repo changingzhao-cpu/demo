@@ -38,6 +38,7 @@ func _ready() -> void:
 func _finish_runtime_bootstrap() -> void:
 	_bind_runtime_views()
 	_generate_initial_layout()
+	_capture_initial_layout_world_mapping()
 	_apply_initial_layout_to_views()
 	_update_hud()
 	_runtime_ready = true
@@ -50,6 +51,7 @@ func _process(delta: float) -> void:
 	if _initial_layout_active:
 		_initial_layout_time += delta
 		_apply_initial_layout_to_views()
+		_consume_combat_feedback()
 		_update_hud()
 		if _initial_layout_time >= INIT_HOLD_SECONDS:
 			_initial_layout_active = false
@@ -134,18 +136,11 @@ func _bind_runtime_views() -> void:
 		elif view.has_method("unbind_entity"):
 			view.call("unbind_entity")
 		view.visible = false
-	if _controller.has_method("unregister_unit_view_by_node"):
-		for child in _unit_layer.get_children():
-			if child.has_method("get_entity_id"):
-				var bound_entity_id := int(child.call("get_entity_id"))
-				if bound_entity_id != -1 and not used_entity_ids.has(bound_entity_id):
-					child.visible = false
-	elif _unit_layer != null:
-		for child in _unit_layer.get_children():
-			if child.has_method("get_entity_id"):
-				var bound_entity_id := int(child.call("get_entity_id"))
-				if bound_entity_id != -1 and not used_entity_ids.has(bound_entity_id):
-					child.visible = false
+	for child in _unit_layer.get_children():
+		if child.has_method("get_entity_id"):
+			var bound_entity_id := int(child.call("get_entity_id"))
+			if bound_entity_id != -1 and not used_entity_ids.has(bound_entity_id):
+				child.visible = false
 
 func _generate_initial_layout() -> void:
 	_initial_layout_positions.clear()
@@ -181,22 +176,6 @@ func _fits_initial_spacing(candidate: Vector2, existing_points: Array[Vector2]) 
 			return false
 	return true
 
-func _apply_initial_layout_to_views() -> void:
-	if _controller == null:
-		return
-	var payloads: Array = _controller.call("get_visible_entity_screen_payloads", _unit_layer.get_child_count(), SCREEN_CENTER, SCREEN_SCALE)
-	for payload in payloads:
-		var entity_id := int(payload.get("entity_id", -1))
-		if entity_id == -1:
-			continue
-		var target_screen_position: Vector2 = _initial_layout_positions.get(entity_id, payload.get("position", SCREEN_CENTER))
-		var view: Node2D = _find_bound_view(entity_id)
-		if view == null:
-			continue
-		if view.has_method("sync_from_entity_visual"):
-			view.call("sync_from_entity_visual", target_screen_position, true, int(payload.get("team_id", 0)), 0.0, float(payload.get("facing_sign", 1.0)), int(payload.get("unit_state", 0)))
-	_refresh_depth_sort_for_visible_views()
-
 func _map_world_to_runtime_screen(world_position: Vector2, team_id: int) -> Vector2:
 	var effective_scale := SCREEN_SCALE * (0.72 if team_id == 1 else 1.0)
 	var x_anchor := SCREEN_CENTER.x + 54.0 if team_id == 1 else SCREEN_CENTER.x - 18.0
@@ -211,23 +190,86 @@ func _capture_initial_layout_world_mapping() -> void:
 		if entity_id == -1:
 			continue
 		var team_id := int(payload.get("team_id", 0))
-		var world_position: Vector2 = payload.get("position", Vector2.ZERO)
-		var current_screen_position := _map_world_to_runtime_screen(world_position, team_id)
-		var target_screen_position: Vector2 = _initial_layout_positions.get(entity_id, current_screen_position)
+		var target_screen_position: Vector2 = _initial_layout_positions.get(entity_id, _map_world_to_runtime_screen(payload.get("position", Vector2.ZERO), team_id))
 		var effective_scale := SCREEN_SCALE * (0.72 if team_id == 1 else 1.0)
 		var x_anchor := SCREEN_CENTER.x + 54.0 if team_id == 1 else SCREEN_CENTER.x - 18.0
 		var remapped_world := Vector2(
 			(target_screen_position.x - x_anchor) / maxf(effective_scale.x, 0.0001),
 			(target_screen_position.y - SCREEN_CENTER.y) / maxf(effective_scale.y, 0.0001)
 		)
-		if _controller.has_method("set_entity_world_position"):
-			_controller.call("set_entity_world_position", entity_id, remapped_world)
-		elif _controller.has_method("get_entity_store"):
+		if _controller.has_method("get_entity_store"):
 			var store = _controller.call("get_entity_store")
 			store.position_x[entity_id] = remapped_world.x
 			store.position_y[entity_id] = remapped_world.y
 			if _controller.has_method("refresh_entity_in_spatial_grid"):
 				_controller.call("refresh_entity_in_spatial_grid", entity_id)
+	_refresh_depth_sort_for_visible_views()
+
+func _apply_initial_layout_to_views() -> void:
+	if _controller == null:
+		return
+	var payloads: Array = _controller.call("get_visible_entity_screen_payloads", _unit_layer.get_child_count(), SCREEN_CENTER, SCREEN_SCALE)
+	for payload in payloads:
+		var entity_id := int(payload.get("entity_id", -1))
+		if entity_id == -1:
+			continue
+		var runtime_screen_position: Vector2 = payload.get("position", SCREEN_CENTER)
+		var view: Node2D = _find_bound_view(entity_id)
+		if view == null:
+			continue
+		if view.has_method("sync_from_entity_visual"):
+			view.call("sync_from_entity_visual", runtime_screen_position, true, int(payload.get("team_id", 0)), 0.0, float(payload.get("facing_sign", 1.0)), int(payload.get("unit_state", 0)))
+	_refresh_depth_sort_for_visible_views()
+
+func _write_combat_feedback_probe(events: Array) -> void:
+	if not OS.is_debug_build() or _controller == null:
+		return
+	var entries: Array = []
+	for event in events:
+		var event_type := str(event.get("type", ""))
+		var attacker_id := int(event.get("attacker_id", -1))
+		var target_id := int(event.get("target_id", -1))
+		entries.append({
+			"type": event_type,
+			"attacker_id": attacker_id,
+			"attacker_view_bound": _controller.call("debug_has_bound_view", attacker_id) if _controller.has_method("debug_has_bound_view") else false,
+			"target_id": target_id,
+			"target_view_bound": _controller.call("debug_has_bound_view", target_id) if _controller.has_method("debug_has_bound_view") else false
+		})
+	var file := FileAccess.open("user://combat_feedback_probe.json", FileAccess.WRITE)
+	if file != null:
+		file.store_string(JSON.stringify({"events": entries}, "\t"))
+		file.close()
+
+func _consume_combat_feedback() -> void:
+	if _controller == null or _effect_pool == null or not _controller.has_method("consume_recent_combat_events"):
+		return
+	var combat_events: Array = _controller.call("consume_recent_combat_events")
+	_write_combat_feedback_probe(combat_events)
+	for combat_event in combat_events:
+		var event_type := str(combat_event.get("type", ""))
+		var target_position: Vector2 = combat_event.get("target_position", Vector2.ZERO)
+		if event_type == "attack":
+			_effect_pool.call("spawn_visual_event", "hit_flash", target_position, "enemy", 0.08)
+		elif event_type == "knockback":
+			_effect_pool.call("spawn_visual_event", "knockback_trail", target_position, "enemy", 0.1)
+		elif event_type == "launch":
+			_effect_pool.call("spawn_visual_event", "launch_burst", target_position, "enemy", 0.1)
+	_sync_effect_nodes()
+	if _controller.has_method("apply_recent_combat_feedback_to_views"):
+		_controller.call("apply_recent_combat_feedback_to_views")
+	if OS.is_debug_build() and _unit_layer != null:
+		var pulse_entries: Array = []
+		for child in _unit_layer.get_children():
+			if child.visible and child.has_method("get_entity_id") and child.has_method("debug_get_pose_snapshot"):
+				pulse_entries.append({
+					"entity_id": int(child.call("get_entity_id")),
+					"pose": child.call("debug_get_pose_snapshot")
+				})
+		var pulse_file := FileAccess.open("user://combat_pulse_probe.json", FileAccess.WRITE)
+		if pulse_file != null:
+			pulse_file.store_string(JSON.stringify({"views": pulse_entries}, "\t"))
+			pulse_file.close()
 	_refresh_depth_sort_for_visible_views()
 
 func _sync_runtime_screen_space_views() -> void:
@@ -262,9 +304,6 @@ func _sync_runtime_screen_space_views() -> void:
 		if view_file != null:
 			view_file.store_string(JSON.stringify({"views": view_entries}, "\t"))
 			view_file.close()
-	if _effect_layer != null:
-		_effect_layer.position = Vector2.ZERO
-		_effect_layer.scale = Vector2.ONE
 
 func _debug_dump_transition_probe(stage: String) -> void:
 	if _unit_layer == null or _controller == null:
@@ -309,8 +348,6 @@ func _tick_effect_feedback(delta: float) -> void:
 	_sync_effect_nodes()
 
 func _consume_death_feedback() -> void:
-	if _initial_layout_active:
-		return
 	if _controller == null or _effect_pool == null or not _controller.has_method("consume_recently_died_entities"):
 		return
 	var death_events: Array = _controller.call("consume_recently_died_entities")
@@ -319,23 +356,6 @@ func _consume_death_feedback() -> void:
 		var world_position: Vector2 = death_event.get("position", Vector2.ZERO)
 		_effect_pool.call("spawn_visual_event", "%s_corpse" % team, world_position, team, 0.8)
 	_sync_effect_nodes()
-
-func _consume_combat_feedback() -> void:
-	if _initial_layout_active:
-		return
-	if _controller == null or _effect_pool == null or not _controller.has_method("consume_recent_combat_events"):
-		return
-	var combat_events: Array = _controller.call("consume_recent_combat_events")
-	for combat_event in combat_events:
-		var event_type := str(combat_event.get("type", ""))
-		var target_position: Vector2 = combat_event.get("target_position", Vector2.ZERO)
-		if event_type == "attack":
-			_effect_pool.call("spawn_visual_event", "hit_flash", target_position, "enemy", 0.08)
-		elif event_type == "knockback":
-			_effect_pool.call("spawn_visual_event", "knockback_trail", target_position, "enemy", 0.1)
-		elif event_type == "launch":
-			_effect_pool.call("spawn_visual_event", "launch_burst", target_position, "enemy", 0.1)
-		_sync_effect_nodes()
 
 func _sync_effect_nodes() -> void:
 	if _effect_layer == null or _effect_pool == null or not _effect_pool.has_method("get_active_effects"):
@@ -381,6 +401,7 @@ func _on_reward_selected(_index: int) -> void:
 	_initial_layout_time = 0.0
 	_bind_runtime_views()
 	_generate_initial_layout()
+	_capture_initial_layout_world_mapping()
 	_apply_initial_layout_to_views()
 	if _reward_panel != null:
 		_reward_panel.visible = false

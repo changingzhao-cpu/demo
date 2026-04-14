@@ -9,11 +9,41 @@ func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_scene_contains_runtime_layers(failures)
 	_test_controller_bootstrap_exposes_unit_views(failures)
+	_test_initial_layout_uses_runtime_combat_positions(failures)
 	_test_runtime_keeps_units_visible_after_initial_layout(failures)
 	_test_runtime_preserves_spread_after_initial_layout(failures)
 	_test_runtime_keeps_visible_views_near_screen_bounds(failures)
 	_test_runtime_view_spread_matches_controller_payload_spread(failures)
 	return failures
+
+func _test_initial_layout_uses_runtime_combat_positions(failures: Array[String]) -> void:
+	var battle_scene = _load_battle_scene()
+	_assert_true(battle_scene != null, "battle scene should load before initial/runtime position parity checks", failures)
+	if battle_scene == null:
+		return
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = battle_scene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	var unit_layer = instance.get_node_or_null("UnitLayer")
+	if controller != null and unit_layer != null and controller.has_method("get_visible_entity_screen_payloads"):
+		var payloads: Array = controller.call("get_visible_entity_screen_payloads", unit_layer.get_child_count(), Vector2(640.0, 392.0), Vector2(28.0, 20.0))
+		var payload_positions_by_entity: Dictionary = {}
+		for payload_variant in payloads:
+			var payload: Dictionary = payload_variant
+			payload_positions_by_entity[int(payload.get("entity_id", -1))] = payload.get("position", Vector2.ZERO)
+		var matched_count := 0
+		for child in unit_layer.get_children():
+			if child.visible and child is Node2D and child.has_method("get_entity_id"):
+				var entity_id := int(child.call("get_entity_id"))
+				if payload_positions_by_entity.has(entity_id):
+					var view_position: Vector2 = (child as Node2D).global_position
+					if view_position.distance_to(payload_positions_by_entity[entity_id]) <= 12.0:
+						matched_count += 1
+		_assert_true(matched_count >= 12, "initial visible layout should already use runtime combat positions instead of an unrelated random screen layout", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
 
 func _test_runtime_preserves_spread_after_initial_layout(failures: Array[String]) -> void:
 	var battle_scene = _load_battle_scene()

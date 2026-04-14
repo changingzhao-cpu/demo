@@ -167,6 +167,11 @@ func get_recently_died_entities() -> Array[Dictionary]:
 
 func consume_recent_combat_events() -> Array[Dictionary]:
 	var events := _recent_combat_events.duplicate(true)
+	if OS.is_debug_build():
+		var file := FileAccess.open("user://controller_consume_combat_events_probe.json", FileAccess.WRITE)
+		if file != null:
+			file.store_string(JSON.stringify({"events": events}, "\t"))
+			file.close()
 	_recent_combat_events.clear()
 	return events
 
@@ -438,6 +443,12 @@ func _record_first_attack_times(report: Dictionary) -> void:
 
 func debug_get_first_attack_times() -> Dictionary:
 	return _first_attack_time_by_entity.duplicate(true)
+
+func debug_has_bound_view(entity_id: int) -> bool:
+	return _unit_views_by_entity.has(entity_id)
+
+func apply_recent_combat_feedback_to_views() -> void:
+	_apply_recent_combat_feedback_to_views()
 
 func _debug_dump_tick_probe(stage: String) -> void:
 	if _entity_store == null:
@@ -722,8 +733,29 @@ func _collect_recent_combat_events(report: Dictionary) -> void:
 	var events: Array = report.get("events", [])
 	for event in events:
 		_recent_combat_events.append(event.duplicate(true))
+		_apply_combat_event_to_bound_views(event)
 	while _recent_combat_events.size() > MAX_RECENT_COMBAT_EVENTS:
 		_recent_combat_events.pop_front()
+	if OS.is_debug_build():
+		var file := FileAccess.open("user://controller_recent_combat_events_probe.json", FileAccess.WRITE)
+		if file != null:
+			file.store_string(JSON.stringify({"events": _recent_combat_events}, "\t"))
+			file.close()
+
+func _apply_combat_event_to_bound_views(event: Dictionary) -> void:
+	var event_type := str(event.get("type", ""))
+	var attacker_id := int(event.get("attacker_id", -1))
+	if attacker_id != -1 and _unit_views_by_entity.has(attacker_id) and event_type == "attack":
+		var attacker_view = _unit_views_by_entity[attacker_id]
+		if attacker_view != null and attacker_view.has_method("trigger_attack_pulse"):
+			attacker_view.call("trigger_attack_pulse")
+	var target_id := int(event.get("target_id", -1))
+	if target_id != -1 and _unit_views_by_entity.has(target_id) and (event_type == "attack" or event_type == "kill"):
+		var target_view = _unit_views_by_entity[target_id]
+		if target_view != null and target_view.has_method("trigger_hit_pulse"):
+			target_view.call("trigger_hit_pulse")
+
+
 
 func _has_recent_death_for_entity(entity_id: int) -> bool:
 	for event in _recently_died_entities:

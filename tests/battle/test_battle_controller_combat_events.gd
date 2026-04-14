@@ -3,10 +3,26 @@ extends RefCounted
 const BattleControllerScript = preload("res://scripts/battle/battle_controller.gd")
 const WAVE_DEFS_PATH := "res://data/wave_defs.json"
 
+class RecordingCombatView:
+	extends RefCounted
+
+	var attack_pulses := 0
+	var hit_pulses := 0
+
+	func bind_entity(_entity_id: int) -> void:
+		pass
+
+	func trigger_attack_pulse() -> void:
+		attack_pulses += 1
+
+	func trigger_hit_pulse() -> void:
+		hit_pulses += 1
+
 func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_controller_exposes_recent_combat_event_api(failures)
 	_test_controller_acquires_targets_and_moves_before_contact(failures)
+	_test_attack_events_drive_bound_view_pulses(failures)
 	return failures
 
 func _test_controller_exposes_recent_combat_event_api(failures: Array[String]) -> void:
@@ -61,6 +77,38 @@ func _test_controller_acquires_targets_and_moves_before_contact(failures: Array[
 	_assert_true(moved_signal_frames >= 2 or saw_contact_signal, "battle controller should either show some pursuit or reach contact quickly instead of stalling", failures)
 	_assert_true(saw_advancing_runtime or saw_contact_signal, "battle controller should advance toward battle after acquiring targets instead of stalling in place", failures)
 	_assert_true(saw_movement_signal and saw_target_acquired, "battle controller should demonstrate real pursuit after target acquisition", failures)
+	controller.free()
+
+func _test_attack_events_drive_bound_view_pulses(failures: Array[String]) -> void:
+	var controller = BattleControllerScript.new(WAVE_DEFS_PATH)
+	controller.start_run()
+	_assert_true(controller.has_method("get_live_entity_ids"), "battle controller should expose live entity ids for view pulse checks", failures)
+	_assert_true(controller.has_method("register_unit_view"), "battle controller should allow binding runtime views for pulse checks", failures)
+	if not controller.has_method("get_live_entity_ids") or not controller.has_method("register_unit_view"):
+		controller.free()
+		return
+	var live_entity_ids: Array = controller.call("get_live_entity_ids")
+	var views_by_entity: Dictionary = {}
+	for entity_id_variant in live_entity_ids:
+		var entity_id := int(entity_id_variant)
+		var view := RecordingCombatView.new()
+		views_by_entity[entity_id] = view
+		controller.call("register_unit_view", entity_id, view)
+	var saw_attack_event := false
+	var saw_attack_pulse := false
+	for _step in range(240):
+		controller.call("tick_combat", 0.016)
+		var events: Array = controller.call("get_recent_combat_events") if controller.has_method("get_recent_combat_events") else []
+		if not events.is_empty():
+			saw_attack_event = true
+		for view in views_by_entity.values():
+			if int(view.attack_pulses) > 0:
+				saw_attack_pulse = true
+				break
+		if saw_attack_event and saw_attack_pulse:
+			break
+	_assert_true(saw_attack_event, "battle controller should eventually produce attack events for bound view pulse checks", failures)
+	_assert_true(saw_attack_pulse, "attack events should drive at least one bound attacker pulse without relying on scene-level event consumption", failures)
 	controller.free()
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
