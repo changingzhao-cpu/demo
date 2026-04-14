@@ -38,7 +38,7 @@ func _initialize() -> void:
 		var controller := instance.get_node_or_null("BattleController")
 		var unit_layer := instance.get_node_or_null("UnitLayer")
 		var tracked_entities: Dictionary = {}
-		for tracked_id in [10, 17]:
+		for tracked_id in [10, 17, 26, 40]:
 			var entity_payload: Dictionary = controller.call("debug_get_entity_diagnostic", tracked_id) if controller != null and controller.has_method("debug_get_entity_diagnostic") else {"entity_id": tracked_id, "exists": false}
 			var entity_view_snapshot: Dictionary = {}
 			if unit_layer != null:

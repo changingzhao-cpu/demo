@@ -213,17 +213,19 @@ func _capture_initial_layout_world_mapping() -> void:
 func _apply_initial_layout_to_views() -> void:
 	if _controller == null:
 		return
-	var payloads: Array = _controller.call("get_visible_entity_screen_payloads", _unit_layer.get_child_count(), SCREEN_CENTER, SCREEN_SCALE)
-	for payload in payloads:
-		var entity_id := int(payload.get("entity_id", -1))
+	for child in _unit_layer.get_children():
+		if not child.has_method("get_entity_id"):
+			continue
+		var entity_id := int(child.call("get_entity_id"))
 		if entity_id == -1:
 			continue
-		var runtime_screen_position: Vector2 = payload.get("position", SCREEN_CENTER)
-		var view: Node2D = _find_bound_view(entity_id)
-		if view == null:
+		var payload: Dictionary = _controller.call("get_entity_visual_state", entity_id) if _controller.has_method("get_entity_visual_state") else {}
+		if payload.is_empty():
 			continue
-		if view.has_method("sync_from_entity_visual"):
-			view.call("sync_from_entity_visual", runtime_screen_position, true, int(payload.get("team_id", 0)), 0.0, float(payload.get("facing_sign", 1.0)), int(payload.get("unit_state", 0)))
+		var team_id := int(payload.get("team_id", 0))
+		var runtime_screen_position: Vector2 = _initial_layout_positions.get(entity_id, _map_world_to_runtime_screen(payload.get("position", Vector2.ZERO), team_id))
+		if child.has_method("sync_from_entity_visual"):
+			child.call("sync_from_entity_visual", runtime_screen_position, bool(payload.get("is_alive", true)), team_id, 0.0, float(payload.get("facing_sign", 1.0)), int(payload.get("unit_state", 0)))
 	_refresh_depth_sort_for_visible_views()
 
 func _write_combat_feedback_probe(events: Array) -> void:

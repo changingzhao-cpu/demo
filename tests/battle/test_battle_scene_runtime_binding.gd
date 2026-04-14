@@ -15,6 +15,7 @@ func run() -> Array[String]:
 	_test_runtime_keeps_visible_views_near_screen_bounds(failures)
 	_test_runtime_view_spread_matches_controller_payload_spread(failures)
 	_test_fixed_initial_layout_is_deterministic_across_instances(failures)
+	_test_initial_layout_syncs_bound_entities_26_and_40_before_combat_starts(failures)
 	return failures
 
 func _test_initial_layout_uses_runtime_combat_positions(failures: Array[String]) -> void:
@@ -185,6 +186,29 @@ func _collect_visible_positions_by_entity(unit_layer) -> Dictionary:
 		if child.visible and child is Node2D and child.has_method("get_entity_id"):
 			positions[int(child.call("get_entity_id"))] = (child as Node2D).global_position
 	return positions
+
+func _test_initial_layout_syncs_bound_entities_26_and_40_before_combat_starts(failures: Array[String]) -> void:
+	var battle_scene = _load_battle_scene()
+	_assert_true(battle_scene != null, "battle scene should load before initial bound-entity sync checks", failures)
+	if battle_scene == null:
+		return
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = battle_scene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var unit_layer = instance.get_node_or_null("UnitLayer")
+	var missing_initial_sync := []
+	if unit_layer != null:
+		for tracked_id in [26, 40]:
+			for child in unit_layer.get_children():
+				if child.has_method("get_entity_id") and int(child.call("get_entity_id")) == tracked_id and child is Node2D:
+					var position := (child as Node2D).global_position
+					if position.distance_to(Vector2.ZERO) <= 0.001:
+						missing_initial_sync.append(tracked_id)
+					break
+	_assert_true(missing_initial_sync.is_empty(), "initial layout should sync bound entities 26 and 40 before combat starts instead of leaving them at the origin", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
 
 func _test_runtime_keeps_units_visible_after_initial_layout(failures: Array[String]) -> void:
 	var battle_scene = _load_battle_scene()
