@@ -8,6 +8,8 @@ const INIT_REGION_RADIUS := Vector2(344.0, 220.0)
 const INIT_MIN_DISTANCE := 9.0
 const INIT_JITTER := 5.0
 const INIT_HOLD_SECONDS := 1.2
+const DEBUG_FIXED_INITIAL_LAYOUT := true
+const DEBUG_FIXED_INITIAL_LAYOUT_SEED := 20260414
 
 @onready var _controller = $BattleController
 @onready var _unit_layer: Node2D = $UnitLayer
@@ -25,7 +27,10 @@ var _initial_layout_active := true
 var _initial_layout_positions: Dictionary = {}
 
 func _ready() -> void:
-	_initial_layout_rng.randomize()
+	if DEBUG_FIXED_INITIAL_LAYOUT:
+		_initial_layout_rng.seed = DEBUG_FIXED_INITIAL_LAYOUT_SEED
+	else:
+		_initial_layout_rng.randomize()
 	_setup_effect_pool()
 	if _controller != null:
 		_controller.set_process(false)

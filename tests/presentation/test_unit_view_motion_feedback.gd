@@ -81,10 +81,10 @@ func _test_alive_label_reflects_bound_and_death_state(failures: Array[String]) -
 	var label = view.get_node_or_null("AliveLabel")
 	_assert_true(label is Label, "unit view should create an AliveLabel for head-top status debugging", failures)
 	if label is Label:
-		_assert_eq(label.text, "1", "bound living unit should show 1 above its head", failures)
+		_assert_eq(label.text, "42:1", "bound living unit should show entity id and alive state above its head", failures)
 	view.call("sync_from_entity_visual", Vector2(5.0, 5.0), false, 0, 0.0, 1.0, 0)
 	if label is Label:
-		_assert_eq(label.text, "0", "dead unit should show 0 above its head", failures)
+		_assert_eq(label.text, "42:0", "dead unit should show entity id and dead state above its head", failures)
 		_assert_true(label.visible, "alive label should remain visible after death so the debug marker can be inspected", failures)
 	view.free()
 

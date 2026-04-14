@@ -411,13 +411,16 @@ func _ensure_sprite_nodes() -> void:
 func _update_alive_label() -> void:
 	var label = get_node_or_null("AliveLabel")
 	if label is Label:
-		label.text = "1" if _is_bound and visible else "0"
+		var alive_text := "1" if _is_bound and visible else "0"
+		label.text = "%s:%s" % [str(_entity_id), alive_text]
 		label.visible = _is_bound
 		label.modulate = Color(0.2, 1.0, 0.2, 1.0) if visible else Color(1.0, 0.25, 0.25, 1.0)
 		label.add_theme_color_override("font_color", label.modulate)
 		label.add_theme_font_size_override("font_size", 14)
 		label.add_theme_constant_override("outline_size", 2)
 		label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 1.0))
+		if not _is_bound:
+			label.text = ""
 
 func _refresh_sprite_visuals() -> void:
 	var body: Sprite2D = get_node_or_null("BodySprite")

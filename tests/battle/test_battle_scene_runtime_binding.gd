@@ -14,6 +14,7 @@ func run() -> Array[String]:
 	_test_runtime_preserves_spread_after_initial_layout(failures)
 	_test_runtime_keeps_visible_views_near_screen_bounds(failures)
 	_test_runtime_view_spread_matches_controller_payload_spread(failures)
+	_test_fixed_initial_layout_is_deterministic_across_instances(failures)
 	return failures
 
 func _test_initial_layout_uses_runtime_combat_positions(failures: Array[String]) -> void:
@@ -147,6 +148,43 @@ func _x_spread(positions: Array[Vector2]) -> float:
 		min_x = minf(min_x, position.x)
 		max_x = maxf(max_x, position.x)
 	return max_x - min_x
+
+func _test_fixed_initial_layout_is_deterministic_across_instances(failures: Array[String]) -> void:
+	var battle_scene = _load_battle_scene()
+	_assert_true(battle_scene != null, "battle scene should load before deterministic initial layout checks", failures)
+	if battle_scene == null:
+		return
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var first_instance = battle_scene.instantiate()
+	var second_instance = battle_scene.instantiate()
+	main_loop.root.add_child(first_instance)
+	await main_loop.process_frame
+	var first_positions := _collect_visible_positions_by_entity(first_instance.get_node_or_null("UnitLayer"))
+	main_loop.root.remove_child(first_instance)
+	first_instance.free()
+	main_loop.root.add_child(second_instance)
+	await main_loop.process_frame
+	var second_positions := _collect_visible_positions_by_entity(second_instance.get_node_or_null("UnitLayer"))
+	_assert_true(first_positions.size() >= 12, "deterministic layout check should capture enough visible views in the first instance", failures)
+	_assert_true(second_positions.size() >= 12, "deterministic layout check should capture enough visible views in the second instance", failures)
+	var matched_count := 0
+	for entity_id in first_positions.keys():
+		if not second_positions.has(entity_id):
+			continue
+		if first_positions[entity_id].distance_to(second_positions[entity_id]) <= 0.001:
+			matched_count += 1
+	_assert_true(matched_count >= 12, "fixed initial layout mode should place the same visible entities at the same positions across scene instances", failures)
+	main_loop.root.remove_child(second_instance)
+	second_instance.free()
+
+func _collect_visible_positions_by_entity(unit_layer) -> Dictionary:
+	var positions := {}
+	if unit_layer == null:
+		return positions
+	for child in unit_layer.get_children():
+		if child.visible and child is Node2D and child.has_method("get_entity_id"):
+			positions[int(child.call("get_entity_id"))] = (child as Node2D).global_position
+	return positions
 
 func _test_runtime_keeps_units_visible_after_initial_layout(failures: Array[String]) -> void:
 	var battle_scene = _load_battle_scene()
