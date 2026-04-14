@@ -10,6 +10,7 @@ func run() -> Array[String]:
 	_test_tick_enters_settle_when_all_allies_are_gone(failures)
 	_test_tick_preserves_recent_death_data_before_cleanup(failures)
 	_test_attack_lock_blocks_immediate_movement(failures)
+	_test_tick_acquires_target_before_first_move_and_faces_target_side(failures)
 	return failures
 
 func _test_tick_combat_advances_simulation_work(failures: Array[String]) -> void:
@@ -119,6 +120,44 @@ func _test_attack_lock_blocks_immediate_movement(failures: Array[String]) -> voi
 	controller.call("tick_combat", 0.016)
 	var after_followup_tick := Vector2(store.position_x[attacker_id], store.position_y[attacker_id])
 	_assert_true(locked_position.distance_to(after_followup_tick) <= 0.001, "unit should remain locked in place immediately after attacking instead of moving before the attack pose finishes", failures)
+	controller.free()
+
+func _test_tick_acquires_target_before_first_move_and_faces_target_side(failures: Array[String]) -> void:
+	var controller = BattleControllerScript.new(WAVE_DEFS_PATH)
+	controller.start_run()
+	var store = controller.call("get_entity_store")
+	var live_entity_ids: Array = controller.call("get_live_entity_ids")
+	var ally_id := -1
+	var enemy_id := -1
+	for entity_id_variant in live_entity_ids:
+		var entity_id := int(entity_id_variant)
+		if store.team_id[entity_id] == 0:
+			ally_id = entity_id
+			break
+	for entity_id_variant in live_entity_ids:
+		var entity_id := int(entity_id_variant)
+		if store.team_id[entity_id] == 1:
+			enemy_id = entity_id
+			break
+	if ally_id == -1 or enemy_id == -1:
+		failures.append("tick loop facing test requires ally and enemy entities")
+		controller.free()
+		return
+	store.position_x[ally_id] = 0.0
+	store.position_y[ally_id] = 0.0
+	store.velocity_x[ally_id] = 0.0
+	store.velocity_y[ally_id] = 0.0
+	store.target_id[ally_id] = -1
+	store.position_x[enemy_id] = 6.0
+	store.position_y[enemy_id] = 0.0
+	controller.call("tick_combat", 0.016)
+	var acquired_target_id := int(store.target_id[ally_id])
+	_assert_true(acquired_target_id != -1, "tick should acquire a target before movement begins", failures)
+	var payload: Dictionary = controller.call("get_entity_visual_state", ally_id)
+	var acquired_target_x := float(store.position_x[acquired_target_id])
+	var expected_facing := 1.0 if acquired_target_x > store.position_x[ally_id] else -1.0
+	_assert_eq(float(payload.get("facing_sign", 0.0)), expected_facing, "after acquiring a target, the unit should face the target side before moving or attacking", failures)
+	_assert_eq(float(store.velocity_x[ally_id]), 0.0, "facing acquisition test should verify orientation before horizontal movement starts", failures)
 	controller.free()
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:

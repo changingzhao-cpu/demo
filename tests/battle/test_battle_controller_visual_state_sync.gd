@@ -28,6 +28,7 @@ func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_sync_unit_views_pushes_visual_runtime_state(failures)
 	_test_sync_unit_views_marks_dead_visual_state(failures)
+	_test_sync_unit_views_faces_target_direction_even_before_movement(failures)
 	return failures
 
 func _test_sync_unit_views_pushes_visual_runtime_state(failures: Array[String]) -> void:
@@ -75,6 +76,35 @@ func _test_sync_unit_views_marks_dead_visual_state(failures: Array[String]) -> v
 	_assert_eq(view.last_team, 1, "visual sync should preserve enemy team id for dead views", failures)
 	_assert_eq(view.last_position, Vector2(-6.0, 9.5), "visual sync should preserve the latest entity position for death feedback", failures)
 	_assert_eq(view.last_facing, -1.0, "visual sync should expose enemy-facing direction", failures)
+	controller.free()
+
+func _test_sync_unit_views_faces_target_direction_even_before_movement(failures: Array[String]) -> void:
+	var controller = BattleControllerScript.new(WAVE_DEFS_PATH)
+	controller.start_run()
+	var live_entity_ids: Array = controller.call("get_live_entity_ids")
+	_assert_true(live_entity_ids.size() > 6, "battle controller should create enough entities for facing-direction checks", failures)
+	if live_entity_ids.size() <= 6:
+		controller.free()
+		return
+	var ally_id := int(live_entity_ids[0])
+	var enemy_id := int(live_entity_ids[6])
+	var store = controller.call("get_entity_store")
+	store.position_x[ally_id] = 0.0
+	store.position_y[ally_id] = 0.0
+	store.velocity_x[ally_id] = 0.0
+	store.velocity_y[ally_id] = 0.0
+	store.target_id[ally_id] = enemy_id
+	store.position_x[enemy_id] = 5.0
+	store.position_y[enemy_id] = 0.0
+	var right_view = RecordingView.new()
+	controller.call("register_unit_view", ally_id, right_view)
+	controller.call("sync_unit_views")
+	_assert_eq(right_view.last_facing, 1.0, "visual sync should face right as soon as the target is on the right even before movement starts", failures)
+	store.position_x[enemy_id] = -5.0
+	var left_view = RecordingView.new()
+	controller.call("register_unit_view", ally_id, left_view)
+	controller.call("sync_unit_views")
+	_assert_eq(left_view.last_facing, -1.0, "visual sync should face left as soon as the target is on the left even before movement starts", failures)
 	controller.free()
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
