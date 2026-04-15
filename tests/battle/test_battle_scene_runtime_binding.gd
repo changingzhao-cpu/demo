@@ -17,6 +17,7 @@ func run() -> Array[String]:
 	_test_fixed_initial_layout_is_deterministic_across_instances(failures)
 	_test_initial_layout_syncs_bound_entities_26_and_40_before_combat_starts(failures)
 	_test_initial_binding_keeps_slot_entity_ids_stable_across_instances(failures)
+	_test_runtime_probe_exports_battle_report_timeline(failures)
 	return failures
 
 func _test_initial_layout_uses_runtime_combat_positions(failures: Array[String]) -> void:
@@ -245,6 +246,23 @@ func _collect_bound_entity_ids_by_slot(unit_layer) -> Array[int]:
 		if child.has_method("get_entity_id"):
 			ids.append(int(child.call("get_entity_id")))
 	return ids
+
+func _test_runtime_probe_exports_battle_report_timeline(failures: Array[String]) -> void:
+	var probe_text := FileAccess.get_file_as_string("user://runtime_probe.json")
+	if probe_text == "":
+		return
+	var json := JSON.new()
+	var parse_result := json.parse(probe_text)
+	_assert_true(parse_result == OK, "runtime probe output should remain valid JSON after battle report export expansion", failures)
+	if parse_result != OK:
+		return
+	var payload: Dictionary = json.data
+	_assert_true(payload.has("battle_report_timeline"), "runtime probe output should expose battle_report_timeline key", failures)
+	var timeline: Array = payload.get("battle_report_timeline", [])
+	_assert_true(timeline is Array, "battle_report_timeline should remain an Array in runtime probe output", failures)
+	if timeline.is_empty():
+		return
+	_assert_true(str(timeline[0].get("event_type", "")) != "", "battle_report_timeline entries should include event_type when present", failures)
 
 func _test_runtime_keeps_units_visible_after_initial_layout(failures: Array[String]) -> void:
 	var battle_scene = _load_battle_scene()

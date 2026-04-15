@@ -74,6 +74,8 @@ var _first_attack_time_by_entity: Dictionary = {}
 var _recently_died_entities: Array[Dictionary] = []
 var _recent_combat_events: Array[Dictionary] = []
 var _full_attack_history: Array[Dictionary] = []
+var _battle_report_timeline: Array[Dictionary] = []
+var _battle_report_last_snapshot_by_entity: Dictionary = {}
 var _tick_bucket_index := 0
 var _tick_bucket_count := 4
 var _tick_accumulator := 0.0
@@ -157,6 +159,9 @@ func get_last_tick_report() -> Dictionary:
 
 func get_recent_combat_events() -> Array[Dictionary]:
 	return _recent_combat_events.duplicate(true)
+
+func get_battle_report_timeline() -> Array[Dictionary]:
+	return _battle_report_timeline.duplicate(true)
 
 func consume_recently_died_entities() -> Array[Dictionary]:
 	var events := _recently_died_entities.duplicate(true)
@@ -463,6 +468,7 @@ func tick_combat(delta: float) -> void:
 		_collect_recent_combat_events(_last_tick_report)
 		_record_recent_deaths()
 		_infer_movement_signal_from_runtime()
+		_record_battle_report_events_after_tick()
 		_update_combat_state_after_tick()
 		if OS.is_debug_build():
 			_debug_dump_tick_probe("after")
@@ -479,6 +485,168 @@ func _record_first_attack_times(report: Dictionary) -> void:
 		if attacker_id == -1 or _first_attack_time_by_entity.has(attacker_id):
 			continue
 		_first_attack_time_by_entity[attacker_id] = _runtime_elapsed_seconds
+
+func _initialize_battle_report_timeline() -> void:
+	if _entity_store == null:
+		return
+	for entity_id in _live_entity_ids:
+		if entity_id < 0 or entity_id >= _entity_store.capacity:
+			continue
+		var snapshot := _build_battle_report_snapshot(entity_id)
+		_battle_report_last_snapshot_by_entity[entity_id] = snapshot
+		_append_battle_report_event(_build_unit_initialized_event(entity_id, snapshot))
+
+func _record_battle_report_events() -> void:
+	if _entity_store == null:
+		return
+	for entity_id in _live_entity_ids:
+		if entity_id < 0 or entity_id >= _entity_store.capacity:
+			continue
+		if not _entity_store.alive[entity_id]:
+			continue
+		var current := _build_battle_report_snapshot(entity_id)
+		var previous: Dictionary = _battle_report_last_snapshot_by_entity.get(entity_id, {})
+		if previous.is_empty():
+			_battle_report_last_snapshot_by_entity[entity_id] = current
+			_append_battle_report_event(_build_unit_initialized_event(entity_id, current))
+			continue
+		if _did_target_change(previous, current):
+			_append_battle_report_event(_build_target_changed_event(entity_id, previous, current))
+		if _did_slot_change(previous, current):
+			_append_battle_report_event(_build_slot_changed_event(entity_id, previous, current))
+		if _did_start_moving(previous, current):
+			_append_battle_report_event(_build_move_started_event(entity_id, current))
+		if _did_start_attacking(previous, current):
+			_append_battle_report_event(_build_attack_started_event(entity_id, current))
+		_battle_report_last_snapshot_by_entity[entity_id] = current
+	for death_event in _recently_died_entities:
+		if bool(death_event.get("reported_to_battle_timeline", false)):
+			continue
+		_append_battle_report_event(_build_death_event(death_event))
+		death_event["reported_to_battle_timeline"] = true
+
+func _build_battle_report_snapshot(entity_id: int) -> Dictionary:
+	var target_id := int(_entity_store.target_id[entity_id])
+	var target_position := _get_entity_position(target_id) if target_id >= 0 and target_id < _entity_store.capacity else Vector2.ZERO
+	return {
+		"entity_id": entity_id,
+		"team_id": _get_entity_team_id(entity_id),
+		"state": _get_entity_state(entity_id),
+		"state_name": _debug_state_name(_get_entity_state(entity_id)),
+		"combat_phase": int(_entity_store.combat_phase[entity_id]),
+		"position": _get_entity_position(entity_id),
+		"velocity": Vector2(_entity_store.velocity_x[entity_id], _entity_store.velocity_y[entity_id]),
+		"target_id": target_id,
+		"target_position": target_position,
+		"engagement_slot": int(_entity_store.engagement_slot[entity_id]),
+		"locked_target_id": int(_entity_store.locked_target_id[entity_id]),
+		"locked_slot_index": int(_entity_store.locked_slot_index[entity_id]),
+		"contact_anchor_position": Vector2(_entity_store.contact_anchor_x[entity_id], _entity_store.contact_anchor_y[entity_id]),
+		"contact_settle_time": float(_entity_store.contact_settle_time[entity_id])
+	}
+
+func _build_unit_initialized_event(entity_id: int, snapshot: Dictionary) -> Dictionary:
+	return {
+		"time": _runtime_elapsed_seconds,
+		"event_type": "unit_initialized",
+		"entity_id": entity_id,
+		"team_id": int(snapshot.get("team_id", -1)),
+		"state": str(snapshot.get("state_name", "")),
+		"position": snapshot.get("position", Vector2.ZERO),
+		"spawn_index": _live_entity_ids.find(entity_id)
+	}
+
+func _build_move_started_event(entity_id: int, snapshot: Dictionary) -> Dictionary:
+	return {
+		"time": _runtime_elapsed_seconds,
+		"event_type": "move_started",
+		"entity_id": entity_id,
+		"team_id": int(snapshot.get("team_id", -1)),
+		"state": str(snapshot.get("state_name", "")),
+		"position": snapshot.get("position", Vector2.ZERO),
+		"target_id": int(snapshot.get("target_id", -1)),
+		"target_position": snapshot.get("target_position", Vector2.ZERO),
+		"engagement_slot": int(snapshot.get("engagement_slot", -1))
+	}
+
+func _build_attack_started_event(entity_id: int, snapshot: Dictionary) -> Dictionary:
+	return {
+		"time": _runtime_elapsed_seconds,
+		"event_type": "attack_started",
+		"entity_id": entity_id,
+		"team_id": int(snapshot.get("team_id", -1)),
+		"state": str(snapshot.get("state_name", "")),
+		"position": snapshot.get("position", Vector2.ZERO),
+		"target_id": int(snapshot.get("target_id", -1)),
+		"target_position": snapshot.get("target_position", Vector2.ZERO),
+		"engagement_slot": int(snapshot.get("engagement_slot", -1))
+	}
+
+func _build_target_changed_event(entity_id: int, previous: Dictionary, current: Dictionary) -> Dictionary:
+	return {
+		"time": _runtime_elapsed_seconds,
+		"event_type": "target_changed",
+		"entity_id": entity_id,
+		"team_id": int(current.get("team_id", -1)),
+		"state": str(current.get("state_name", "")),
+		"position": current.get("position", Vector2.ZERO),
+		"previous_target_id": int(previous.get("target_id", -1)),
+		"target_id": int(current.get("target_id", -1)),
+		"target_position": current.get("target_position", Vector2.ZERO)
+	}
+
+func _build_slot_changed_event(entity_id: int, previous: Dictionary, current: Dictionary) -> Dictionary:
+	return {
+		"time": _runtime_elapsed_seconds,
+		"event_type": "slot_changed",
+		"entity_id": entity_id,
+		"team_id": int(current.get("team_id", -1)),
+		"state": str(current.get("state_name", "")),
+		"position": current.get("position", Vector2.ZERO),
+		"previous_engagement_slot": int(previous.get("engagement_slot", -1)),
+		"engagement_slot": int(current.get("engagement_slot", -1)),
+		"target_id": int(current.get("target_id", -1))
+	}
+
+func _build_death_event(death_event: Dictionary) -> Dictionary:
+	return {
+		"time": _runtime_elapsed_seconds,
+		"event_type": "death",
+		"entity_id": int(death_event.get("entity_id", -1)),
+		"team_id": 1 if str(death_event.get("team", "")) == "enemy" else 0,
+		"state": "DEAD",
+		"position": death_event.get("position", Vector2.ZERO)
+	}
+
+func _append_battle_report_event(event: Dictionary) -> void:
+	_battle_report_timeline.append(event.duplicate(true))
+
+func _did_start_moving(previous: Dictionary, current: Dictionary) -> bool:
+	var previous_state := int(previous.get("state", UNIT_STATE_IDLE))
+	var current_state := int(current.get("state", UNIT_STATE_IDLE))
+	if current_state != UNIT_STATE_ADVANCE:
+		return false
+	if previous_state != UNIT_STATE_ADVANCE:
+		return true
+	return int(previous.get("target_id", -1)) != int(current.get("target_id", -1)) or int(previous.get("engagement_slot", -1)) != int(current.get("engagement_slot", -1))
+
+func _did_start_attacking(previous: Dictionary, current: Dictionary) -> bool:
+	var previous_state := int(previous.get("state", UNIT_STATE_IDLE))
+	var current_state := int(current.get("state", UNIT_STATE_IDLE))
+	if current_state != UNIT_STATE_ATTACK:
+		return false
+	if previous_state != UNIT_STATE_ATTACK:
+		return true
+	return int(previous.get("target_id", -1)) != int(current.get("target_id", -1)) or int(previous.get("engagement_slot", -1)) != int(current.get("engagement_slot", -1))
+
+func _did_target_change(previous: Dictionary, current: Dictionary) -> bool:
+	return int(previous.get("target_id", -1)) != int(current.get("target_id", -1)) and int(current.get("target_id", -1)) != -1
+
+func _did_slot_change(previous: Dictionary, current: Dictionary) -> bool:
+	return int(previous.get("engagement_slot", -1)) != int(current.get("engagement_slot", -1))
+
+func _record_battle_report_events_after_tick() -> void:
+	_record_battle_report_events()
 
 func debug_get_first_attack_times() -> Dictionary:
 	return _first_attack_time_by_entity.duplicate(true)
@@ -566,9 +734,14 @@ func debug_get_entity_diagnostic(entity_id: int) -> Dictionary:
 		"team_id": _get_entity_team_id(entity_id),
 		"state": _get_entity_state(entity_id),
 		"state_name": _debug_state_name(_get_entity_state(entity_id)),
+		"combat_phase": int(_entity_store.combat_phase[entity_id]),
 		"target_id": int(_entity_store.target_id[entity_id]),
 		"engagement_target": int(_entity_store.engagement_target[entity_id]),
 		"engagement_slot": int(_entity_store.engagement_slot[entity_id]),
+		"locked_target_id": int(_entity_store.locked_target_id[entity_id]),
+		"locked_slot_index": int(_entity_store.locked_slot_index[entity_id]),
+		"contact_anchor_position": Vector2(_entity_store.contact_anchor_x[entity_id], _entity_store.contact_anchor_y[entity_id]),
+		"contact_settle_time": float(_entity_store.contact_settle_time[entity_id]),
 		"engagement_blocked_time": float(_entity_store.engagement_blocked_time[entity_id]),
 		"position": _get_entity_position(entity_id),
 		"velocity": Vector2(_entity_store.velocity_x[entity_id], _entity_store.velocity_y[entity_id]),
@@ -771,6 +944,8 @@ func _setup_runtime_for_wave(wave: Dictionary) -> void:
 	_recently_died_entities.clear()
 	_recent_combat_events.clear()
 	_full_attack_history.clear()
+	_battle_report_timeline.clear()
+	_battle_report_last_snapshot_by_entity.clear()
 	_last_tick_report = {}
 	_tick_bucket_index = 0
 	_tick_accumulator = 0.0
@@ -781,6 +956,7 @@ func _setup_runtime_for_wave(wave: Dictionary) -> void:
 	_entity_store = EntityStoreScript.new(max(DEFAULT_STORE_CAPACITY, total_count))
 	_spawn_team(DEFAULT_ALLY_COUNT, ALLY_TEAM_ID)
 	_spawn_team(enemy_count, ENEMY_TEAM_ID)
+	_initialize_battle_report_timeline()
 	_last_tick_report = {"processed": 0, "state": get_state(), "death_count": 0, "moved": 0, "attacked": 0, "killed": 0, "idle": 0, "in_range": 0, "events": []}
 
 func _record_recent_deaths() -> void:

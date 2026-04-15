@@ -21,6 +21,12 @@ var target_id: PackedInt32Array
 var engagement_slot: PackedInt32Array
 var engagement_target: PackedInt32Array
 var engagement_blocked_time: PackedFloat32Array
+var combat_phase: PackedInt32Array
+var locked_target_id: PackedInt32Array
+var locked_slot_index: PackedInt32Array
+var contact_anchor_x: PackedFloat32Array
+var contact_anchor_y: PackedFloat32Array
+var contact_settle_time: PackedFloat32Array
 var state: PackedInt32Array
 var alive: PackedByteArray
 var bucket_id: PackedInt32Array
@@ -47,6 +53,12 @@ func _init(max_entities: int) -> void:
 	engagement_slot.resize(capacity)
 	engagement_target.resize(capacity)
 	engagement_blocked_time.resize(capacity)
+	combat_phase.resize(capacity)
+	locked_target_id.resize(capacity)
+	locked_slot_index.resize(capacity)
+	contact_anchor_x.resize(capacity)
+	contact_anchor_y.resize(capacity)
+	contact_settle_time.resize(capacity)
 	state.resize(capacity)
 	alive.resize(capacity)
 	bucket_id.resize(capacity)
@@ -98,6 +110,12 @@ func _reset_slot(id: int) -> void:
 	engagement_slot[id] = -1
 	engagement_target[id] = -1
 	engagement_blocked_time[id] = 0.0
+	combat_phase[id] = 0
+	locked_target_id[id] = -1
+	locked_slot_index[id] = -1
+	contact_anchor_x[id] = 0.0
+	contact_anchor_y[id] = 0.0
+	contact_settle_time[id] = 0.0
 	state[id] = 0
 	alive[id] = 0
 	bucket_id[id] = -1

@@ -8,7 +8,17 @@ func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_report_counts_attack_and_kill_events(failures)
 	_test_report_counts_movement_when_target_is_out_of_range(failures)
+	_test_simulation_exposes_phase_split_hooks(failures)
 	return failures
+
+func _test_simulation_exposes_phase_split_hooks(failures: Array[String]) -> void:
+	var simulation_script = load("res://scripts/battle/battle_simulation.gd")
+	var source: String = simulation_script.source_code if simulation_script != null else ""
+	if source.find("func _update_combat_phase_for_entity(") == -1 and source.find("func _resolve_entity_position_for_phase(") == -1 and source.find("func _resolve_attack_for_phase(") == -1:
+		return
+	_assert_true(source.find("func _update_combat_phase_for_entity(") != -1, "battle simulation should expose _update_combat_phase_for_entity for phase splitting", failures)
+	_assert_true(source.find("func _resolve_entity_position_for_phase(") != -1, "battle simulation should expose _resolve_entity_position_for_phase as the single position entry", failures)
+	_assert_true(source.find("func _resolve_attack_for_phase(") != -1, "battle simulation should expose _resolve_attack_for_phase for attack lock handling", failures)
 
 func _test_report_counts_attack_and_kill_events(failures: Array[String]) -> void:
 	var store = EntityStore.new(2)

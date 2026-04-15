@@ -23,6 +23,8 @@ func run() -> Array[String]:
 	_test_controller_exposes_recent_combat_event_api(failures)
 	_test_controller_acquires_targets_and_moves_before_contact(failures)
 	_test_attack_events_drive_bound_view_pulses(failures)
+	_test_battle_report_timeline_records_key_actions(failures)
+	_test_controller_diagnostic_exposes_contact_phase_fields(failures)
 	return failures
 
 func _test_controller_exposes_recent_combat_event_api(failures: Array[String]) -> void:
@@ -109,6 +111,74 @@ func _test_attack_events_drive_bound_view_pulses(failures: Array[String]) -> voi
 			break
 	_assert_true(saw_attack_event, "battle controller should eventually produce attack events for bound view pulse checks", failures)
 	_assert_true(saw_attack_pulse, "attack events should drive at least one bound attacker pulse without relying on scene-level event consumption", failures)
+	controller.free()
+
+func _test_battle_report_timeline_records_key_actions(failures: Array[String]) -> void:
+	var controller = BattleControllerScript.new(WAVE_DEFS_PATH)
+	controller.start_run()
+	_assert_true(controller.has_method("get_battle_report_timeline"), "battle controller should expose battle report timeline API", failures)
+	if not controller.has_method("get_battle_report_timeline"):
+		controller.free()
+		return
+	for _step in range(240):
+		controller.call("tick_combat", 0.016)
+	var timeline: Array = controller.call("get_battle_report_timeline")
+	var saw_initialized := false
+	var saw_move_started := false
+	var saw_attack_started := false
+	for event_variant in timeline:
+		var event: Dictionary = event_variant
+		var event_type := str(event.get("event_type", ""))
+		if event_type == "unit_initialized":
+			saw_initialized = true
+		if event_type == "move_started":
+			saw_move_started = true
+			_assert_true(event.has("position") and event.has("target_position") and event.has("target_id"), "move_started event should include current position, target position, and target id", failures)
+		if event_type == "attack_started":
+			saw_attack_started = true
+			_assert_true(event.has("position") and event.has("target_position") and event.has("target_id"), "attack_started event should include current position, target position, and target id", failures)
+	var saw_target_changed := false
+	var saw_slot_changed := false
+	var saw_death := false
+	for event_variant in timeline:
+		var event: Dictionary = event_variant
+		var event_type := str(event.get("event_type", ""))
+		if event_type == "target_changed":
+			saw_target_changed = true
+			_assert_true(event.has("previous_target_id") and event.has("target_id"), "target_changed event should include previous and current target ids", failures)
+		if event_type == "slot_changed":
+			saw_slot_changed = true
+			_assert_true(event.has("previous_engagement_slot") and event.has("engagement_slot"), "slot_changed event should include previous and current engagement slot", failures)
+		if event_type == "death":
+			saw_death = true
+			_assert_true(event.has("position"), "death event should include death position", failures)
+	_assert_true(saw_initialized, "battle report timeline should record unit_initialized events", failures)
+	_assert_true(saw_move_started, "battle report timeline should record move_started events", failures)
+	_assert_true(saw_attack_started, "battle report timeline should record attack_started events", failures)
+	_assert_true(saw_target_changed, "battle report timeline should record target_changed events", failures)
+	_assert_true(saw_slot_changed, "battle report timeline should record slot_changed events", failures)
+	if not saw_death:
+		for _step in range(2400):
+			controller.call("tick_combat", 0.016)
+		timeline = controller.call("get_battle_report_timeline")
+		for event_variant in timeline:
+			var event: Dictionary = event_variant
+			if str(event.get("event_type", "")) == "death":
+				saw_death = true
+				break
+	_assert_true(saw_death, "battle report timeline should record death events", failures)
+	controller.free()
+
+func _test_controller_diagnostic_exposes_contact_phase_fields(failures: Array[String]) -> void:
+	var controller = BattleControllerScript.new(WAVE_DEFS_PATH)
+	controller.start_run()
+	controller.call("tick_combat", 0.016)
+	var diagnostic: Dictionary = controller.call("debug_get_entity_diagnostic", 0)
+	_assert_true(diagnostic.has("combat_phase"), "entity diagnostic should expose combat_phase during contact state-machine refactor", failures)
+	_assert_true(diagnostic.has("locked_target_id"), "entity diagnostic should expose locked_target_id during contact state-machine refactor", failures)
+	_assert_true(diagnostic.has("locked_slot_index"), "entity diagnostic should expose locked_slot_index during contact state-machine refactor", failures)
+	_assert_true(diagnostic.has("contact_anchor_position"), "entity diagnostic should expose contact_anchor_position during contact state-machine refactor", failures)
+	_assert_true(diagnostic.has("contact_settle_time"), "entity diagnostic should expose contact_settle_time during contact state-machine refactor", failures)
 	controller.free()
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:

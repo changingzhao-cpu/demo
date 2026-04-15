@@ -15,6 +15,151 @@ func _read_json(path: String) -> Dictionary:
 		return {}
 	return json.data
 
+func _parse_vector2(value) -> Vector2:
+	if value is Vector2:
+		return value
+	var text := str(value)
+	var match := RegEx.create_from_string("\\(([-0-9.]+), ([-0-9.]+)\\)").search(text)
+	if match == null:
+		return Vector2.ZERO
+	return Vector2(match.get_string(1).to_float(), match.get_string(2).to_float())
+
+func _build_nearby_events(entity_id: int, start_time: float, end_time: float, battle_report_timeline: Array) -> Array:
+	var nearby_events: Array = []
+	for event_variant in battle_report_timeline:
+		var event: Dictionary = event_variant
+		if int(event.get("entity_id", -1)) != entity_id:
+			continue
+		var event_time := float(event.get("time", -1.0))
+		if event_time + 0.05 < start_time or event_time - 0.05 > end_time:
+			continue
+		nearby_events.append({
+			"time": event_time,
+			"event_type": str(event.get("event_type", "")),
+			"target_id": int(event.get("target_id", -1)),
+			"previous_target_id": int(event.get("previous_target_id", -1)),
+			"engagement_slot": int(event.get("engagement_slot", -1)),
+			"previous_engagement_slot": int(event.get("previous_engagement_slot", -1))
+		})
+	return nearby_events
+
+func _build_anomaly_scan(trajectories: Dictionary, battle_report_timeline: Array) -> Dictionary:
+	var position_jumps: Array = []
+	var spiral_drifts: Array = []
+	var high_frequency_jitters: Array = []
+	var contact_distance_oscillations: Array = []
+	for entity_id_key in trajectories.keys():
+		var entity_id := int(entity_id_key)
+		var points: Array = trajectories.get(entity_id_key, [])
+		var attack_distances: Array = []
+		var jitter_window: Array = []
+		for index in range(1, points.size()):
+			var previous: Dictionary = points[index - 1]
+			var current: Dictionary = points[index]
+			var previous_position := _parse_vector2(previous.get("position", Vector2.ZERO))
+			var current_position := _parse_vector2(current.get("position", Vector2.ZERO))
+			var distance := previous_position.distance_to(current_position)
+			var dt := maxf(0.001, float(current.get("time", 0.0)) - float(previous.get("time", 0.0)))
+			var speed := distance / dt
+			if distance >= 8.0 and speed >= 25.0:
+				position_jumps.append({
+					"entity_id": entity_id,
+					"start_time": float(previous.get("time", 0.0)),
+					"end_time": float(current.get("time", 0.0)),
+					"distance": distance,
+					"speed": speed,
+					"from_position": previous.get("position", Vector2.ZERO),
+					"to_position": current.get("position", Vector2.ZERO),
+					"from_state": str(previous.get("state_name", "")),
+					"to_state": str(current.get("state_name", "")),
+					"from_target_id": int(previous.get("target_id", -1)),
+					"to_target_id": int(current.get("target_id", -1)),
+					"from_slot": int(previous.get("engagement_slot", -1)),
+					"to_slot": int(current.get("engagement_slot", -1)),
+					"nearby_events": _build_nearby_events(entity_id, float(previous.get("time", 0.0)), float(current.get("time", 0.0)), battle_report_timeline)
+				})
+			if distance >= 0.2 and distance <= 3.0 and dt >= 0.9:
+				spiral_drifts.append({
+					"entity_id": entity_id,
+					"start_time": float(previous.get("time", 0.0)),
+					"end_time": float(current.get("time", 0.0)),
+					"distance": distance,
+					"speed": speed,
+					"from_position": previous.get("position", Vector2.ZERO),
+					"to_position": current.get("position", Vector2.ZERO),
+					"state": str(current.get("state_name", "")),
+					"target_id": int(current.get("target_id", -1)),
+					"engagement_slot": int(current.get("engagement_slot", -1))
+				})
+			jitter_window.append({"distance": distance, "time": float(current.get("time", 0.0)), "state": str(current.get("state_name", ""))})
+			if jitter_window.size() > 4:
+				jitter_window.pop_front()
+			if jitter_window.size() == 4:
+				var jitter_count := 0
+				for jitter_sample in jitter_window:
+					if float(jitter_sample.get("distance", 0.0)) >= 0.15 and float(jitter_sample.get("distance", 0.0)) <= 1.2:
+						jitter_count += 1
+				if jitter_count >= 4:
+					high_frequency_jitters.append({
+						"entity_id": entity_id,
+						"end_time": float(current.get("time", 0.0)),
+						"samples": jitter_window.duplicate(true),
+						"state": str(current.get("state_name", "")),
+						"target_id": int(current.get("target_id", -1))
+					})
+			if str(current.get("state_name", "")) == "ATTACK" and int(current.get("target_id", -1)) != -1:
+				var target_points: Array = trajectories.get(str(int(current.get("target_id", -1))), [])
+				var target_snapshot: Dictionary = {}
+				for target_point_variant in target_points:
+					var target_point: Dictionary = target_point_variant
+					if absf(float(target_point.get("time", -999.0)) - float(current.get("time", 0.0))) < 0.001:
+						target_snapshot = target_point
+						break
+				if not target_snapshot.is_empty():
+					var target_position := _parse_vector2(target_snapshot.get("position", Vector2.ZERO))
+					attack_distances.append({
+						"time": float(current.get("time", 0.0)),
+						"distance": current_position.distance_to(target_position),
+						"slot": int(current.get("engagement_slot", -1)),
+						"target_id": int(current.get("target_id", -1))
+					})
+		if attack_distances.size() >= 3:
+			for index in range(1, attack_distances.size()):
+				var previous_attack: Dictionary = attack_distances[index - 1]
+				var current_attack: Dictionary = attack_distances[index]
+				if absf(float(current_attack.get("distance", 0.0)) - float(previous_attack.get("distance", 0.0))) >= 1.0:
+					contact_distance_oscillations.append({
+						"entity_id": entity_id,
+						"start_time": float(previous_attack.get("time", 0.0)),
+						"end_time": float(current_attack.get("time", 0.0)),
+						"from_distance": float(previous_attack.get("distance", 0.0)),
+						"to_distance": float(current_attack.get("distance", 0.0)),
+						"target_id": int(current_attack.get("target_id", -1)),
+						"slot": int(current_attack.get("slot", -1))
+					})
+	position_jumps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("speed", 0.0)) > float(b.get("speed", 0.0))
+	)
+	spiral_drifts.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("distance", 0.0)) > float(b.get("distance", 0.0))
+	)
+	high_frequency_jitters.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("end_time", 0.0)) < float(b.get("end_time", 0.0))
+	)
+	contact_distance_oscillations.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return absf(float(a.get("to_distance", 0.0)) - float(a.get("from_distance", 0.0))) > absf(float(b.get("to_distance", 0.0)) - float(b.get("from_distance", 0.0)))
+	)
+	return {
+		"position_jump_count": position_jumps.size(),
+		"position_jumps": position_jumps.slice(0, mini(50, position_jumps.size())),
+		"spiral_drift_count": spiral_drifts.size(),
+		"spiral_drifts": spiral_drifts.slice(0, mini(50, spiral_drifts.size())),
+		"high_frequency_jitter_count": high_frequency_jitters.size(),
+		"high_frequency_jitters": high_frequency_jitters.slice(0, mini(50, high_frequency_jitters.size())),
+		"contact_distance_oscillation_count": contact_distance_oscillations.size(),
+		"contact_distance_oscillations": contact_distance_oscillations.slice(0, mini(50, contact_distance_oscillations.size()))
+	}
+
 func _initialize() -> void:
 	var scene: PackedScene = load(BATTLE_SCENE_PATH)
 	if scene == null:
@@ -89,12 +234,12 @@ func _initialize() -> void:
 		for event_variant in recent_events_probe.get("events", []):
 			var event: Dictionary = event_variant
 			if int(event.get("attacker_id", -1)) == 35 and int(event.get("target_id", -1)) == 9 and str(event.get("type", "")) == "attack":
-				var attacker_position_35: Vector2 = event.get("attacker_position", Vector2.ZERO)
-				var target_position_35: Vector2 = event.get("target_position", Vector2.ZERO)
+				var attacker_position_35 := _parse_vector2(event.get("attacker_position", Vector2.ZERO))
+				var target_position_35 := _parse_vector2(event.get("target_position", Vector2.ZERO))
 				pair_distance_35_to_9 = attacker_position_35.distance_to(target_position_35)
 			if int(event.get("target_id", -1)) == 9 and str(event.get("type", "")) == "attack":
-				var attacker_position_9 = event.get("attacker_position", Vector2.ZERO)
-				var target_position_9 = event.get("target_position", Vector2.ZERO)
+				var attacker_position_9 := _parse_vector2(event.get("attacker_position", Vector2.ZERO))
+				var target_position_9 := _parse_vector2(event.get("target_position", Vector2.ZERO))
 				attacks_on_9.append({
 					"attacker_id": int(event.get("attacker_id", -1)),
 					"attacker_position": attacker_position_9,
@@ -138,9 +283,13 @@ func _initialize() -> void:
 		sample_index += 1
 	var controller := instance.get_node_or_null("BattleController")
 	var attack_times: Dictionary = controller.call("debug_get_first_attack_times") if controller != null and controller.has_method("debug_get_first_attack_times") else {}
+	var battle_report_timeline: Array = controller.call("get_battle_report_timeline") if controller != null and controller.has_method("get_battle_report_timeline") else []
+	var anomaly_scan := _build_anomaly_scan(trajectories, battle_report_timeline)
 	var output := {
 		"samples": samples,
 		"trajectories": trajectories,
+		"battle_report_timeline": battle_report_timeline,
+		"anomaly_scan": anomaly_scan,
 		"initial_probe": FileAccess.get_file_as_string(INITIAL_PROBE),
 		"runtime_probe": FileAccess.get_file_as_string(RUNTIME_PROBE),
 		"tick_before": FileAccess.get_file_as_string("user://tick_probe_before.json"),
