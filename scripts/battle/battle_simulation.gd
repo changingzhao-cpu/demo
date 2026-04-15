@@ -97,24 +97,30 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	var sticky_distance: float = attack_context.sticky_distance
 	var allowed_distance: float = attack_context.allowed_distance
 	var switched_locked_pair: bool = attack_context.switched_locked_pair
-	if switched_locked_pair:
-		target_id = previous_target_id
-		store.target_id[entity_id] = target_id
-		target = Vector2(store.position_x[target_id], store.position_y[target_id]) if target_id >= 0 and target_id < store.capacity else target
-		slot_index = previous_slot
-		store.engagement_target[entity_id] = target_id
-		store.engagement_slot[entity_id] = slot_index
-		engagement_target = _resolve_engagement_slot_position(store, target_id, slot_index) if slot_index >= 0 and target_id >= 0 and target_id < store.capacity else target
-		distance = origin.distance_to(engagement_target)
-		sticky_distance = _get_attack_trigger_distance(store, entity_id, target_id, true)
-		allowed_distance = sticky_distance
-		if not _is_target_valid(store, entity_id, target_id):
-			store.engagement_target[entity_id] = -1
-			store.engagement_slot[entity_id] = -1
-			store.state[entity_id] = UNIT_STATE_ADVANCE
-			store.velocity_x[entity_id] = 0.0
-			store.velocity_y[entity_id] = 0.0
-			return
+	var locked_pair_result := _reuse_locked_pair_context(
+		store,
+		entity_id,
+		target_id,
+		origin,
+		target,
+		previous_target_id,
+		previous_slot,
+		slot_index,
+		engagement_target,
+		sticky_distance,
+		allowed_distance,
+		switched_locked_pair
+	)
+	if locked_pair_result.handled:
+		return
+	target_id = locked_pair_result.target_id
+	store.target_id[entity_id] = target_id
+	target = locked_pair_result.target
+	slot_index = locked_pair_result.slot_index
+	engagement_target = locked_pair_result.engagement_target
+	distance = locked_pair_result.distance
+	sticky_distance = locked_pair_result.sticky_distance
+	allowed_distance = locked_pair_result.allowed_distance
 
 	if distance > allowed_distance:
 		var target_is_locked_in_attack: bool = target_id >= 0 and target_id < store.capacity and store.alive[target_id] and store.state[target_id] == UNIT_STATE_ATTACK
@@ -243,6 +249,68 @@ func _resolve_target_and_slot_context(store, entity_id: int, target_id: int, ori
 		"sticky_distance": sticky_distance,
 		"allowed_distance": allowed_distance,
 		"switched_locked_pair": switched_locked_pair
+	}
+
+func _reuse_locked_pair_context(
+	store,
+	entity_id: int,
+	target_id: int,
+	origin: Vector2,
+	target: Vector2,
+	previous_target_id: int,
+	previous_slot: int,
+	slot_index: int,
+	engagement_target: Vector2,
+	sticky_distance: float,
+	allowed_distance: float,
+	switched_locked_pair: bool
+) -> Dictionary:
+	if not switched_locked_pair:
+		return {
+			"handled": false,
+			"target_id": target_id,
+			"target": target,
+			"slot_index": slot_index,
+			"engagement_target": engagement_target,
+			"distance": origin.distance_to(engagement_target),
+			"sticky_distance": sticky_distance,
+			"allowed_distance": allowed_distance
+		}
+	target_id = previous_target_id
+	store.target_id[entity_id] = target_id
+	target = Vector2(store.position_x[target_id], store.position_y[target_id]) if target_id >= 0 and target_id < store.capacity else target
+	slot_index = previous_slot
+	store.engagement_target[entity_id] = target_id
+	store.engagement_slot[entity_id] = slot_index
+	engagement_target = _resolve_engagement_slot_position(store, target_id, slot_index) if slot_index >= 0 and target_id >= 0 and target_id < store.capacity else target
+	var distance := origin.distance_to(engagement_target)
+	sticky_distance = _get_attack_trigger_distance(store, entity_id, target_id, true)
+	allowed_distance = sticky_distance
+	if not _is_target_valid(store, entity_id, target_id):
+		store.engagement_target[entity_id] = -1
+		store.engagement_slot[entity_id] = -1
+		store.state[entity_id] = UNIT_STATE_ADVANCE
+		store.velocity_x[entity_id] = 0.0
+		store.velocity_y[entity_id] = 0.0
+		return {
+			"handled": true,
+			"target_id": target_id,
+			"target": target,
+			"slot_index": slot_index,
+			"engagement_target": engagement_target,
+			"distance": distance,
+			"sticky_distance": sticky_distance,
+			"allowed_distance": allowed_distance
+		}
+	return {
+		"handled": false,
+		"target_id": target_id,
+		"target": target,
+		"slot_index": slot_index,
+		"engagement_target": engagement_target,
+		"distance": distance,
+		"sticky_distance": sticky_distance,
+		"allowed_distance": allowed_distance
 	}
 
 func _append_event(report: Dictionary, attacker_id: int, target_id: int, event_type: String, attacker_position: Vector2, target_position: Vector2) -> void:
