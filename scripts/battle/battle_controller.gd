@@ -565,7 +565,11 @@ func debug_get_entity_diagnostic(entity_id: int) -> Dictionary:
 		"alive": _entity_is_alive(entity_id),
 		"team_id": _get_entity_team_id(entity_id),
 		"state": _get_entity_state(entity_id),
+		"state_name": _debug_state_name(_get_entity_state(entity_id)),
 		"target_id": int(_entity_store.target_id[entity_id]),
+		"engagement_target": int(_entity_store.engagement_target[entity_id]),
+		"engagement_slot": int(_entity_store.engagement_slot[entity_id]),
+		"engagement_blocked_time": float(_entity_store.engagement_blocked_time[entity_id]),
 		"position": _get_entity_position(entity_id),
 		"velocity": Vector2(_entity_store.velocity_x[entity_id], _entity_store.velocity_y[entity_id]),
 		"move_speed": _get_entity_move_speed(entity_id),
@@ -575,6 +579,19 @@ func debug_get_entity_diagnostic(entity_id: int) -> Dictionary:
 		"bucket_id": int(_entity_store.bucket_id[entity_id]),
 		"recent_events": recent_events
 	}
+
+func _debug_state_name(state_value: int) -> String:
+	match state_value:
+		UNIT_STATE_IDLE:
+			return "IDLE"
+		UNIT_STATE_ATTACK:
+			return "ATTACK"
+		UNIT_STATE_ADVANCE:
+			return "ADVANCE"
+		UNIT_STATE_DEAD:
+			return "DEAD"
+		_:
+			return str(state_value)
 
 func debug_get_spawn_positions() -> Dictionary:
 	var allies: Array[Vector2] = []

@@ -13,6 +13,7 @@ func run() -> Array[String]:
 	_test_crowded_attackers_do_not_all_stall_without_attacking(failures)
 	_test_attacker_keeps_attacking_with_small_distance_jitter(failures)
 	_test_attack_center_distance_stays_within_1_2(failures)
+	_test_attack_pair_does_not_drift_while_both_units_are_attacking(failures)
 	return failures
 
 func _test_crowded_attackers_do_not_all_stall_without_attacking(failures: Array[String]) -> void:
@@ -192,6 +193,67 @@ func _test_attack_center_distance_stays_within_1_2(failures: Array[String]) -> v
 	var attack_distance := attacker_position.distance_to(target_position)
 	_assert_eq(store.state[attacker], 1, "attacker should still enter attack state after tightening center distance", failures)
 	_assert_true(attack_distance <= 1.205, "attack center distance should stay within 1.2 once the attacker enters attack state (actual=%s)" % str(attack_distance), failures)
+
+func _test_attack_pair_does_not_drift_while_both_units_are_attacking(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationScript.new(grid)
+	var attacker: int = store.allocate()
+	var target: int = store.allocate()
+	_prepare_attacker(store, attacker)
+	_prepare_target(store, target, 1000.0)
+	store.position_x[attacker] = -1.2
+	store.position_y[attacker] = 0.0
+	store.position_x[target] = 0.0
+	store.position_y[target] = 0.0
+	store.attack_range_sq[attacker] = 0.25
+	store.attack_interval[attacker] = 10.0
+	store.attack_cd[attacker] = 0.0
+	store.move_speed[target] = 0.0
+	store.attack_range_sq[target] = 0.0
+	store.attack_interval[target] = 10.0
+	store.attack_cd[target] = 10.0
+	grid.upsert(attacker, Vector2(store.position_x[attacker], store.position_y[attacker]))
+	grid.upsert(target, Vector2(store.position_x[target], store.position_y[target]))
+	for _step in range(2):
+		simulation.tick_bucket(store, 0.1, 0, 1)
+	var attacker_before := Vector2(store.position_x[attacker], store.position_y[attacker])
+	var target_before := Vector2(store.position_x[target], store.position_y[target])
+	for _step in range(10):
+		simulation.tick_bucket(store, 0.1, 0, 1)
+	var attacker_after := Vector2(store.position_x[attacker], store.position_y[attacker])
+	var target_after := Vector2(store.position_x[target], store.position_y[target])
+	_assert_eq(store.state[attacker], 1, "attacker should stay in attack during stationary contact", failures)
+	_assert_true(store.state[target] == 1, "stationary target fixture should also settle into attack once contact stays locked", failures)
+	_assert_true(attacker_after.distance_to(attacker_before) < 0.05, "an attacker already locked in contact should not drift across the arena", failures)
+	_assert_true(target_after.distance_to(target_before) < 0.05, "a stationary target should not get dragged while being attacked in place", failures)
+	_assert_true(attacker_after.distance_to(target_after) <= 1.205, "locked attack contact should keep the pair within the engagement distance", failures)
+	_assert_true(attacker_after.distance_to(target_after) >= 0.9, "locked contact should not collapse units into overlap", failures)
+	_assert_true(store.hp[target] >= 890.0, "regression fixture should avoid large combat noise while measuring drift", failures)
+	_assert_true(store.alive[attacker] == 1 and store.alive[target] == 1, "stationary-contact regression should keep both fixtures alive", failures)
+	_assert_true(absf(store.velocity_x[attacker]) < 0.01 and absf(store.velocity_y[attacker]) < 0.01, "locked attacker should not accumulate velocity spikes while holding contact", failures)
+	_assert_true(absf(store.velocity_x[target]) < 0.01 and absf(store.velocity_y[target]) < 0.01, "stationary target should not accumulate velocity spikes while being held in contact", failures)
+	_assert_true(store.engagement_target[attacker] == target, "attacker should keep the same engagement target while contact stays stable", failures)
+	_assert_true(store.engagement_slot[attacker] >= 0 and store.engagement_slot[attacker] < 4, "attacker should keep a valid engagement slot while contact stays stable", failures)
+	_assert_true(store.engagement_blocked_time[attacker] == 0.0, "stable attack contact should not accumulate blocked time", failures)
+	_assert_true(attacker_after.x <= target_after.x, "attacker should remain on the same side of the target while contact is locked", failures)
+	_assert_true(absf(target_after.y - attacker_after.y) < 0.05, "locked contact should not introduce vertical drift in this straight-line fixture", failures)
+	_assert_true(store.target_id[attacker] == target, "attacker should keep the same combat target during stationary contact", failures)
+	_assert_true(store.hp[attacker] == 100.0, "attacker should not take damage in the stationary target fixture", failures)
+	_assert_true(store.state[attacker] != 3, "attacker should not fall back into chase while contact is locked", failures)
+	_assert_true(absf(attacker_after.x - attacker_before.x) < 0.05, "attacker x position should stay stable across the observation window", failures)
+	_assert_true(absf(target_after.x - target_before.x) < 0.05, "target x position should stay stable across the observation window", failures)
+	_assert_true(store.move_speed[target] == 0.0, "target fixture should remain immobile for this regression", failures)
+	_assert_true(store.attack_range_sq[target] == 0.0, "target fixture should remain non-attacking for this regression", failures)
+	_assert_true(store.attack_interval[attacker] == 10.0 and store.attack_interval[target] == 10.0, "fixture attack intervals should remain widened to suppress combat noise", failures)
+	_assert_true(store.attack_cd[target] > 0.0, "target fixture should remain unable to counterattack during the observation window", failures)
+	_assert_true(store.position_x[target] > -0.1 and store.position_x[target] < 0.1, "target should stay centered in the stationary fixture", failures)
+	_assert_true(store.position_y[target] > -0.05 and store.position_y[target] < 0.05, "target should not wander off the lane in the stationary fixture", failures)
+	_assert_true(store.position_y[attacker] > -0.05 and store.position_y[attacker] < 0.05, "attacker should not wander off the lane in the stationary fixture", failures)
+	_assert_true(store.state[target] != 4 and store.state[attacker] != 4, "neither fixture should die during the regression window", failures)
+	_assert_true(store.position_x[target] - store.position_x[attacker] <= 1.205, "final horizontal spacing should stay inside the intended contact band", failures)
+	_assert_true(store.position_x[target] - store.position_x[attacker] >= 0.9, "final horizontal spacing should stay above overlap threshold", failures)
+	_assert_true(absf(store.position_y[target] - store.position_y[attacker]) <= 0.05, "final vertical offset should stay inside the intended lane band", failures)
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:
