@@ -87,12 +87,33 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
 	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
 	var attack_range := sqrt(maxf(0.0, store.attack_range_sq[entity_id]))
+	var previous_target_id: int = int(store.engagement_target[entity_id])
+	var previous_slot: int = int(store.engagement_slot[entity_id])
 	var slot_index := _resolve_engagement_slot(store, entity_id, target_id)
 	var engagement_target := _resolve_engagement_slot_position(store, target_id, slot_index) if slot_index >= 0 else target
 	var distance := origin.distance_to(engagement_target)
 	var trigger_distance: float = _get_attack_trigger_distance(store, entity_id, target_id, false)
 	var sticky_distance: float = _get_attack_trigger_distance(store, entity_id, target_id, true)
 	var allowed_distance := sticky_distance if store.state[entity_id] == UNIT_STATE_ATTACK else trigger_distance
+	var switched_locked_pair: bool = store.state[entity_id] == UNIT_STATE_ATTACK and previous_target_id != -1 and previous_target_id != target_id
+	if switched_locked_pair:
+		target_id = previous_target_id
+		store.target_id[entity_id] = target_id
+		target = Vector2(store.position_x[target_id], store.position_y[target_id]) if target_id >= 0 and target_id < store.capacity else target
+		slot_index = previous_slot
+		store.engagement_target[entity_id] = target_id
+		store.engagement_slot[entity_id] = slot_index
+		engagement_target = _resolve_engagement_slot_position(store, target_id, slot_index) if slot_index >= 0 and target_id >= 0 and target_id < store.capacity else target
+		distance = origin.distance_to(engagement_target)
+		sticky_distance = _get_attack_trigger_distance(store, entity_id, target_id, true)
+		allowed_distance = sticky_distance
+		if not _is_target_valid(store, entity_id, target_id):
+			store.engagement_target[entity_id] = -1
+			store.engagement_slot[entity_id] = -1
+			store.state[entity_id] = UNIT_STATE_ADVANCE
+			store.velocity_x[entity_id] = 0.0
+			store.velocity_y[entity_id] = 0.0
+			return
 
 	if distance > allowed_distance:
 		var target_is_locked_in_attack: bool = target_id >= 0 and target_id < store.capacity and store.alive[target_id] and store.state[target_id] == UNIT_STATE_ATTACK
@@ -101,14 +122,6 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		if target_is_locked_in_attack and center_distance <= contact_distance + ATTACK_STICKY_MARGIN:
 			store.engagement_target[entity_id] = target_id
 			store.engagement_slot[entity_id] = slot_index
-			if slot_index == -1:
-				store.state[entity_id] = UNIT_STATE_IDLE
-				store.velocity_x[entity_id] = 0.0
-				store.velocity_y[entity_id] = 0.0
-				store.engagement_blocked_time[entity_id] = 0.0
-				report["idle"] = int(report.get("idle", 0)) + 1
-				grid_upsert_pair(store, entity_id, target_id)
-				return
 			if slot_index == -1:
 				store.state[entity_id] = UNIT_STATE_IDLE
 				store.velocity_x[entity_id] = 0.0
@@ -149,18 +162,11 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		store.state[entity_id] = UNIT_STATE_ADVANCE
 		report["moved"] = int(report.get("moved", 0)) + 1
 		return
-	_clamp_to_engagement_anchor(store, entity_id, engagement_target)
-	_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
-	origin = Vector2(store.position_x[entity_id], store.position_y[entity_id])
-	if origin.distance_to(engagement_target) > 0.001:
-		store.state[entity_id] = UNIT_STATE_ADVANCE
-		report["moved"] = int(report.get("moved", 0)) + 1
-		return
+
 	if slot_index >= 0:
 		target = engagement_target
 
 	_apply_same_team_spacing(store, entity_id)
-
 	_release_engagement_slot_if_needed(store, entity_id, target_id)
 	if store.engagement_slot[entity_id] == -1:
 		store.state[entity_id] = UNIT_STATE_IDLE
@@ -174,10 +180,6 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		store.engagement_slot[entity_id] = slot_index
 		store.engagement_blocked_time[entity_id] = 0.0
 
-	if slot_index >= 0:
-		target = engagement_target
-
-	_apply_same_team_spacing(store, entity_id)
 	if slot_index == -1:
 		store.state[entity_id] = UNIT_STATE_IDLE
 		store.velocity_x[entity_id] = 0.0
@@ -186,6 +188,7 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		report["idle"] = int(report.get("idle", 0)) + 1
 		grid_upsert_pair(store, entity_id, target_id)
 		return
+
 	store.state[entity_id] = UNIT_STATE_ATTACK
 	store.velocity_x[entity_id] = 0.0
 	store.velocity_y[entity_id] = 0.0

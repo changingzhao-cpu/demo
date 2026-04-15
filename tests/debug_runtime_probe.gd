@@ -2,7 +2,7 @@ extends SceneTree
 
 const BATTLE_SCENE_PATH := "res://scenes/battle/battle_scene.tscn"
 const OUTPUT_PATH := "user://runtime_probe.json"
-const SAMPLE_TIMES := [0.0, 0.01, 0.03, 0.05, 0.1, 0.2, 0.5, 1.0, 1.1, 1.2, 1.25, 1.3, 1.4, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0]
+const SAMPLE_TIMES := [0.0, 0.01, 0.03, 0.05, 0.1, 0.2, 0.5, 1.0, 1.1, 1.2, 1.25, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0, 16.0, 20.0]
 const INITIAL_PROBE := "user://transition_initial_probe.json"
 const RUNTIME_PROBE := "user://transition_runtime_probe.json"
 
@@ -26,6 +26,7 @@ func _initialize() -> void:
 	await process_frame
 	await process_frame
 	var samples: Array = []
+	var trajectories: Dictionary = {}
 	var elapsed := 0.0
 	var sample_index := 0
 	while sample_index < SAMPLE_TIMES.size():
@@ -65,6 +66,23 @@ func _initialize() -> void:
 				"target_target": entity_target_target_payload,
 				"view": entity_view_snapshot
 			}
+			if bool(entity_payload.get("exists", false)):
+				var trajectory_key := str(tracked_id)
+				var points: Array = trajectories.get(trajectory_key, [])
+				points.append({
+					"time": elapsed,
+					"state_name": entity_payload.get("state_name", ""),
+					"target_id": int(entity_payload.get("target_id", -1)),
+					"engagement_slot": int(entity_payload.get("engagement_slot", -1)),
+					"engagement_target": int(entity_payload.get("engagement_target", -1)),
+					"engagement_blocked_time": float(entity_payload.get("engagement_blocked_time", 0.0)),
+					"position": entity_payload.get("position", Vector2.ZERO),
+					"velocity": entity_payload.get("velocity", Vector2.ZERO),
+					"view_position": entity_view_snapshot.get("global_position", Vector2.ZERO),
+					"body_scale": entity_view_snapshot.get("sprite", {}).get("body_scale", Vector2.ZERO),
+					"body_texture": entity_view_snapshot.get("sprite", {}).get("body_texture", "")
+				})
+				trajectories[trajectory_key] = points
 		var recent_events_probe: Dictionary = _read_json("user://controller_recent_combat_events_probe.json")
 		var pair_distance_35_to_9 = null
 		var attacks_on_9: Array = []
@@ -122,6 +140,7 @@ func _initialize() -> void:
 	var attack_times: Dictionary = controller.call("debug_get_first_attack_times") if controller != null and controller.has_method("debug_get_first_attack_times") else {}
 	var output := {
 		"samples": samples,
+		"trajectories": trajectories,
 		"initial_probe": FileAccess.get_file_as_string(INITIAL_PROBE),
 		"runtime_probe": FileAccess.get_file_as_string(RUNTIME_PROBE),
 		"tick_before": FileAccess.get_file_as_string("user://tick_probe_before.json"),
