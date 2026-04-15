@@ -85,17 +85,18 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		return
 
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
-	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
-	var attack_range := sqrt(maxf(0.0, store.attack_range_sq[entity_id]))
-	var previous_target_id: int = int(store.engagement_target[entity_id])
-	var previous_slot: int = int(store.engagement_slot[entity_id])
-	var slot_index := _resolve_engagement_slot(store, entity_id, target_id)
-	var engagement_target := _resolve_engagement_slot_position(store, target_id, slot_index) if slot_index >= 0 else target
-	var distance := origin.distance_to(engagement_target)
-	var trigger_distance: float = _get_attack_trigger_distance(store, entity_id, target_id, false)
-	var sticky_distance: float = _get_attack_trigger_distance(store, entity_id, target_id, true)
-	var allowed_distance := sticky_distance if store.state[entity_id] == UNIT_STATE_ATTACK else trigger_distance
-	var switched_locked_pair: bool = store.state[entity_id] == UNIT_STATE_ATTACK and previous_target_id != -1 and previous_target_id != target_id
+	var attack_context := _resolve_target_and_slot_context(store, entity_id, target_id, origin)
+	var target: Vector2 = attack_context.target
+	var attack_range: float = attack_context.attack_range
+	var previous_target_id: int = attack_context.previous_target_id
+	var previous_slot: int = attack_context.previous_slot
+	var slot_index: int = attack_context.slot_index
+	var engagement_target: Vector2 = attack_context.engagement_target
+	var distance: float = attack_context.distance
+	var trigger_distance: float = attack_context.trigger_distance
+	var sticky_distance: float = attack_context.sticky_distance
+	var allowed_distance: float = attack_context.allowed_distance
+	var switched_locked_pair: bool = attack_context.switched_locked_pair
 	if switched_locked_pair:
 		target_id = previous_target_id
 		store.target_id[entity_id] = target_id
@@ -217,6 +218,32 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		report["idle"] = int(report.get("idle", 0)) + 1
 	grid_upsert_pair(store, entity_id, target_id)
 	return
+
+func _resolve_target_and_slot_context(store, entity_id: int, target_id: int, origin: Vector2) -> Dictionary:
+	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
+	var attack_range := sqrt(maxf(0.0, store.attack_range_sq[entity_id]))
+	var previous_target_id: int = int(store.engagement_target[entity_id])
+	var previous_slot: int = int(store.engagement_slot[entity_id])
+	var slot_index := _resolve_engagement_slot(store, entity_id, target_id)
+	var engagement_target := _resolve_engagement_slot_position(store, target_id, slot_index) if slot_index >= 0 else target
+	var distance := origin.distance_to(engagement_target)
+	var trigger_distance: float = _get_attack_trigger_distance(store, entity_id, target_id, false)
+	var sticky_distance: float = _get_attack_trigger_distance(store, entity_id, target_id, true)
+	var allowed_distance := sticky_distance if store.state[entity_id] == UNIT_STATE_ATTACK else trigger_distance
+	var switched_locked_pair: bool = store.state[entity_id] == UNIT_STATE_ATTACK and previous_target_id != -1 and previous_target_id != target_id
+	return {
+		"target": target,
+		"attack_range": attack_range,
+		"previous_target_id": previous_target_id,
+		"previous_slot": previous_slot,
+		"slot_index": slot_index,
+		"engagement_target": engagement_target,
+		"distance": distance,
+		"trigger_distance": trigger_distance,
+		"sticky_distance": sticky_distance,
+		"allowed_distance": allowed_distance,
+		"switched_locked_pair": switched_locked_pair
+	}
 
 func _append_event(report: Dictionary, attacker_id: int, target_id: int, event_type: String, attacker_position: Vector2, target_position: Vector2) -> void:
 	var events: Array = report.get("events", [])
