@@ -109,6 +109,14 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 				report["idle"] = int(report.get("idle", 0)) + 1
 				grid_upsert_pair(store, entity_id, target_id)
 				return
+			if slot_index == -1:
+				store.state[entity_id] = UNIT_STATE_IDLE
+				store.velocity_x[entity_id] = 0.0
+				store.velocity_y[entity_id] = 0.0
+				store.engagement_blocked_time[entity_id] = 0.0
+				report["idle"] = int(report.get("idle", 0)) + 1
+				grid_upsert_pair(store, entity_id, target_id)
+				return
 			store.state[entity_id] = UNIT_STATE_ATTACK
 			store.velocity_x[entity_id] = 0.0
 			store.velocity_y[entity_id] = 0.0
@@ -170,6 +178,14 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		target = engagement_target
 
 	_apply_same_team_spacing(store, entity_id)
+	if slot_index == -1:
+		store.state[entity_id] = UNIT_STATE_IDLE
+		store.velocity_x[entity_id] = 0.0
+		store.velocity_y[entity_id] = 0.0
+		store.engagement_blocked_time[entity_id] = 0.0
+		report["idle"] = int(report.get("idle", 0)) + 1
+		grid_upsert_pair(store, entity_id, target_id)
+		return
 	store.state[entity_id] = UNIT_STATE_ATTACK
 	store.velocity_x[entity_id] = 0.0
 	store.velocity_y[entity_id] = 0.0
@@ -322,7 +338,7 @@ func _clamp_to_engagement_anchor(store, entity_id: int, engagement_target: Vecto
 		store.velocity_x[entity_id] = 0.0
 		store.velocity_y[entity_id] = 0.0
 		return
-	if target_id >= 0 and target_id < store.capacity and store.alive[target_id] and store.state[target_id] == UNIT_STATE_ATTACK and entity_id > target_id:
+	if target_id >= 0 and target_id < store.capacity and store.alive[target_id] and store.state[target_id] == UNIT_STATE_ATTACK and entity_id > target_id and int(store.engagement_slot[target_id]) == int(store.engagement_slot[entity_id]):
 		store.velocity_x[entity_id] = 0.0
 		store.velocity_y[entity_id] = 0.0
 		return

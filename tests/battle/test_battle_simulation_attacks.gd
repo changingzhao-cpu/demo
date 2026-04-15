@@ -15,6 +15,8 @@ func run() -> Array[String]:
 	_test_attack_center_distance_stays_within_1_2(failures)
 	_test_attack_pair_does_not_drift_while_both_units_are_attacking(failures)
 	_test_unclaimed_slot_contact_does_not_snap_to_target_center(failures)
+	_test_attack_pair_keeps_center_distance_bounded_after_first_hit(failures)
+	_test_claimed_slot_attacker_keeps_advancing_until_anchor_contact(failures)
 	return failures
 
 func _test_crowded_attackers_do_not_all_stall_without_attacking(failures: Array[String]) -> void:
@@ -279,6 +281,57 @@ func _test_unclaimed_slot_contact_does_not_snap_to_target_center(failures: Array
 	_assert_true(store.engagement_target[follower] == target, "follower should still track the same engagement target while waiting for a slot", failures)
 	_assert_true(store.engagement_slot[blocker_left] >= 0 and store.engagement_slot[blocker_right] >= 0 and store.engagement_slot[blocker_up] >= 0 and store.engagement_slot[blocker_down] >= 0, "all blocker fixtures should occupy the four engagement slots", failures)
 	_assert_true(absf(store.velocity_x[follower]) < 8.0 and absf(store.velocity_y[follower]) < 8.0, "unit without a slot should not report a launch-like velocity spike", failures)
+
+func _test_attack_pair_keeps_center_distance_bounded_after_first_hit(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationScript.new(grid)
+	var attacker: int = store.allocate()
+	var target: int = store.allocate()
+	_prepare_attacker(store, attacker)
+	_prepare_target(store, target, 100.0)
+	store.position_x[attacker] = -1.4
+	store.position_y[attacker] = 0.0
+	store.position_x[target] = 0.0
+	store.position_y[target] = 0.0
+	store.attack_range_sq[attacker] = 0.25
+	grid.upsert(attacker, Vector2(store.position_x[attacker], store.position_y[attacker]))
+	grid.upsert(target, Vector2.ZERO)
+	for _step in range(8):
+		simulation.tick_bucket(store, 0.1, 0, 1)
+	var center_distance := Vector2(store.position_x[attacker], store.position_y[attacker]).distance_to(Vector2(store.position_x[target], store.position_y[target]))
+	_assert_true(center_distance <= 1.205, "first attack contact should not push the pair beyond the 1.2 engagement center distance", failures)
+	_assert_eq(store.state[attacker], BattleSimulationScript.UNIT_STATE_ATTACK, "attacker should remain in attack after the first hit settles", failures)
+
+func _test_claimed_slot_attacker_keeps_advancing_until_anchor_contact(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationScript.new(grid)
+	var blocker: int = store.allocate()
+	var follower: int = store.allocate()
+	var target: int = store.allocate()
+	_prepare_attacker(store, blocker)
+	_prepare_attacker(store, follower)
+	_prepare_target(store, target, 100.0)
+	store.position_x[target] = 0.0
+	store.position_y[target] = 0.0
+	store.attack_range_sq[blocker] = 0.25
+	store.attack_range_sq[follower] = 0.25
+	store.position_x[blocker] = -1.2
+	store.position_y[blocker] = 0.0
+	store.position_x[follower] = -2.5
+	store.position_y[follower] = -1.2
+	grid.upsert(blocker, Vector2(store.position_x[blocker], store.position_y[blocker]))
+	grid.upsert(follower, Vector2(store.position_x[follower], store.position_y[follower]))
+	grid.upsert(target, Vector2.ZERO)
+	for _step in range(3):
+		simulation.tick_bucket(store, 0.1, 0, 1)
+	var before := Vector2(store.position_x[follower], store.position_y[follower])
+	_assert_eq(store.engagement_slot[follower], 2, "follower fixture should claim the upper slot in this regression", failures)
+	simulation.tick_bucket(store, 0.1, 0, 1)
+	var after := Vector2(store.position_x[follower], store.position_y[follower])
+	_assert_true(after.distance_to(before) > 0.01, "attacker with a claimed slot should keep advancing until it reaches the anchor", failures)
+	_assert_true(store.state[follower] == BattleSimulationScript.UNIT_STATE_ADVANCE or store.state[follower] == BattleSimulationScript.UNIT_STATE_ATTACK, "claimed-slot attacker should remain in combat progression", failures)
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

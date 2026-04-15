@@ -658,10 +658,12 @@ func _get_entity_facing_sign(entity_id: int) -> float:
 	var team_id := _get_entity_team_id(entity_id)
 	if not _entity_is_alive(entity_id):
 		return -1.0 if team_id == ENEMY_TEAM_ID else 1.0 if team_id == ALLY_TEAM_ID else 0.0
+	if _entity_store.state[entity_id] == UNIT_STATE_ATTACK:
+		return -1.0 if team_id == ENEMY_TEAM_ID else 1.0
 	var target_id := int(_entity_store.target_id[entity_id])
 	if target_id >= 0 and target_id < _entity_store.capacity and _entity_store.alive[target_id] != 0:
 		var delta_x: float = _entity_store.position_x[target_id] - _entity_store.position_x[entity_id]
-		if absf(delta_x) > 0.05:
+		if absf(delta_x) > 0.2:
 			return -1.0 if delta_x < 0.0 else 1.0
 	var velocity_x := float(_entity_store.velocity_x[entity_id])
 	if absf(velocity_x) > 0.01:
