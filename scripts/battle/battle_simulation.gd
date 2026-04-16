@@ -118,7 +118,7 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	allowed_distance = context_result["allowed_distance"]
 
 	if distance > allowed_distance:
-		if _process_out_of_range_entity(
+		_process_out_of_range_entity(
 			store,
 			entity_id,
 			target_id,
@@ -129,10 +129,10 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 			attack_range,
 			slot_index,
 			engagement_target
-		):
-			return
+		)
+		return
 
-	if _process_in_range_entity(
+	_process_in_range_entity(
 		store,
 		entity_id,
 		target_id,
@@ -141,8 +141,8 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		target,
 		slot_index,
 		engagement_target
-	):
-		return
+	)
+	return
 
 func _process_no_target_entity(store, entity_id: int, target_id: int, report: Dictionary) -> bool:
 	if target_id != -1:
@@ -338,7 +338,7 @@ func _process_out_of_range_entity(
 	attack_range: float,
 	slot_index: int,
 	engagement_target: Vector2
-) -> bool:
+) -> void:
 	var target_is_locked_in_attack: bool = target_id >= 0 and target_id < store.capacity and store.alive[target_id] and store.state[target_id] == UNIT_STATE_ATTACK
 	var contact_distance: float = attack_range + store.radius[entity_id] + store.radius[target_id]
 	var center_distance: float = origin.distance_to(target)
@@ -352,7 +352,7 @@ func _process_out_of_range_entity(
 			store.engagement_blocked_time[entity_id] = 0.0
 			report["idle"] = int(report.get("idle", 0)) + 1
 			grid_upsert_pair(store, entity_id, target_id)
-			return true
+			return
 		store.state[entity_id] = UNIT_STATE_ATTACK
 		store.velocity_x[entity_id] = 0.0
 		store.velocity_y[entity_id] = 0.0
@@ -376,7 +376,7 @@ func _process_out_of_range_entity(
 		if not did_hit_locked:
 			report["idle"] = int(report.get("idle", 0)) + 1
 		grid_upsert_pair(store, entity_id, target_id)
-		return true
+		return
 	_move_toward_position(store, entity_id, engagement_target, delta)
 	var moved_distance := origin.distance_to(Vector2(store.position_x[entity_id], store.position_y[entity_id]))
 	_update_engagement_blocked_time(store, entity_id, moved_distance, delta)
@@ -384,7 +384,7 @@ func _process_out_of_range_entity(
 	_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
 	store.state[entity_id] = UNIT_STATE_ADVANCE
 	report["moved"] = int(report.get("moved", 0)) + 1
-	return true
+	return
 
 func _process_in_range_entity(
 	store,
@@ -395,7 +395,7 @@ func _process_in_range_entity(
 	target: Vector2,
 	slot_index: int,
 	engagement_target: Vector2
-) -> bool:
+) -> void:
 	if slot_index >= 0:
 		target = engagement_target
 
@@ -406,7 +406,7 @@ func _process_in_range_entity(
 		store.velocity_x[entity_id] = 0.0
 		store.velocity_y[entity_id] = 0.0
 		report["idle"] = int(report.get("idle", 0)) + 1
-		return true
+		return
 
 	if store.engagement_target[entity_id] != target_id:
 		store.engagement_target[entity_id] = target_id
@@ -420,7 +420,7 @@ func _process_in_range_entity(
 		store.engagement_blocked_time[entity_id] = 0.0
 		report["idle"] = int(report.get("idle", 0)) + 1
 		grid_upsert_pair(store, entity_id, target_id)
-		return true
+		return
 
 	store.state[entity_id] = UNIT_STATE_ATTACK
 	store.velocity_x[entity_id] = 0.0
@@ -449,7 +449,7 @@ func _process_in_range_entity(
 	if not did_hit:
 		report["idle"] = int(report.get("idle", 0)) + 1
 	grid_upsert_pair(store, entity_id, target_id)
-	return true
+	return
 
 func _append_event(report: Dictionary, attacker_id: int, target_id: int, event_type: String, attacker_position: Vector2, target_position: Vector2) -> void:
 	var events: Array = report.get("events", [])
