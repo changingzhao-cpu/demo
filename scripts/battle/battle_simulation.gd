@@ -69,8 +69,7 @@ func tick_bucket_with_report(store, delta: float, bucket_index: int, bucket_coun
 	return report
 
 func _process_entity(store, entity_id: int, delta: float, report: Dictionary) -> void:
-	if _process_entity_flow(store, entity_id, delta, report):
-		return
+	_process_entity_flow(store, entity_id, delta, report)
 
 func _process_entity_flow(store, entity_id: int, delta: float, report: Dictionary) -> bool:
 	if not store.alive[entity_id]:
