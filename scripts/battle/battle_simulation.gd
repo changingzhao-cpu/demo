@@ -79,8 +79,8 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	if _process_no_target_entity(store, entity_id, target_id, report):
 		return
 
-	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
-	var attack_context := _read_attack_context(_resolve_target_and_slot_context(store, entity_id, target_id, origin))
+	var attack_context := _prepare_entity_attack_context(store, entity_id, target_id)
+	var origin: Vector2 = attack_context.origin
 	var target: Vector2 = attack_context.target
 	var attack_range: float = attack_context.attack_range
 	var previous_target_id: int = attack_context.previous_target_id
@@ -178,6 +178,12 @@ func _apply_locked_pair_context_result(store, entity_id: int, locked_pair_result
 		"sticky_distance": float(locked_pair_result.sticky_distance),
 		"allowed_distance": float(locked_pair_result.allowed_distance)
 	}
+
+func _prepare_entity_attack_context(store, entity_id: int, target_id: int) -> Dictionary:
+	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
+	var attack_context := _read_attack_context(_resolve_target_and_slot_context(store, entity_id, target_id, origin))
+	attack_context["origin"] = origin
+	return attack_context
 
 func _read_attack_context(attack_context: Dictionary) -> Dictionary:
 	return {
