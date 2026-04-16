@@ -76,12 +76,7 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	store.attack_cd[entity_id] = max(0.0, store.attack_cd[entity_id] - max(delta, 0.0))
 	var target_id: int = _resolve_target(store, entity_id)
 	store.target_id[entity_id] = target_id
-	if target_id == -1:
-		_release_engagement_slot_if_needed(store, entity_id, target_id)
-		store.state[entity_id] = UNIT_STATE_IDLE
-		store.velocity_x[entity_id] = 0.0
-		store.velocity_y[entity_id] = 0.0
-		report["idle"] = int(report.get("idle", 0)) + 1
+	if _process_no_target_entity(store, entity_id, target_id, report):
 		return
 
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
@@ -148,6 +143,16 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		engagement_target
 	):
 		return
+
+func _process_no_target_entity(store, entity_id: int, target_id: int, report: Dictionary) -> bool:
+	if target_id != -1:
+		return false
+	_release_engagement_slot_if_needed(store, entity_id, target_id)
+	store.state[entity_id] = UNIT_STATE_IDLE
+	store.velocity_x[entity_id] = 0.0
+	store.velocity_y[entity_id] = 0.0
+	report["idle"] = int(report.get("idle", 0)) + 1
+	return true
 
 func _resolve_target_and_slot_context(store, entity_id: int, target_id: int, origin: Vector2) -> Dictionary:
 	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
