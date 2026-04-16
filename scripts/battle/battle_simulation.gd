@@ -137,60 +137,17 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		):
 			return
 
-	if slot_index >= 0:
-		target = engagement_target
-
-	_apply_same_team_spacing(store, entity_id)
-	_release_engagement_slot_if_needed(store, entity_id, target_id)
-	if store.engagement_slot[entity_id] == -1:
-		store.state[entity_id] = UNIT_STATE_IDLE
-		store.velocity_x[entity_id] = 0.0
-		store.velocity_y[entity_id] = 0.0
-		report["idle"] = int(report.get("idle", 0)) + 1
+	if _process_in_range_entity(
+		store,
+		entity_id,
+		target_id,
+		report,
+		origin,
+		target,
+		slot_index,
+		engagement_target
+	):
 		return
-
-	if store.engagement_target[entity_id] != target_id:
-		store.engagement_target[entity_id] = target_id
-		store.engagement_slot[entity_id] = slot_index
-		store.engagement_blocked_time[entity_id] = 0.0
-
-	if slot_index == -1:
-		store.state[entity_id] = UNIT_STATE_IDLE
-		store.velocity_x[entity_id] = 0.0
-		store.velocity_y[entity_id] = 0.0
-		store.engagement_blocked_time[entity_id] = 0.0
-		report["idle"] = int(report.get("idle", 0)) + 1
-		grid_upsert_pair(store, entity_id, target_id)
-		return
-
-	store.state[entity_id] = UNIT_STATE_ATTACK
-	store.velocity_x[entity_id] = 0.0
-	store.velocity_y[entity_id] = 0.0
-	store.engagement_blocked_time[entity_id] = 0.0
-	store.engagement_target[entity_id] = target_id
-	store.engagement_slot[entity_id] = slot_index
-	if slot_index >= 0:
-		target = engagement_target
-
-	report["in_range"] = int(report.get("in_range", 0)) + 1
-	var target_was_alive := bool(store.alive[target_id])
-	var did_hit: bool = _attack_resolver.resolve_basic_attack(store, entity_id, target_id, DEFAULT_ATTACK_DAMAGE)
-	if did_hit:
-		report["attacked"] = int(report.get("attacked", 0)) + 1
-		_append_event(report, entity_id, target_id, "attack", origin, target)
-		var impact_direction := _resolve_impact_direction(origin, target)
-		var knockback_target := target + impact_direction * DEFAULT_KNOCKBACK_DISTANCE
-		_append_event(report, entity_id, target_id, "knockback", origin, knockback_target)
-		_append_event(report, entity_id, target_id, "launch", origin, target + Vector2(0.0, -DEFAULT_LAUNCH_HEIGHT))
-	if did_hit and target_was_alive and not store.alive[target_id]:
-		report["killed"] = int(report.get("killed", 0)) + 1
-		_append_event(report, entity_id, target_id, "kill", origin, target)
-		_grid.remove(target_id)
-		_release_engagement_slot_if_needed(store, entity_id, -1)
-	if not did_hit:
-		report["idle"] = int(report.get("idle", 0)) + 1
-	grid_upsert_pair(store, entity_id, target_id)
-	return
 
 func _resolve_target_and_slot_context(store, entity_id: int, target_id: int, origin: Vector2) -> Dictionary:
 	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
@@ -337,6 +294,71 @@ func _process_out_of_range_entity(
 	_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
 	store.state[entity_id] = UNIT_STATE_ADVANCE
 	report["moved"] = int(report.get("moved", 0)) + 1
+	return true
+
+func _process_in_range_entity(
+	store,
+	entity_id: int,
+	target_id: int,
+	report: Dictionary,
+	origin: Vector2,
+	target: Vector2,
+	slot_index: int,
+	engagement_target: Vector2
+) -> bool:
+	if slot_index >= 0:
+		target = engagement_target
+
+	_apply_same_team_spacing(store, entity_id)
+	_release_engagement_slot_if_needed(store, entity_id, target_id)
+	if store.engagement_slot[entity_id] == -1:
+		store.state[entity_id] = UNIT_STATE_IDLE
+		store.velocity_x[entity_id] = 0.0
+		store.velocity_y[entity_id] = 0.0
+		report["idle"] = int(report.get("idle", 0)) + 1
+		return true
+
+	if store.engagement_target[entity_id] != target_id:
+		store.engagement_target[entity_id] = target_id
+		store.engagement_slot[entity_id] = slot_index
+		store.engagement_blocked_time[entity_id] = 0.0
+
+	if slot_index == -1:
+		store.state[entity_id] = UNIT_STATE_IDLE
+		store.velocity_x[entity_id] = 0.0
+		store.velocity_y[entity_id] = 0.0
+		store.engagement_blocked_time[entity_id] = 0.0
+		report["idle"] = int(report.get("idle", 0)) + 1
+		grid_upsert_pair(store, entity_id, target_id)
+		return true
+
+	store.state[entity_id] = UNIT_STATE_ATTACK
+	store.velocity_x[entity_id] = 0.0
+	store.velocity_y[entity_id] = 0.0
+	store.engagement_blocked_time[entity_id] = 0.0
+	store.engagement_target[entity_id] = target_id
+	store.engagement_slot[entity_id] = slot_index
+	if slot_index >= 0:
+		target = engagement_target
+
+	report["in_range"] = int(report.get("in_range", 0)) + 1
+	var target_was_alive := bool(store.alive[target_id])
+	var did_hit: bool = _attack_resolver.resolve_basic_attack(store, entity_id, target_id, DEFAULT_ATTACK_DAMAGE)
+	if did_hit:
+		report["attacked"] = int(report.get("attacked", 0)) + 1
+		_append_event(report, entity_id, target_id, "attack", origin, target)
+		var impact_direction := _resolve_impact_direction(origin, target)
+		var knockback_target := target + impact_direction * DEFAULT_KNOCKBACK_DISTANCE
+		_append_event(report, entity_id, target_id, "knockback", origin, knockback_target)
+		_append_event(report, entity_id, target_id, "launch", origin, target + Vector2(0.0, -DEFAULT_LAUNCH_HEIGHT))
+	if did_hit and target_was_alive and not store.alive[target_id]:
+		report["killed"] = int(report.get("killed", 0)) + 1
+		_append_event(report, entity_id, target_id, "kill", origin, target)
+		_grid.remove(target_id)
+		_release_engagement_slot_if_needed(store, entity_id, -1)
+	if not did_hit:
+		report["idle"] = int(report.get("idle", 0)) + 1
+	grid_upsert_pair(store, entity_id, target_id)
 	return true
 
 func _append_event(report: Dictionary, attacker_id: int, target_id: int, event_type: String, attacker_position: Vector2, target_position: Vector2) -> void:
