@@ -88,7 +88,6 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	var slot_index: int = attack_context.slot_index
 	var engagement_target: Vector2 = attack_context.engagement_target
 	var distance: float = attack_context.distance
-	var trigger_distance: float = attack_context.trigger_distance
 	var sticky_distance: float = attack_context.sticky_distance
 	var allowed_distance: float = attack_context.allowed_distance
 	var switched_locked_pair: bool = attack_context.switched_locked_pair
@@ -220,7 +219,6 @@ func _read_attack_context(attack_context: Dictionary) -> Dictionary:
 		"slot_index": int(attack_context.slot_index),
 		"engagement_target": attack_context.engagement_target,
 		"distance": float(attack_context.distance),
-		"trigger_distance": float(attack_context.trigger_distance),
 		"sticky_distance": float(attack_context.sticky_distance),
 		"allowed_distance": float(attack_context.allowed_distance),
 		"switched_locked_pair": bool(attack_context.switched_locked_pair)
