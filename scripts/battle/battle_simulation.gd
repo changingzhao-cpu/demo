@@ -106,16 +106,16 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		allowed_distance,
 		switched_locked_pair
 	)
-	if locked_pair_result.handled:
+	var context_result := _apply_locked_pair_context_result(store, entity_id, locked_pair_result)
+	if context_result.handled:
 		return
-	target_id = locked_pair_result.target_id
-	store.target_id[entity_id] = target_id
-	target = locked_pair_result.target
-	slot_index = locked_pair_result.slot_index
-	engagement_target = locked_pair_result.engagement_target
-	distance = locked_pair_result.distance
-	sticky_distance = locked_pair_result.sticky_distance
-	allowed_distance = locked_pair_result.allowed_distance
+	target_id = context_result.target_id
+	target = context_result.target
+	slot_index = context_result.slot_index
+	engagement_target = context_result.engagement_target
+	distance = context_result.distance
+	sticky_distance = context_result.sticky_distance
+	allowed_distance = context_result.allowed_distance
 
 	if distance > allowed_distance:
 		if _process_out_of_range_entity(
@@ -153,6 +153,31 @@ func _process_no_target_entity(store, entity_id: int, target_id: int, report: Di
 	store.velocity_y[entity_id] = 0.0
 	report["idle"] = int(report.get("idle", 0)) + 1
 	return true
+
+func _apply_locked_pair_context_result(store, entity_id: int, locked_pair_result: Dictionary) -> Dictionary:
+	if locked_pair_result.handled:
+		return {
+			"handled": true,
+			"target_id": int(locked_pair_result.target_id),
+			"target": locked_pair_result.target,
+			"slot_index": int(locked_pair_result.slot_index),
+			"engagement_target": locked_pair_result.engagement_target,
+			"distance": float(locked_pair_result.distance),
+			"sticky_distance": float(locked_pair_result.sticky_distance),
+			"allowed_distance": float(locked_pair_result.allowed_distance)
+		}
+	var target_id: int = int(locked_pair_result.target_id)
+	store.target_id[entity_id] = target_id
+	return {
+		"handled": false,
+		"target_id": target_id,
+		"target": locked_pair_result.target,
+		"slot_index": int(locked_pair_result.slot_index),
+		"engagement_target": locked_pair_result.engagement_target,
+		"distance": float(locked_pair_result.distance),
+		"sticky_distance": float(locked_pair_result.sticky_distance),
+		"allowed_distance": float(locked_pair_result.allowed_distance)
+	}
 
 func _resolve_target_and_slot_context(store, entity_id: int, target_id: int, origin: Vector2) -> Dictionary:
 	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
