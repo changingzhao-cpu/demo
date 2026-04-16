@@ -80,17 +80,17 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		return
 
 	var attack_context := _prepare_entity_attack_context(store, entity_id, target_id)
-	var origin: Vector2 = attack_context.origin
-	var target: Vector2 = attack_context.target
-	var attack_range: float = attack_context.attack_range
-	var previous_target_id: int = attack_context.previous_target_id
-	var previous_slot: int = attack_context.previous_slot
-	var slot_index: int = attack_context.slot_index
-	var engagement_target: Vector2 = attack_context.engagement_target
-	var distance: float = attack_context.distance
-	var sticky_distance: float = attack_context.sticky_distance
-	var allowed_distance: float = attack_context.allowed_distance
-	var switched_locked_pair: bool = attack_context.switched_locked_pair
+	var origin: Vector2 = attack_context["origin"]
+	var target: Vector2 = attack_context["target"]
+	var attack_range: float = attack_context["attack_range"]
+	var previous_target_id: int = attack_context["previous_target_id"]
+	var previous_slot: int = attack_context["previous_slot"]
+	var slot_index: int = attack_context["slot_index"]
+	var engagement_target: Vector2 = attack_context["engagement_target"]
+	var distance: float = attack_context["distance"]
+	var sticky_distance: float = attack_context["sticky_distance"]
+	var allowed_distance: float = attack_context["allowed_distance"]
+	var switched_locked_pair: bool = attack_context["switched_locked_pair"]
 	var context_result := _resolve_locked_pair_context(
 		store,
 		entity_id,
