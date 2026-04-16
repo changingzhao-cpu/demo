@@ -206,22 +206,23 @@ func _resolve_locked_pair_context(
 
 func _prepare_entity_attack_context(store, entity_id: int, target_id: int) -> Dictionary:
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
-	var attack_context := _read_attack_context(_resolve_target_and_slot_context(store, entity_id, target_id, origin))
+	var attack_context := _resolve_target_and_slot_context(store, entity_id, target_id, origin)
 	attack_context["origin"] = origin
-	return attack_context
+	return _read_attack_context(attack_context)
 
 func _read_attack_context(attack_context: Dictionary) -> Dictionary:
 	return {
-		"target": attack_context.target,
-		"attack_range": float(attack_context.attack_range),
-		"previous_target_id": int(attack_context.previous_target_id),
-		"previous_slot": int(attack_context.previous_slot),
-		"slot_index": int(attack_context.slot_index),
-		"engagement_target": attack_context.engagement_target,
-		"distance": float(attack_context.distance),
-		"sticky_distance": float(attack_context.sticky_distance),
-		"allowed_distance": float(attack_context.allowed_distance),
-		"switched_locked_pair": bool(attack_context.switched_locked_pair)
+		"origin": attack_context["origin"],
+		"target": attack_context["target"],
+		"attack_range": float(attack_context["attack_range"]),
+		"previous_target_id": int(attack_context["previous_target_id"]),
+		"previous_slot": int(attack_context["previous_slot"]),
+		"slot_index": int(attack_context["slot_index"]),
+		"engagement_target": attack_context["engagement_target"],
+		"distance": float(attack_context["distance"]),
+		"sticky_distance": float(attack_context["sticky_distance"]),
+		"allowed_distance": float(attack_context["allowed_distance"]),
+		"switched_locked_pair": bool(attack_context["switched_locked_pair"])
 	}
 
 func _resolve_target_and_slot_context(store, entity_id: int, target_id: int, origin: Vector2) -> Dictionary:
