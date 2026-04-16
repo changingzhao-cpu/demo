@@ -136,6 +136,7 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		store,
 		entity_id,
 		target_id,
+		delta,
 		report,
 		origin,
 		target,
@@ -390,12 +391,25 @@ func _process_in_range_entity(
 	store,
 	entity_id: int,
 	target_id: int,
+	delta: float,
 	report: Dictionary,
 	origin: Vector2,
 	target: Vector2,
 	slot_index: int,
 	engagement_target: Vector2
 ) -> void:
+	var target_center := Vector2(store.position_x[target_id], store.position_y[target_id])
+	var center_contact_distance := _get_attack_trigger_distance(store, entity_id, target_id, true)
+	var center_distance := target_center.distance_to(Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+	if center_distance > center_contact_distance:
+		_move_toward_position(store, entity_id, target_center, delta)
+		_apply_same_team_spacing(store, entity_id)
+		_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+		store.state[entity_id] = UNIT_STATE_ADVANCE
+		store.engagement_target[entity_id] = target_id
+		store.engagement_slot[entity_id] = slot_index
+		report["moved"] = int(report.get("moved", 0)) + 1
+		return
 	if slot_index >= 0:
 		target = engagement_target
 

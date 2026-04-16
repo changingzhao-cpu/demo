@@ -13,6 +13,7 @@ func run() -> Array[String]:
 	_test_attack_pair_does_not_drift_while_both_units_are_attacking(failures)
 	_test_multi_attacker_target_does_not_oscillate_contact_distance_on_attack_start(failures)
 	_test_multi_attacker_target_holds_slot_assignment_once_attack_locks(failures)
+	_test_attack_state_requires_center_contact_even_when_slot_anchor_is_reached(failures)
 	_test_locked_contact_release_clears_phase_specific_fields(failures)
 	return failures
 
@@ -195,11 +196,12 @@ func _test_multi_attacker_target_does_not_oscillate_contact_distance_on_attack_s
 		simulation.tick_bucket(store, 0.1, 0, 1)
 		var target_position := Vector2(store.position_x[target], store.position_y[target])
 		for attacker in [attacker_left, attacker_right, attacker_top]:
+			var attacker_position := Vector2(store.position_x[attacker], store.position_y[attacker])
 			if store.target_id[attacker] != target:
 				continue
 			if store.state[attacker] != BattleSimulationScript.UNIT_STATE_ATTACK:
 				continue
-			distances.append(Vector2(store.position_x[attacker], store.position_y[attacker]).distance_to(target_position))
+			distances.append(attacker_position.distance_to(target_position))
 	var min_distance := INF
 	var max_distance := 0.0
 	for value in distances:
@@ -252,6 +254,35 @@ func _test_multi_attacker_target_holds_slot_assignment_once_attack_locks(failure
 			else:
 				_assert_eq(slot, int(locked_slots[attacker]), "attacker should keep the same claimed slot after attack lock instead of rebinding mid-contact", failures)
 	_assert_true(locked_slots.size() >= 2, "multi-attacker slot-lock regression should observe at least two attackers entering locked attack", failures)
+
+func _test_attack_state_requires_center_contact_even_when_slot_anchor_is_reached(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationScript.new(grid)
+	var attacker: int = store.allocate()
+	var target: int = store.allocate()
+	_prepare_attacker(store, attacker)
+	_prepare_target(store, target, 100.0)
+	store.attack_range_sq[attacker] = 0.25
+	store.attack_cd[attacker] = 0.0
+	store.attack_interval[attacker] = 0.5
+	store.attack_range_sq[target] = 0.25
+	store.attack_cd[target] = 0.0
+	store.attack_interval[target] = 0.5
+	store.move_speed[target] = 0.0
+	store.position_x[target] = -1.0
+	store.position_y[target] = 7.8
+	store.position_x[attacker] = -3.3
+	store.position_y[attacker] = 7.8
+	store.engagement_target[attacker] = target
+	store.engagement_slot[attacker] = 0
+	grid.upsert(attacker, Vector2(store.position_x[attacker], store.position_y[attacker]))
+	grid.upsert(target, Vector2(store.position_x[target], store.position_y[target]))
+	simulation.tick_bucket(store, 0.1, 0, 1)
+	var center_distance := Vector2(store.position_x[attacker], store.position_y[attacker]).distance_to(Vector2(store.position_x[target], store.position_y[target]))
+	_assert_true(center_distance < 0.4, "pre-contact approach should keep pushing attacker toward real center contact", failures)
+	_assert_eq(store.state[attacker], BattleSimulationScript.UNIT_STATE_ADVANCE, "attacker should remain in advance during the first approach tick before center-contact attack lock", failures)
+	_assert_eq(store.attack_cd[attacker], 0.0, "attacker should not start attack cooldown during the first pre-contact approach tick", failures)
 
 func _test_locked_contact_release_clears_phase_specific_fields(failures: Array[String]) -> void:
 	var store = EntityStore.new(2)
