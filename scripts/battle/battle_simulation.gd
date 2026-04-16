@@ -105,15 +105,15 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		allowed_distance,
 		switched_locked_pair
 	)
-	if context_result.handled:
+	if context_result["handled"]:
 		return
-	target_id = context_result.target_id
-	target = context_result.target
-	slot_index = context_result.slot_index
-	engagement_target = context_result.engagement_target
-	distance = context_result.distance
-	sticky_distance = context_result.sticky_distance
-	allowed_distance = context_result.allowed_distance
+	target_id = context_result["target_id"]
+	target = context_result["target"]
+	slot_index = context_result["slot_index"]
+	engagement_target = context_result["engagement_target"]
+	distance = context_result["distance"]
+	sticky_distance = context_result["sticky_distance"]
+	allowed_distance = context_result["allowed_distance"]
 
 	if distance > allowed_distance:
 		if _process_out_of_range_entity(
