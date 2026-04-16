@@ -92,7 +92,7 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	var sticky_distance: float = attack_context.sticky_distance
 	var allowed_distance: float = attack_context.allowed_distance
 	var switched_locked_pair: bool = attack_context.switched_locked_pair
-	var locked_pair_result := _reuse_locked_pair_context(
+	var context_result := _resolve_locked_pair_context(
 		store,
 		entity_id,
 		target_id,
@@ -106,7 +106,6 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 		allowed_distance,
 		switched_locked_pair
 	)
-	var context_result := _apply_locked_pair_context_result(store, entity_id, locked_pair_result)
 	if context_result.handled:
 		return
 	target_id = context_result.target_id
@@ -154,7 +153,34 @@ func _process_no_target_entity(store, entity_id: int, target_id: int, report: Di
 	report["idle"] = int(report.get("idle", 0)) + 1
 	return true
 
-func _apply_locked_pair_context_result(store, entity_id: int, locked_pair_result: Dictionary) -> Dictionary:
+func _resolve_locked_pair_context(
+	store,
+	entity_id: int,
+	target_id: int,
+	origin: Vector2,
+	target: Vector2,
+	previous_target_id: int,
+	previous_slot: int,
+	slot_index: int,
+	engagement_target: Vector2,
+	sticky_distance: float,
+	allowed_distance: float,
+	switched_locked_pair: bool
+) -> Dictionary:
+	var locked_pair_result := _reuse_locked_pair_context(
+		store,
+		entity_id,
+		target_id,
+		origin,
+		target,
+		previous_target_id,
+		previous_slot,
+		slot_index,
+		engagement_target,
+		sticky_distance,
+		allowed_distance,
+		switched_locked_pair
+	)
 	if locked_pair_result.handled:
 		return {
 			"handled": true,
@@ -166,11 +192,11 @@ func _apply_locked_pair_context_result(store, entity_id: int, locked_pair_result
 			"sticky_distance": float(locked_pair_result.sticky_distance),
 			"allowed_distance": float(locked_pair_result.allowed_distance)
 		}
-	var target_id: int = int(locked_pair_result.target_id)
-	store.target_id[entity_id] = target_id
+	var resolved_target_id: int = int(locked_pair_result.target_id)
+	store.target_id[entity_id] = resolved_target_id
 	return {
 		"handled": false,
-		"target_id": target_id,
+		"target_id": resolved_target_id,
 		"target": locked_pair_result.target,
 		"slot_index": int(locked_pair_result.slot_index),
 		"engagement_target": locked_pair_result.engagement_target,
