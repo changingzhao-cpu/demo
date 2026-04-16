@@ -69,18 +69,15 @@ func tick_bucket_with_report(store, delta: float, bucket_index: int, bucket_coun
 	return report
 
 func _process_entity(store, entity_id: int, delta: float, report: Dictionary) -> void:
-	_process_entity_flow(store, entity_id, delta, report)
-
-func _process_entity_flow(store, entity_id: int, delta: float, report: Dictionary) -> bool:
 	if not store.alive[entity_id]:
 		store.state[entity_id] = UNIT_STATE_DEAD
-		return true
+		return
 
 	store.attack_cd[entity_id] = max(0.0, store.attack_cd[entity_id] - max(delta, 0.0))
 	var target_id: int = _resolve_target(store, entity_id)
 	store.target_id[entity_id] = target_id
 	if _process_no_target_entity(store, entity_id, target_id, report):
-		return true
+		return
 
 	var attack_context := _prepare_entity_attack_context(store, entity_id, target_id)
 	var origin: Vector2 = attack_context.origin
@@ -110,7 +107,7 @@ func _process_entity_flow(store, entity_id: int, delta: float, report: Dictionar
 		switched_locked_pair
 	)
 	if context_result.handled:
-		return true
+		return
 	target_id = context_result.target_id
 	target = context_result.target
 	slot_index = context_result.slot_index
@@ -132,7 +129,7 @@ func _process_entity_flow(store, entity_id: int, delta: float, report: Dictionar
 			slot_index,
 			engagement_target
 		):
-			return true
+			return
 
 	if _process_in_range_entity(
 		store,
@@ -144,8 +141,7 @@ func _process_entity_flow(store, entity_id: int, delta: float, report: Dictionar
 		slot_index,
 		engagement_target
 	):
-		return true
-	return false
+		return
 
 func _process_no_target_entity(store, entity_id: int, target_id: int, report: Dictionary) -> bool:
 	if target_id != -1:
