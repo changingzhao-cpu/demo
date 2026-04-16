@@ -91,19 +91,21 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	var sticky_distance: float = attack_context["sticky_distance"]
 	var allowed_distance: float = attack_context["allowed_distance"]
 	var switched_locked_pair: bool = attack_context["switched_locked_pair"]
-	var context_result := _resolve_locked_pair_context(
-		store,
-		entity_id,
-		target_id,
-		origin,
-		target,
-		previous_target_id,
-		previous_slot,
-		slot_index,
-		engagement_target,
-		sticky_distance,
-		allowed_distance,
-		switched_locked_pair
+	var context_result := _read_locked_pair_context_result(
+		_resolve_locked_pair_context(
+			store,
+			entity_id,
+			target_id,
+			origin,
+			target,
+			previous_target_id,
+			previous_slot,
+			slot_index,
+			engagement_target,
+			sticky_distance,
+			allowed_distance,
+			switched_locked_pair
+		)
 	)
 	if context_result["handled"]:
 		return
@@ -223,6 +225,18 @@ func _read_attack_context(attack_context: Dictionary) -> Dictionary:
 		"sticky_distance": float(attack_context["sticky_distance"]),
 		"allowed_distance": float(attack_context["allowed_distance"]),
 		"switched_locked_pair": bool(attack_context["switched_locked_pair"])
+	}
+
+func _read_locked_pair_context_result(context_result: Dictionary) -> Dictionary:
+	return {
+		"handled": bool(context_result["handled"]),
+		"target_id": int(context_result["target_id"]),
+		"target": context_result["target"],
+		"slot_index": int(context_result["slot_index"]),
+		"engagement_target": context_result["engagement_target"],
+		"distance": float(context_result["distance"]),
+		"sticky_distance": float(context_result["sticky_distance"]),
+		"allowed_distance": float(context_result["allowed_distance"])
 	}
 
 func _resolve_target_and_slot_context(store, entity_id: int, target_id: int, origin: Vector2) -> Dictionary:
