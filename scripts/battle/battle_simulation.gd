@@ -123,52 +123,19 @@ func _process_entity(store, entity_id: int, delta: float, report: Dictionary) ->
 	allowed_distance = locked_pair_result.allowed_distance
 
 	if distance > allowed_distance:
-		var target_is_locked_in_attack: bool = target_id >= 0 and target_id < store.capacity and store.alive[target_id] and store.state[target_id] == UNIT_STATE_ATTACK
-		var contact_distance: float = attack_range + store.radius[entity_id] + store.radius[target_id]
-		var center_distance: float = origin.distance_to(target)
-		if target_is_locked_in_attack and center_distance <= contact_distance + ATTACK_STICKY_MARGIN:
-			store.engagement_target[entity_id] = target_id
-			store.engagement_slot[entity_id] = slot_index
-			if slot_index == -1:
-				store.state[entity_id] = UNIT_STATE_IDLE
-				store.velocity_x[entity_id] = 0.0
-				store.velocity_y[entity_id] = 0.0
-				store.engagement_blocked_time[entity_id] = 0.0
-				report["idle"] = int(report.get("idle", 0)) + 1
-				grid_upsert_pair(store, entity_id, target_id)
-				return
-			store.state[entity_id] = UNIT_STATE_ATTACK
-			store.velocity_x[entity_id] = 0.0
-			store.velocity_y[entity_id] = 0.0
-			store.engagement_blocked_time[entity_id] = 0.0
-			report["in_range"] = int(report.get("in_range", 0)) + 1
-			var should_drive_locked_pair: bool = entity_id < target_id
-			var target_was_alive_locked := bool(store.alive[target_id])
-			var did_hit_locked: bool = _attack_resolver.resolve_basic_attack(store, entity_id, target_id, DEFAULT_ATTACK_DAMAGE) if should_drive_locked_pair else false
-			if did_hit_locked:
-				report["attacked"] = int(report.get("attacked", 0)) + 1
-				_append_event(report, entity_id, target_id, "attack", origin, target)
-				var impact_direction_locked := _resolve_impact_direction(origin, target)
-				var knockback_target_locked := target + impact_direction_locked * DEFAULT_KNOCKBACK_DISTANCE
-				_append_event(report, entity_id, target_id, "knockback", origin, knockback_target_locked)
-				_append_event(report, entity_id, target_id, "launch", origin, target + Vector2(0.0, -DEFAULT_LAUNCH_HEIGHT))
-			if did_hit_locked and target_was_alive_locked and not store.alive[target_id]:
-				report["killed"] = int(report.get("killed", 0)) + 1
-				_append_event(report, entity_id, target_id, "kill", origin, target)
-				_grid.remove(target_id)
-				_release_engagement_slot_if_needed(store, entity_id, -1)
-			if not did_hit_locked:
-				report["idle"] = int(report.get("idle", 0)) + 1
-			grid_upsert_pair(store, entity_id, target_id)
+		if _process_out_of_range_entity(
+			store,
+			entity_id,
+			target_id,
+			delta,
+			report,
+			origin,
+			target,
+			attack_range,
+			slot_index,
+			engagement_target
+		):
 			return
-		_move_toward_position(store, entity_id, engagement_target, delta)
-		var moved_distance := origin.distance_to(Vector2(store.position_x[entity_id], store.position_y[entity_id]))
-		_update_engagement_blocked_time(store, entity_id, moved_distance, delta)
-		_apply_same_team_spacing(store, entity_id)
-		_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
-		store.state[entity_id] = UNIT_STATE_ADVANCE
-		report["moved"] = int(report.get("moved", 0)) + 1
-		return
 
 	if slot_index >= 0:
 		target = engagement_target
@@ -312,6 +279,65 @@ func _reuse_locked_pair_context(
 		"sticky_distance": sticky_distance,
 		"allowed_distance": allowed_distance
 	}
+
+func _process_out_of_range_entity(
+	store,
+	entity_id: int,
+	target_id: int,
+	delta: float,
+	report: Dictionary,
+	origin: Vector2,
+	target: Vector2,
+	attack_range: float,
+	slot_index: int,
+	engagement_target: Vector2
+) -> bool:
+	var target_is_locked_in_attack: bool = target_id >= 0 and target_id < store.capacity and store.alive[target_id] and store.state[target_id] == UNIT_STATE_ATTACK
+	var contact_distance: float = attack_range + store.radius[entity_id] + store.radius[target_id]
+	var center_distance: float = origin.distance_to(target)
+	if target_is_locked_in_attack and center_distance <= contact_distance + ATTACK_STICKY_MARGIN:
+		store.engagement_target[entity_id] = target_id
+		store.engagement_slot[entity_id] = slot_index
+		if slot_index == -1:
+			store.state[entity_id] = UNIT_STATE_IDLE
+			store.velocity_x[entity_id] = 0.0
+			store.velocity_y[entity_id] = 0.0
+			store.engagement_blocked_time[entity_id] = 0.0
+			report["idle"] = int(report.get("idle", 0)) + 1
+			grid_upsert_pair(store, entity_id, target_id)
+			return true
+		store.state[entity_id] = UNIT_STATE_ATTACK
+		store.velocity_x[entity_id] = 0.0
+		store.velocity_y[entity_id] = 0.0
+		store.engagement_blocked_time[entity_id] = 0.0
+		report["in_range"] = int(report.get("in_range", 0)) + 1
+		var should_drive_locked_pair: bool = entity_id < target_id
+		var target_was_alive_locked := bool(store.alive[target_id])
+		var did_hit_locked: bool = _attack_resolver.resolve_basic_attack(store, entity_id, target_id, DEFAULT_ATTACK_DAMAGE) if should_drive_locked_pair else false
+		if did_hit_locked:
+			report["attacked"] = int(report.get("attacked", 0)) + 1
+			_append_event(report, entity_id, target_id, "attack", origin, target)
+			var impact_direction_locked := _resolve_impact_direction(origin, target)
+			var knockback_target_locked := target + impact_direction_locked * DEFAULT_KNOCKBACK_DISTANCE
+			_append_event(report, entity_id, target_id, "knockback", origin, knockback_target_locked)
+			_append_event(report, entity_id, target_id, "launch", origin, target + Vector2(0.0, -DEFAULT_LAUNCH_HEIGHT))
+		if did_hit_locked and target_was_alive_locked and not store.alive[target_id]:
+			report["killed"] = int(report.get("killed", 0)) + 1
+			_append_event(report, entity_id, target_id, "kill", origin, target)
+			_grid.remove(target_id)
+			_release_engagement_slot_if_needed(store, entity_id, -1)
+		if not did_hit_locked:
+			report["idle"] = int(report.get("idle", 0)) + 1
+		grid_upsert_pair(store, entity_id, target_id)
+		return true
+	_move_toward_position(store, entity_id, engagement_target, delta)
+	var moved_distance := origin.distance_to(Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+	_update_engagement_blocked_time(store, entity_id, moved_distance, delta)
+	_apply_same_team_spacing(store, entity_id)
+	_grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+	store.state[entity_id] = UNIT_STATE_ADVANCE
+	report["moved"] = int(report.get("moved", 0)) + 1
+	return true
 
 func _append_event(report: Dictionary, attacker_id: int, target_id: int, event_type: String, attacker_position: Vector2, target_position: Vector2) -> void:
 	var events: Array = report.get("events", [])
