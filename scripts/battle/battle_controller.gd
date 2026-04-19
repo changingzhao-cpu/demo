@@ -6,6 +6,7 @@ const WaveControllerScript = preload("res://scripts/battle/wave_controller.gd")
 const EntityStoreScript = preload("res://scripts/battle/entity_store.gd")
 const SpatialGridScript = preload("res://scripts/battle/spatial_grid.gd")
 const BattleSimulationScript = preload("res://scripts/battle/battle_simulation.gd")
+const BattleSimulationV2Script = preload("res://scripts/battle/battle_simulation_v2.gd")
 
 const DEFAULT_ALLY_COUNT := 18
 const DEFAULT_STORE_CAPACITY := 128
@@ -81,6 +82,31 @@ var _tick_bucket_count := 4
 var _tick_accumulator := 0.0
 var _tick_interval := 0.016
 var _rng := RandomNumberGenerator.new()
+var _simulation_backend: String = "v1"
+
+func debug_force_simulation_backend(backend_name: String) -> void:
+	_simulation_backend = backend_name
+
+func debug_get_authoritative_battle_contract() -> Dictionary:
+	if _simulation == null or _entity_store == null:
+		return {"ticksource": "none", "entities": []}
+	if _simulation.has_method("build_authoritative_battle_contract"):
+		return _simulation.call("build_authoritative_battle_contract", _entity_store)
+	return {"ticksource": "none", "entities": []}
+
+func debug_get_runtime_projection() -> Dictionary:
+	return {
+		"source": "authoritative_battle_contract",
+		"entities": debug_get_authoritative_battle_contract().get("entities", [])
+	}
+
+func _create_simulation(grid):
+	if _simulation_backend == "v2":
+		return BattleSimulationV2Script.new(grid)
+	return BattleSimulationScript.new(grid)
+
+func _resolve_runtime_simulation_backend() -> String:
+	return _simulation_backend
 
 func _init(wave_defs_path_value: String = "res://data/wave_defs.json") -> void:
 	wave_defs_path = wave_defs_path_value
@@ -950,7 +976,7 @@ func _setup_runtime_for_wave(wave: Dictionary) -> void:
 	_tick_bucket_index = 0
 	_tick_accumulator = 0.0
 	_spatial_grid = SpatialGridScript.new(GRID_CELL_SIZE)
-	_simulation = BattleSimulationScript.new(_spatial_grid)
+	_simulation = _create_simulation(_spatial_grid)
 	var enemy_count: int = max(0, int(wave.get("enemy_count", 0)))
 	var total_count: int = DEFAULT_ALLY_COUNT + enemy_count
 	_entity_store = EntityStoreScript.new(max(DEFAULT_STORE_CAPACITY, total_count))

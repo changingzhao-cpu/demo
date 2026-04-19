@@ -9,6 +9,7 @@ const TEST_SUITES := [
 	{"name": "battle/test_battle_simulation_targeting", "path": "res://tests/battle/test_battle_simulation_targeting.gd"},
 	{"name": "battle/test_battle_simulation_attacks", "path": "res://tests/battle/test_battle_simulation_attacks.gd"},
 	{"name": "battle/test_battle_simulation_combat_report", "path": "res://tests/battle/test_battle_simulation_combat_report.gd"},
+	{"name": "battle/test_battle_simulation_v2_duel", "path": "res://tests/battle/test_battle_simulation_v2_duel.gd"},
 	{"name": "battle/test_unit_defs_loader", "path": "res://tests/battle/test_unit_defs_loader.gd"},
 	{"name": "battle/test_wave_defs_loader", "path": "res://tests/battle/test_wave_defs_loader.gd"},
 	{"name": "battle/test_relic_defs_loader", "path": "res://tests/battle/test_relic_defs_loader.gd"},
