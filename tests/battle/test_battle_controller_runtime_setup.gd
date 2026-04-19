@@ -7,6 +7,7 @@ func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_start_run_creates_runtime_dependencies(failures)
 	_test_start_run_seeds_friendly_and_enemy_units(failures)
+	_test_controller_can_switch_to_battle_simulation_v2(failures)
 	return failures
 
 func _test_start_run_creates_runtime_dependencies(failures: Array[String]) -> void:
@@ -45,6 +46,14 @@ func _test_start_run_seeds_friendly_and_enemy_units(failures: Array[String]) -> 
 			enemy_count += 1
 	_assert_true(ally_count > 0, "runtime setup should seed at least one allied unit", failures)
 	_assert_eq(enemy_count, int(wave.get("enemy_count", -1)), "runtime setup should seed the current wave enemy count", failures)
+	controller.free()
+
+func _test_controller_can_switch_to_battle_simulation_v2(failures: Array[String]) -> void:
+	var controller = BattleControllerScript.new(WAVE_DEFS_PATH)
+	controller.call("debug_force_simulation_backend", "v2")
+	controller.start_run()
+	var contract: Dictionary = controller.call("debug_get_authoritative_battle_contract")
+	_assert_true(str(contract.get("ticksource", "")) == "battle_simulation_v2", "battle controller should expose v2 authoritative contract when backend is switched to v2", failures)
 	controller.free()
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
