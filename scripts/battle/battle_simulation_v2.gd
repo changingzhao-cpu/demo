@@ -30,12 +30,20 @@ func _tick_entity(store, entity_id: int, delta: float) -> void:
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
 	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
 	var distance := origin.distance_to(target)
-	if distance <= ATTACK_CONTACT_DISTANCE:
+	var slot_index := _resolve_slot_for_target(store, entity_id, target_id)
+	if store.state[entity_id] == Types.UNIT_STATE_ATTACK and _can_hold_attack(store, entity_id, target_id, slot_index):
+		store.engagement_slot[entity_id] = slot_index
+		store.velocity_x[entity_id] = 0.0
+		store.velocity_y[entity_id] = 0.0
+		return
+	if distance <= ATTACK_CONTACT_DISTANCE and _can_enter_attack_with_slot(target_id, slot_index):
 		store.state[entity_id] = Types.UNIT_STATE_ATTACK
+		store.engagement_slot[entity_id] = slot_index
 		store.velocity_x[entity_id] = 0.0
 		store.velocity_y[entity_id] = 0.0
 		return
 	store.state[entity_id] = Types.UNIT_STATE_ADVANCE
+	store.engagement_slot[entity_id] = -1
 	var direction := (target - origin).normalized()
 	var step := minf(distance, store.move_speed[entity_id] * delta)
 	var movement := direction * step
@@ -63,6 +71,41 @@ func _acquire_target(store, entity_id: int) -> int:
 			best_distance_sq = distance_sq
 			best_target = candidate
 	return best_target
+
+func _resolve_slot_for_target(store, entity_id: int, target_id: int) -> int:
+	var current_slot := int(store.engagement_slot[entity_id])
+	if current_slot >= 0 and _is_slot_free_for_target(store, entity_id, target_id, current_slot):
+		return current_slot
+	for slot_index in range(3):
+		if _is_slot_free_for_target(store, entity_id, target_id, slot_index):
+			return slot_index
+	return -1
+
+func _is_slot_free_for_target(store, entity_id: int, target_id: int, slot_index: int) -> bool:
+	for candidate in range(store.capacity):
+		if candidate == entity_id:
+			continue
+		if not store.alive[candidate]:
+			continue
+		if store.team_id[candidate] != store.team_id[entity_id]:
+			continue
+		if int(store.target_id[candidate]) != target_id:
+			continue
+		if int(store.engagement_slot[candidate]) == slot_index:
+			return false
+	return true
+
+func _can_enter_attack_with_slot(target_id: int, slot_index: int) -> bool:
+	return target_id != -1 and slot_index != -1
+
+func _can_hold_attack(store, entity_id: int, target_id: int, slot_index: int) -> bool:
+	if target_id == -1 or slot_index == -1:
+		return false
+	if not store.alive[target_id]:
+		return false
+	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
+	var target := Vector2(store.position_x[target_id], store.position_y[target_id])
+	return origin.distance_to(target) <= ATTACK_CONTACT_DISTANCE
 
 func build_authoritative_battle_contract(store) -> Dictionary:
 	var entities: Array = []
