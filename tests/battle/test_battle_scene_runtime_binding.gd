@@ -18,7 +18,27 @@ func run() -> Array[String]:
 	_test_initial_layout_syncs_bound_entities_26_and_40_before_combat_starts(failures)
 	_test_initial_binding_keeps_slot_entity_ids_stable_across_instances(failures)
 	_test_runtime_probe_exports_battle_report_timeline(failures)
+	_test_battle_scene_can_run_with_v2_simulation_backend(failures)
 	return failures
+
+func _test_battle_scene_can_run_with_v2_simulation_backend(failures: Array[String]) -> void:
+	var battle_scene = _load_battle_scene()
+	_assert_true(battle_scene != null, "battle scene should load before v2 backend checks", failures)
+	if battle_scene == null:
+		return
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = battle_scene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	_assert_true(controller != null, "battle scene should expose BattleController for v2 backend checks", failures)
+	if controller != null:
+		controller.call("debug_force_simulation_backend", "v2")
+		controller.call("start_run")
+		var contract: Dictionary = controller.call("debug_get_authoritative_battle_contract")
+		_assert_true(str(contract.get("ticksource", "")) == "battle_simulation_v2", "battle scene should expose v2 authoritative contract when controller backend switches to v2", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
 
 func _test_initial_layout_uses_runtime_combat_positions(failures: Array[String]) -> void:
 	var battle_scene = _load_battle_scene()
