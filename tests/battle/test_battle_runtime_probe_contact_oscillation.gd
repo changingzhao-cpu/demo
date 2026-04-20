@@ -1,19 +1,7 @@
 extends SceneTree
 
 const BATTLE_SCENE_PATH := "res://scenes/battle/battle_scene.tscn"
-const OUTPUT_PATH := "user://runtime_probe.json"
 const SAMPLE_TIMES := [0.0, 0.01, 0.03, 0.05, 0.1, 0.2, 0.5, 1.0, 1.1, 1.2, 1.25, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0, 16.0, 20.0]
-const INITIAL_PROBE := "user://transition_initial_probe.json"
-const RUNTIME_PROBE := "user://transition_runtime_probe.json"
-
-func _read_json(path: String) -> Dictionary:
-	var text := FileAccess.get_file_as_string(path)
-	if text == "":
-		return {}
-	var json := JSON.new()
-	if json.parse(text) != OK:
-		return {}
-	return json.data
 
 func _parse_vector2(value) -> Vector2:
 	if value is Vector2:
@@ -164,47 +152,26 @@ func _build_anomaly_scan(trajectories: Dictionary, battle_report_timeline: Array
 						attack_rebind_recontacts.append(sample)
 					else:
 						attack_midband_drifts.append(sample)
-	attack_rebind_escapes.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return absf(float(a.get("to_distance", 0.0)) - float(a.get("from_distance", 0.0))) > absf(float(b.get("to_distance", 0.0)) - float(b.get("from_distance", 0.0)))
-	)
-	attack_rebind_recontacts.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return absf(float(a.get("to_distance", 0.0)) - float(a.get("from_distance", 0.0))) > absf(float(b.get("to_distance", 0.0)) - float(b.get("from_distance", 0.0)))
-	)
-	attack_midband_drifts.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return absf(float(a.get("to_distance", 0.0)) - float(a.get("from_distance", 0.0))) > absf(float(b.get("to_distance", 0.0)) - float(b.get("from_distance", 0.0)))
-	)
-	position_jumps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return float(a.get("speed", 0.0)) > float(b.get("speed", 0.0))
-	)
-	spiral_drifts.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return float(a.get("distance", 0.0)) > float(b.get("distance", 0.0))
-	)
-	high_frequency_jitters.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return float(a.get("end_time", 0.0)) < float(b.get("end_time", 0.0))
-	)
 	return {
 		"position_jump_count": position_jumps.size(),
-		"position_jumps": position_jumps.slice(0, mini(50, position_jumps.size())),
 		"spiral_drift_count": spiral_drifts.size(),
-		"spiral_drifts": spiral_drifts.slice(0, mini(50, spiral_drifts.size())),
 		"high_frequency_jitter_count": high_frequency_jitters.size(),
-		"high_frequency_jitters": high_frequency_jitters.slice(0, mini(50, high_frequency_jitters.size())),
 		"attack_rebind_escape_count": attack_rebind_escapes.size(),
-		"attack_rebind_escapes": attack_rebind_escapes.slice(0, mini(50, attack_rebind_escapes.size())),
+		"attack_rebind_escapes": attack_rebind_escapes,
 		"attack_rebind_recontact_count": attack_rebind_recontacts.size(),
-		"attack_rebind_recontacts": attack_rebind_recontacts.slice(0, mini(50, attack_rebind_recontacts.size())),
+		"attack_rebind_recontacts": attack_rebind_recontacts,
 		"attack_midband_drift_count": attack_midband_drifts.size(),
-		"attack_midband_drifts": attack_midband_drifts.slice(0, mini(50, attack_midband_drifts.size()))
+		"attack_midband_drifts": attack_midband_drifts
 	}
 
-func _initialize() -> void:
+func run() -> Array[String]:
+	var failures: Array[String] = []
 	var scene: PackedScene = load(BATTLE_SCENE_PATH)
 	if scene == null:
-		printerr("[PROBE] failed to load battle scene")
-		quit(1)
-		return
+		failures.append("runtime probe fixture should load battle scene")
+		return failures
 	var instance: Node = scene.instantiate()
-	root.add_child(instance)
+	get_root().add_child(instance)
 	await process_frame
 	var controller = instance.get_node_or_null("BattleController")
 	if controller != null and controller.has_method("debug_force_simulation_backend"):
@@ -222,35 +189,10 @@ func _initialize() -> void:
 			await create_timer(step).timeout
 			elapsed += step
 			continue
-		var unit_layer := instance.get_node_or_null("UnitLayer")
 		var tracked_entities: Dictionary = {}
 		for tracked_id in range(0, 64):
 			var entity_payload: Dictionary = controller.call("debug_get_entity_diagnostic", tracked_id) if controller != null and controller.has_method("debug_get_entity_diagnostic") else {"entity_id": tracked_id, "exists": false}
-			var entity_view_snapshot: Dictionary = {}
-			var entity_target_payload: Dictionary = {}
-			var entity_target_target_payload: Dictionary = {}
-			var target_id := int(entity_payload.get("target_id", -1))
-			if target_id >= 0 and controller != null and controller.has_method("debug_get_entity_diagnostic"):
-				entity_target_payload = controller.call("debug_get_entity_diagnostic", target_id)
-				var target_target_id := int(entity_target_payload.get("target_id", -1))
-				if target_target_id >= 0:
-					entity_target_target_payload = controller.call("debug_get_entity_diagnostic", target_target_id)
-			if unit_layer != null:
-				for child in unit_layer.get_children():
-					if child.has_method("get_entity_id") and int(child.call("get_entity_id")) == tracked_id:
-						entity_view_snapshot = {
-							"visible": child.visible,
-							"global_position": child.global_position,
-							"sprite": child.call("debug_get_sprite_snapshot") if child.has_method("debug_get_sprite_snapshot") else {},
-							"pose": child.call("debug_get_pose_snapshot") if child.has_method("debug_get_pose_snapshot") else {}
-						}
-						break
-			tracked_entities[str(tracked_id)] = {
-				"controller": entity_payload,
-				"target": entity_target_payload,
-				"target_target": entity_target_target_payload,
-				"view": entity_view_snapshot
-			}
+			tracked_entities[str(tracked_id)] = {"controller": entity_payload}
 			if bool(entity_payload.get("exists", false)):
 				var trajectory_key := str(tracked_id)
 				var points: Array = trajectories.get(trajectory_key, [])
@@ -263,29 +205,30 @@ func _initialize() -> void:
 					"velocity": entity_payload.get("velocity", Vector2.ZERO)
 				})
 				trajectories[trajectory_key] = points
-		samples.append({
-			"time": elapsed,
-			"tracked_entities": tracked_entities
-		})
+		samples.append({"time": elapsed, "tracked_entities": tracked_entities})
 		sample_index += 1
-	var attack_times: Dictionary = controller.call("debug_get_first_attack_times") if controller != null and controller.has_method("debug_get_first_attack_times") else {}
 	var battle_report_timeline: Array = controller.call("get_battle_report_timeline") if controller != null and controller.has_method("get_battle_report_timeline") else []
 	var anomaly_scan := _build_anomaly_scan(trajectories, battle_report_timeline)
-	var output := {
-		"samples": samples,
-		"trajectories": trajectories,
-		"battle_report_timeline": battle_report_timeline,
-		"anomaly_scan": anomaly_scan,
-		"initial_probe": FileAccess.get_file_as_string(INITIAL_PROBE),
-		"runtime_probe": FileAccess.get_file_as_string(RUNTIME_PROBE),
-		"first_attack_times": attack_times
-	}
-	var file := FileAccess.open(OUTPUT_PATH, FileAccess.WRITE)
-	if file == null:
-		printerr("[PROBE] failed to open output path")
-		quit(1)
-		return
-	file.store_string(JSON.stringify(output, "\t"))
-	file.close()
-	print("[PROBE] wrote %s" % ProjectSettings.globalize_path(OUTPUT_PATH))
-	quit()
+	if OS.is_debug_build():
+		var file := FileAccess.open("user://runtime_probe_test_fixture.json", FileAccess.WRITE)
+		if file != null:
+			file.store_string(JSON.stringify({
+				"trajectories": trajectories,
+				"battle_report_timeline": battle_report_timeline,
+				"anomaly_scan": anomaly_scan
+			}, "\t"))
+			file.close()
+	instance.queue_free()
+	await process_frame
+	_assert_true(int(anomaly_scan.get("attack_rebind_escape_count", 0)) <= 1, "v2 runtime probe fixture should not show repeated ATTACK rebind escape samples", failures)
+	return failures
+
+func _initialize() -> void:
+	var failures := await run()
+	for failure in failures:
+		printerr("[FAIL] battle/test_battle_runtime_probe_contact_oscillation: %s" % failure)
+	quit(1 if not failures.is_empty() else 0)
+
+func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
+	if not value:
+		failures.append(message)

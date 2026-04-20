@@ -28,6 +28,7 @@ const TEST_SUITES := [
 	{"name": "battle/test_battle_scene_bootstrap", "path": "res://tests/battle/test_battle_scene_bootstrap.gd"},
 	{"name": "scenes/test_main_scene_bootstrap", "path": "res://tests/scenes/test_main_scene_bootstrap.gd"},
 	{"name": "battle/test_battle_controller_runtime_setup", "path": "res://tests/battle/test_battle_controller_runtime_setup.gd"},
+	{"name": "battle/test_battle_runtime_probe_contact_oscillation", "path": "res://tests/battle/test_battle_runtime_probe_contact_oscillation.gd"},
 	{"name": "presentation/test_unit_view_pool_binding", "path": "res://tests/presentation/test_unit_view_pool_binding.gd"},
 	{"name": "battle/test_battle_scene_runtime_binding", "path": "res://tests/battle/test_battle_scene_runtime_binding.gd"},
 	{"name": "battle/test_battle_scene_visual_bootstrap", "path": "res://tests/battle/test_battle_scene_visual_bootstrap.gd"},
@@ -105,7 +106,7 @@ func _run_suite(suite_name: String, suite_path: String) -> void:
 		printerr("[FAIL] %s: missing run() method" % suite_name)
 		return
 
-	var result: Variant = suite.run()
+	var result: Variant = await suite.run()
 	if result is Array and result.is_empty():
 		await process_frame
 		print("[PASS] %s" % suite_name)
