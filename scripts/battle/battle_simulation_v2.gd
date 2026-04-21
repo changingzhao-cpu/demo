@@ -33,12 +33,20 @@ func _tick_entity(store, entity_id: int, delta: float) -> void:
 	var slot_index := _resolve_slot_for_target(store, entity_id, target_id)
 	if store.state[entity_id] == Types.UNIT_STATE_ATTACK and _can_hold_attack(store, entity_id, target_id, slot_index):
 		store.engagement_slot[entity_id] = slot_index
+		store.engagement_blocked_time[entity_id] = 0.2
 		store.velocity_x[entity_id] = 0.0
 		store.velocity_y[entity_id] = 0.0
 		return
 	if distance <= ATTACK_CONTACT_DISTANCE and _can_enter_attack_with_slot(target_id, slot_index):
 		store.state[entity_id] = Types.UNIT_STATE_ATTACK
 		store.engagement_slot[entity_id] = slot_index
+		store.engagement_blocked_time[entity_id] = 0.2
+		store.velocity_x[entity_id] = 0.0
+		store.velocity_y[entity_id] = 0.0
+		return
+	if store.state[entity_id] == Types.UNIT_STATE_ATTACK and float(store.engagement_blocked_time[entity_id]) > 0.0 and target_id != -1 and slot_index != -1:
+		store.engagement_slot[entity_id] = slot_index
+		store.engagement_blocked_time[entity_id] = maxf(0.0, float(store.engagement_blocked_time[entity_id]) - delta)
 		store.velocity_x[entity_id] = 0.0
 		store.velocity_y[entity_id] = 0.0
 		return

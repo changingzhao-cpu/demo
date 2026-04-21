@@ -12,7 +12,41 @@ func run() -> Array[String]:
 	_test_attack_hold_does_not_drift_in_duel(failures)
 	_test_attack_exits_when_target_becomes_invalid(failures)
 	_test_v2_skirmish_multi_attackers_do_not_rebind_attack_same_tick(failures)
+	_test_v2_skirmish_does_not_escape_after_attack_contact(failures)
 	return failures
+
+func _test_v2_skirmish_does_not_escape_after_attack_contact(failures: Array[String]) -> void:
+	var store = EntityStore.new(4)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV2.new(grid)
+	var attacker_a := store.allocate()
+	var attacker_b := store.allocate()
+	var attacker_c := store.allocate()
+	var target := store.allocate()
+	for attacker in [attacker_a, attacker_b, attacker_c]:
+		_prepare_attacker(store, attacker)
+		store.attack_range_sq[attacker] = 0.25
+	_prepare_target(store, target)
+	store.position_x[target] = 0.0
+	store.position_y[target] = 0.0
+	store.position_x[attacker_a] = -2.2
+	store.position_y[attacker_a] = 0.0
+	store.position_x[attacker_b] = -2.3
+	store.position_y[attacker_b] = 0.4
+	store.position_x[attacker_c] = -2.4
+	store.position_y[attacker_c] = -0.4
+	for entity_id in [attacker_a, attacker_b, attacker_c, target]:
+		grid.upsert(entity_id, Vector2(store.position_x[entity_id], store.position_y[entity_id]))
+	var escaped_after_contact := false
+	for _step in range(20):
+		simulation.tick_bucket(store, 0.1, 0, 1)
+		for attacker in [attacker_a, attacker_b, attacker_c]:
+			if int(store.state[attacker]) != BattleSimulationV2Types.UNIT_STATE_ATTACK:
+				continue
+			var distance := Vector2(store.position_x[attacker], store.position_y[attacker]).distance_to(Vector2(store.position_x[target], store.position_y[target]))
+			if distance > 2.5:
+				escaped_after_contact = true
+	_assert_true(not escaped_after_contact, "v2 skirmish attacker should not escape back beyond 2.5 distance after entering ATTACK contact", failures)
 
 func _test_v2_simulation_constructs(failures: Array[String]) -> void:
 	var grid = SpatialGrid.new(10.0)
