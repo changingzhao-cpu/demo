@@ -14,6 +14,7 @@ const TEST_SUITES := [
 	{"name": "battle/test_contact_resolver", "path": "res://tests/battle/test_contact_resolver.gd"},
 	{"name": "battle/test_motion_resolver", "path": "res://tests/battle/test_motion_resolver.gd"},
 	{"name": "battle/test_battle_simulation_v3_duel", "path": "res://tests/battle/test_battle_simulation_v3_duel.gd"},
+	{"name": "battle/test_battle_simulation_v3_skirmish", "path": "res://tests/battle/test_battle_simulation_v3_skirmish.gd"},
 	{"name": "battle/test_unit_defs_loader", "path": "res://tests/battle/test_unit_defs_loader.gd"},
 	{"name": "battle/test_wave_defs_loader", "path": "res://tests/battle/test_wave_defs_loader.gd"},
 	{"name": "battle/test_relic_defs_loader", "path": "res://tests/battle/test_relic_defs_loader.gd"},

@@ -1,6 +1,14 @@
 extends RefCounted
 class_name ContactResolver
 
+func resolve_with_target_slots(input: Dictionary) -> Dictionary:
+	var occupied_slots_by_target: Dictionary = input.get("occupied_slots_by_target", {})
+	var target_id := int(input.get("target_id", -1))
+	var occupied_slots: Array = occupied_slots_by_target.get(target_id, [])
+	var next_input := input.duplicate(true)
+	next_input.occupied_slots = occupied_slots
+	return resolve(next_input)
+
 func resolve(input: Dictionary) -> Dictionary:
 	var origin: Vector2 = input.get("origin", Vector2.ZERO)
 	var target_position: Vector2 = input.get("target_position", Vector2.ZERO)

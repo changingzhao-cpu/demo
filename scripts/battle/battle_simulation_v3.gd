@@ -22,9 +22,10 @@ func tick_bucket(store, delta: float, bucket_id: int, bucket_count: int) -> void
 			continue
 		if int(store.bucket_id[entity_id]) != bucket_id:
 			continue
-		_tick_entity(store, entity_id, delta)
+		var occupied_slots_by_target := _build_target_slot_map(store)
+		_tick_entity(store, entity_id, delta, occupied_slots_by_target)
 
-func _tick_entity(store, entity_id: int, delta: float) -> void:
+func _tick_entity(store, entity_id: int, delta: float, occupied_slots_by_target: Dictionary) -> void:
 	var target_id := _find_target(store, entity_id)
 	var origin := Vector2(store.position_x[entity_id], store.position_y[entity_id])
 	var contact_result := {
@@ -35,15 +36,12 @@ func _tick_entity(store, entity_id: int, delta: float) -> void:
 		"should_reposition": false
 	}
 	if target_id != -1:
-		var occupied_slots: Array = []
-		if int(store.contact_slot[entity_id]) >= 0:
-			occupied_slots.append(int(store.contact_slot[entity_id]))
-		contact_result = _contact.resolve({
+		contact_result = _contact.resolve_with_target_slots({
 			"entity_id": entity_id,
 			"origin": origin,
 			"target_id": target_id,
 			"target_position": Vector2(store.position_x[target_id], store.position_y[target_id]),
-			"occupied_slots": occupied_slots,
+			"occupied_slots_by_target": occupied_slots_by_target,
 			"contact_distance": 1.2
 		})
 	var current_truth := _core.build_default_truth(entity_id)
@@ -110,6 +108,20 @@ func _tick_entity(store, entity_id: int, delta: float) -> void:
 	store.velocity_x[entity_id] = velocity.x
 	store.velocity_y[entity_id] = velocity.y
 	_grid.upsert(entity_id, next_position)
+
+func _build_target_slot_map(store) -> Dictionary:
+	var occupied := {}
+	for entity_id in range(store.capacity):
+		if not store.alive[entity_id]:
+			continue
+		var target_id := int(store.target_id[entity_id])
+		var slot := int(store.contact_slot[entity_id])
+		if target_id == -1 or slot == -1:
+			continue
+		if not occupied.has(target_id):
+			occupied[target_id] = []
+		occupied[target_id].append(slot)
+	return occupied
 
 func _find_target(store, entity_id: int) -> int:
 	for candidate in range(store.capacity):
