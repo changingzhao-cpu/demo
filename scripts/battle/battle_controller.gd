@@ -7,6 +7,7 @@ const EntityStoreScript = preload("res://scripts/battle/entity_store.gd")
 const SpatialGridScript = preload("res://scripts/battle/spatial_grid.gd")
 const BattleSimulationScript = preload("res://scripts/battle/battle_simulation.gd")
 const BattleSimulationV2Script = preload("res://scripts/battle/battle_simulation_v2.gd")
+const BattleSimulationV3Script = preload("res://scripts/battle/battle_simulation_v3.gd")
 
 const DEFAULT_ALLY_COUNT := 18
 const DEFAULT_STORE_CAPACITY := 128
@@ -101,6 +102,8 @@ func debug_get_runtime_projection() -> Dictionary:
 	}
 
 func _create_simulation(grid):
+	if _simulation_backend == "v3":
+		return BattleSimulationV3Script.new(grid)
 	if _simulation_backend == "v2":
 		return BattleSimulationV2Script.new(grid)
 	return BattleSimulationScript.new(grid)

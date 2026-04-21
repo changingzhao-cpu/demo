@@ -123,6 +123,23 @@ func _build_target_slot_map(store) -> Dictionary:
 		occupied[target_id].append(slot)
 	return occupied
 
+func build_authoritative_battle_contract(store) -> Dictionary:
+	var entities: Array = []
+	if store == null:
+		return {"ticksource": "battle_simulation_v3", "entities": entities}
+	for entity_id in range(store.capacity):
+		if not store.alive[entity_id]:
+			continue
+		entities.append({
+			"entity_id": entity_id,
+			"team_id": int(store.team_id[entity_id]),
+			"intent_state": int(store.intent_state[entity_id]),
+			"target_id": int(store.target_id[entity_id]),
+			"logic_position": Vector2(store.position_x[entity_id], store.position_y[entity_id]),
+			"logic_velocity": Vector2(store.velocity_x[entity_id], store.velocity_y[entity_id])
+		})
+	return {"ticksource": "battle_simulation_v3", "entities": entities}
+
 func _find_target(store, entity_id: int) -> int:
 	for candidate in range(store.capacity):
 		if candidate == entity_id:
