@@ -12,13 +12,14 @@ func resolve(input: Dictionary) -> Dictionary:
 		if not occupied_slots.has(slot_index):
 			slot_assignment = slot_index
 			break
-	var direction := (origin - target_position).normalized()
+	var direction := (target_position - origin).normalized()
 	if direction == Vector2.ZERO:
-		direction = Vector2.LEFT
+		direction = Vector2.RIGHT
+	var is_within_contact := distance <= contact_distance + 0.001
 	return {
-		"distance_band": "contact" if distance <= contact_distance else "approach",
+		"distance_band": "contact" if is_within_contact else "approach",
 		"slot_assignment": slot_assignment,
-		"is_in_contact": distance <= contact_distance and slot_assignment != -1,
-		"contact_anchor": target_position + direction * contact_distance,
-		"should_reposition": distance <= contact_distance and slot_assignment == -1
+		"is_in_contact": is_within_contact and slot_assignment != -1,
+		"contact_anchor": target_position - direction * contact_distance,
+		"should_reposition": is_within_contact and slot_assignment == -1
 	}
