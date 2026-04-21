@@ -21,6 +21,7 @@ func _test_contact_resolver_returns_anchor_and_slot(failures: Array[String]) -> 
 	_assert_true(bool(result.get("is_in_contact", false)), "contact resolver should mark in-contact pair", failures)
 	_assert_eq(int(result.get("slot_assignment", -1)), 0, "contact resolver should assign first free slot", failures)
 	_assert_true(result.get("contact_anchor", null) is Vector2, "contact resolver should output contact anchor", failures)
+	_assert_eq(result.get("contact_anchor", Vector2.ZERO), Vector2(-1.2, 0.0), "contact resolver should place anchor on the approach side of target", failures)
 
 func _test_contact_resolver_flags_reposition_when_slot_missing(failures: Array[String]) -> void:
 	var resolver = ContactResolver.new()
