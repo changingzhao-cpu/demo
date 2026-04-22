@@ -221,16 +221,26 @@ func run() -> Array[String]:
 	instance.queue_free()
 	await process_frame
 	var attack_rebind_escapes: Array = anomaly_scan.get("attack_rebind_escapes", [])
+	attack_rebind_escapes.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if int(a.get("entity_id", -1)) != int(b.get("entity_id", -1)):
+			return int(a.get("entity_id", -1)) < int(b.get("entity_id", -1))
+		return float(a.get("start_time", 0.0)) < float(b.get("start_time", 0.0))
+	)
 	var focused_escapes: Array = []
 	for sample_variant in attack_rebind_escapes:
 		var sample: Dictionary = sample_variant
-		var entity_id := int(sample.get("entity_id", -1))
-		var target_id := int(sample.get("target_id", -1))
-		if entity_id == 30 and target_id == 3:
-			focused_escapes.append(sample)
+		focused_escapes.append({
+			"entity_id": int(sample.get("entity_id", -1)),
+			"target_id": int(sample.get("target_id", -1)),
+			"slot": int(sample.get("slot", -1)),
+			"from_distance": float(sample.get("from_distance", 0.0)),
+			"to_distance": float(sample.get("to_distance", 0.0)),
+			"start_time": float(sample.get("start_time", 0.0)),
+			"end_time": float(sample.get("end_time", 0.0))
+		})
 	if not focused_escapes.is_empty():
 		failures.append("attack_rebind_escapes=%s" % [JSON.stringify(focused_escapes)])
-	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate the remaining target-3 ATTACK rebind escape sample", failures)
+	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate repeated ATTACK rebind escape samples", failures)
 	return failures
 
 func _initialize() -> void:
