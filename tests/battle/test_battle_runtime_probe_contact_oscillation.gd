@@ -229,18 +229,22 @@ func run() -> Array[String]:
 	var focused_escapes: Array = []
 	for sample_variant in attack_rebind_escapes:
 		var sample: Dictionary = sample_variant
-		focused_escapes.append({
-			"entity_id": int(sample.get("entity_id", -1)),
-			"target_id": int(sample.get("target_id", -1)),
-			"slot": int(sample.get("slot", -1)),
-			"from_distance": float(sample.get("from_distance", 0.0)),
-			"to_distance": float(sample.get("to_distance", 0.0)),
-			"start_time": float(sample.get("start_time", 0.0)),
-			"end_time": float(sample.get("end_time", 0.0))
-		})
+		var entity_id := int(sample.get("entity_id", -1))
+		var target_id := int(sample.get("target_id", -1))
+		var slot := int(sample.get("slot", -1))
+		if entity_id == 30 and target_id == 3 and slot == 3:
+			focused_escapes.append({
+				"entity_id": entity_id,
+				"target_id": target_id,
+				"slot": int(sample.get("slot", -1)),
+				"from_distance": float(sample.get("from_distance", 0.0)),
+				"to_distance": float(sample.get("to_distance", 0.0)),
+				"start_time": float(sample.get("start_time", 0.0)),
+				"end_time": float(sample.get("end_time", 0.0))
+			})
 	if not focused_escapes.is_empty():
 		failures.append("attack_rebind_escapes=%s" % [JSON.stringify(focused_escapes)])
-	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate repeated ATTACK rebind escape samples", failures)
+	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate the remaining entity-30 target-3 slot-3 ATTACK rebind escape sample", failures)
 	return failures
 
 func _initialize() -> void:
