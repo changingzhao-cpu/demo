@@ -5,6 +5,7 @@ const OUTPUT_PATH := "user://runtime_probe.json"
 const SAMPLE_TIMES := [0.0, 0.01, 0.03, 0.05, 0.1, 0.2, 0.5, 1.0, 1.1, 1.2, 1.25, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0, 16.0, 20.0]
 const INITIAL_PROBE := "user://transition_initial_probe.json"
 const RUNTIME_PROBE := "user://transition_runtime_probe.json"
+const FOCUS_ENTITY_IDS := [14, 30, 38]
 
 func _read_json(path: String) -> Dictionary:
 	var text := FileAccess.get_file_as_string(path)
@@ -245,12 +246,27 @@ func _initialize() -> void:
 							"pose": child.call("debug_get_pose_snapshot") if child.has_method("debug_get_pose_snapshot") else {}
 						}
 						break
-			tracked_entities[str(tracked_id)] = {
-				"controller": entity_payload,
-				"target": entity_target_payload,
-				"target_target": entity_target_target_payload,
-				"view": entity_view_snapshot
-			}
+			if FOCUS_ENTITY_IDS.has(tracked_id):
+				tracked_entities[str(tracked_id)] = {
+					"controller": {
+						"entity_id": tracked_id,
+						"exists": bool(entity_payload.get("exists", false)),
+						"state_name": entity_payload.get("state_name", ""),
+						"target_id": int(entity_payload.get("target_id", -1)),
+						"engagement_slot": int(entity_payload.get("engagement_slot", -1)),
+						"position": entity_payload.get("position", Vector2.ZERO),
+						"velocity": entity_payload.get("velocity", Vector2.ZERO)
+					},
+					"target": {
+						"entity_id": int(entity_target_payload.get("entity_id", -1)),
+						"state_name": entity_target_payload.get("state_name", ""),
+						"target_id": int(entity_target_payload.get("target_id", -1)),
+						"engagement_slot": int(entity_target_payload.get("engagement_slot", -1)),
+						"position": entity_target_payload.get("position", Vector2.ZERO),
+						"velocity": entity_target_payload.get("velocity", Vector2.ZERO)
+					},
+					"view": entity_view_snapshot
+				}
 			if bool(entity_payload.get("exists", false)):
 				var trajectory_key := str(tracked_id)
 				var points: Array = trajectories.get(trajectory_key, [])

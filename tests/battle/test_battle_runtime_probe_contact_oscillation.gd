@@ -220,7 +220,16 @@ func run() -> Array[String]:
 			file.close()
 	instance.queue_free()
 	await process_frame
-	_assert_true(int(anomaly_scan.get("attack_rebind_escape_count", 0)) <= 1, "v2 runtime probe fixture should not show repeated ATTACK rebind escape samples", failures)
+	var attack_rebind_escapes: Array = anomaly_scan.get("attack_rebind_escapes", [])
+	var focused_escapes: Array = []
+	for sample_variant in attack_rebind_escapes:
+		var sample: Dictionary = sample_variant
+		var entity_id := int(sample.get("entity_id", -1))
+		if entity_id == 30 or entity_id == 38:
+			focused_escapes.append(sample)
+	if not focused_escapes.is_empty():
+		failures.append("attack_rebind_escapes=%s" % [JSON.stringify(focused_escapes)])
+	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate the remaining dual ATTACK rebind escape samples", failures)
 	return failures
 
 func _initialize() -> void:
