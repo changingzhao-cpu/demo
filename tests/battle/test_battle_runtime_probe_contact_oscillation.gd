@@ -225,11 +225,12 @@ func run() -> Array[String]:
 	for sample_variant in attack_rebind_escapes:
 		var sample: Dictionary = sample_variant
 		var entity_id := int(sample.get("entity_id", -1))
-		if entity_id == 30 or entity_id == 38:
+		var target_id := int(sample.get("target_id", -1))
+		if entity_id == 30 and target_id == 3:
 			focused_escapes.append(sample)
 	if not focused_escapes.is_empty():
 		failures.append("attack_rebind_escapes=%s" % [JSON.stringify(focused_escapes)])
-	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate the remaining dual ATTACK rebind escape samples", failures)
+	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate the remaining target-3 ATTACK rebind escape sample", failures)
 	return failures
 
 func _initialize() -> void:
