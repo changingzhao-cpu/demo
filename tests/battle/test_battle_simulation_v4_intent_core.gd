@@ -11,7 +11,19 @@ func run() -> Array[String]:
 	_test_waiting_assignment_soft_holds_without_chase_velocity(failures)
 	_test_assignment_survives_into_next_tick_snapshot(failures)
 	_test_attack_holder_keeps_slot_against_new_claimer(failures)
+	_test_success_assignment_moves_toward_global_anchor(failures)
 	return failures
+
+func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-4.0, 0.0), 6.0)
+	_prepare(store, 1, 1, Vector2.ZERO, 0.0)
+	var before := Vector2(store.position_x[0], store.position_y[0])
+	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var after := Vector2(store.position_x[0], store.position_y[0])
+	_assert_true(after.distance_to(Vector2.ZERO) < before.distance_to(Vector2.ZERO), "success assignment should move the unit toward assignment.global_pos", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
