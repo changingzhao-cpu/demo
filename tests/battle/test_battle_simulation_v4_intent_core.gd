@@ -9,7 +9,20 @@ func run() -> Array[String]:
 	_test_single_unit_gets_success_assignment(failures)
 	_test_conflicting_claims_produce_unique_assignment(failures)
 	_test_waiting_assignment_soft_holds_without_chase_velocity(failures)
+	_test_assignment_survives_into_next_tick_snapshot(failures)
 	return failures
+
+func _test_assignment_survives_into_next_tick_snapshot(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-2.0, 0.0), 6.0)
+	_prepare(store, 1, 1, Vector2.ZERO, 0.0)
+	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var first_slot := int(store.locked_slot_index[0])
+	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	_assert_eq(int(store.locked_slot_index[0]), first_slot, "assigned slot should survive into the next tick snapshot", failures)
+	_assert_true(first_slot != -1, "first tick should commit a concrete assigned slot", failures)
 
 func _test_waiting_assignment_soft_holds_without_chase_velocity(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
