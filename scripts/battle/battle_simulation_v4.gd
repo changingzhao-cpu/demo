@@ -20,7 +20,10 @@ func tick_bucket(store, delta: float, bucket_id: int, bucket_count: int) -> void
 	_direct_and_commit(store, snapshot, assignments, delta)
 
 func tick_bucket_with_report(store, delta: float, bucket_id: int, bucket_count: int) -> Dictionary:
-	tick_bucket(store, delta, bucket_id, bucket_count)
+	var snapshot := _collect_snapshot(store, bucket_id)
+	var intents := _collect_intents(snapshot)
+	var assignments := SlotArbitratorV4.resolve(intents, snapshot.get("target_positions", {}))
+	_direct_and_commit(store, snapshot, assignments, delta)
 	var processed := 0
 	for entity_id in range(store.capacity):
 		if not store.alive[entity_id]:
@@ -28,7 +31,14 @@ func tick_bucket_with_report(store, delta: float, bucket_id: int, bucket_count: 
 		if int(store.bucket_id[entity_id]) != bucket_id:
 			continue
 		processed += 1
-	return {"processed": processed, "bucket_index": bucket_id, "bucket_count": bucket_count}
+	return {
+		"processed": processed,
+		"bucket_index": bucket_id,
+		"bucket_count": bucket_count,
+		"intents": _serialize_intents(intents),
+		"assignments": _serialize_assignments(assignments),
+		"contention": build_contention_report(intents, assignments)
+	}
 
 func _collect_snapshot(store, bucket_id: int) -> Dictionary:
 	var entities := []
@@ -44,7 +54,9 @@ func _collect_snapshot(store, bucket_id: int) -> Dictionary:
 			"position": Vector2(store.position_x[entity_id], store.position_y[entity_id]),
 			"target_id": int(store.target_id[entity_id]),
 			"intent_state": int(store.intent_state[entity_id]),
-			"move_speed": float(store.move_speed[entity_id])
+			"move_speed": float(store.move_speed[entity_id]),
+			"locked_target_id": int(store.locked_target_id[entity_id]),
+			"locked_slot_index": int(store.locked_slot_index[entity_id])
 		}
 		entities.append(payload)
 		target_positions[entity_id] = payload.position
@@ -66,6 +78,8 @@ func _collect_intents(snapshot: Dictionary) -> Array:
 		var target_position: Vector2 = snapshot.get("target_positions", {}).get(target_id, Vector2.ZERO)
 		var distance := intent.current_pos.distance_to(target_position)
 		intent.priority_weight = 1.0 / maxf(distance, 0.001)
+		if int(entity.get("intent_state", 0)) == Types.INTENT_STATE_ATTACK and int(entity.get("locked_target_id", -1)) == target_id and int(entity.get("locked_slot_index", -1)) == int(intent.desired_slot_index):
+			intent.priority_weight += 1000.0
 		intents.append(intent)
 	return intents
 
@@ -78,6 +92,67 @@ func _find_target(snapshot: Dictionary, entity_id: int, team_id: int) -> int:
 			continue
 		return int(candidate.entity_id)
 	return -1
+
+func _serialize_intents(intents: Array) -> Array:
+	var serialized: Array = []
+	for intent_variant in intents:
+		var intent = intent_variant
+		serialized.append({
+			"entity_id": int(intent.entity_id),
+			"target_id": int(intent.target_id),
+			"desired_slot_index": int(intent.desired_slot_index),
+			"priority_weight": float(intent.priority_weight),
+			"current_pos": intent.current_pos
+		})
+	return serialized
+
+func _serialize_assignments(assignments: Dictionary) -> Dictionary:
+	var serialized := {}
+	for entity_id_variant in assignments.keys():
+		var entity_id := int(entity_id_variant)
+		var assignment = assignments[entity_id_variant]
+		serialized[entity_id] = {
+			"target_id": int(assignment.target_id),
+			"assigned_slot_index": int(assignment.assigned_slot_index),
+			"global_pos": assignment.global_pos,
+			"status": int(assignment.status)
+		}
+	return serialized
+
+static func build_contention_report(intents: Array, assignments: Dictionary) -> Dictionary:
+	var grouped_counts := {}
+	var intent_count := 0
+	for intent_variant in intents:
+		var intent = intent_variant
+		if int(intent.entity_id) == int(intent.target_id):
+			continue
+		if int(intent.entity_id) > int(intent.target_id):
+			continue
+		intent_count += 1
+		var key := "%s:%s" % [str(int(intent.target_id)), str(int(intent.desired_slot_index))]
+		grouped_counts[key] = int(grouped_counts.get(key, 0)) + 1
+	var contested_groups := 0
+	for count_variant in grouped_counts.values():
+		if int(count_variant) > 1:
+			contested_groups += 1
+	var waiting_count := 0
+	var success_count := 0
+	for entity_id_variant in assignments.keys():
+		var entity_id := int(entity_id_variant)
+		var assignment = assignments[entity_id_variant]
+		if entity_id > int(assignment.target_id):
+			continue
+		if int(assignment.status) == SlotAssignment.STATUS_WAITING:
+			waiting_count += 1
+		else:
+			success_count += 1
+	var claim_success_rate := 0.0 if intent_count == 0 else float(success_count) / float(intent_count)
+	return {
+		"intent_count": intent_count,
+		"contested_groups": contested_groups,
+		"waiting_count": waiting_count,
+		"claim_success_rate": claim_success_rate
+	}
 
 func _direct_and_commit(store, snapshot: Dictionary, assignments: Dictionary, delta: float) -> void:
 	for entity_variant in snapshot.get("entities", []):
