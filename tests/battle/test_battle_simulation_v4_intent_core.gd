@@ -188,8 +188,6 @@ func run() -> Array[String]:
 	_test_holder_fixture_success_position_uses_expected_delta_step(failures)
 	_test_holder_fixture_success_position_and_velocity_stay_directionally_aligned(failures)
 	_test_holder_fixture_waiting_position_and_velocity_stay_directionally_neutral(failures)
-	_test_holder_fixture_success_position_and_velocity_stay_directionally_aligned(failures)
-	_test_holder_fixture_waiting_position_and_velocity_stay_directionally_neutral(failures)
 	return failures
 
 func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
