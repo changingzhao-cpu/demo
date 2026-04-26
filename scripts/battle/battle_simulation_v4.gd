@@ -31,13 +31,18 @@ func tick_bucket_with_report(store, delta: float, bucket_id: int, bucket_count: 
 		if int(store.bucket_id[entity_id]) != bucket_id:
 			continue
 		processed += 1
+	var serialized_intents := _serialize_intents(intents)
+	var serialized_assignments := _serialize_assignments(assignments)
 	return {
 		"processed": processed,
 		"bucket_index": bucket_id,
 		"bucket_count": bucket_count,
-		"intents": _serialize_intents(intents),
-		"assignments": _serialize_assignments(assignments),
-		"contention": build_contention_report(intents, assignments)
+		"intents": serialized_intents,
+		"assignments": serialized_assignments,
+		"contention": build_contention_report(intents, assignments),
+		"probe": {
+			"assignments": serialized_assignments
+		}
 	}
 
 func _collect_snapshot(store, bucket_id: int) -> Dictionary:
