@@ -33,6 +33,12 @@ func run() -> Array[String]:
 	_test_intent_report_exposes_current_pos(failures)
 	_test_intent_report_exposes_desired_slot_index(failures)
 	_test_intent_report_exposes_target_id(failures)
+	_test_intent_report_exposes_entity_id(failures)
+	_test_intent_report_exposes_priority_weight(failures)
+	_test_intent_report_counts_attacker_and_target_entries(failures)
+	_test_attack_holder_intent_report_exposes_boosted_priority_weight(failures)
+	_test_intent_report_hides_reverse_side_entries(failures)
+	_test_assignment_report_exposes_exact_conflict_pair(failures)
 	return failures
 
 func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
@@ -303,6 +309,96 @@ func _test_intent_report_exposes_target_id(failures: Array[String]) -> void:
 		_assert_eq(int(intent.get("target_id", -1)), 1, "intent report should expose target_id", failures)
 		break
 	_assert_true(found, "intent report should include attacker intent entry for target_id", failures)
+
+func _test_intent_report_exposes_entity_id(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-2.0, 0.0), 6.0)
+	_prepare(store, 1, 1, Vector2.ZERO, 0.0)
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var intents: Array = report.get("intents", [])
+	_assert_true(intents.size() > 0, "intent report should expose at least one intent entry", failures)
+	var first_intent: Dictionary = intents[0]
+	_assert_eq(int(first_intent.get("entity_id", -1)), 0, "intent report should expose entity_id", failures)
+
+func _test_intent_report_exposes_priority_weight(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-2.0, 0.0), 6.0)
+	_prepare(store, 1, 1, Vector2.ZERO, 0.0)
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var intents: Array = report.get("intents", [])
+	var found := false
+	for intent_variant in intents:
+		var intent: Dictionary = intent_variant
+		if int(intent.get("entity_id", -1)) != 0:
+			continue
+		found = true
+		_assert_eq(float(intent.get("priority_weight", -1.0)), 0.5, "intent report should expose priority_weight", failures)
+		break
+	_assert_true(found, "intent report should include attacker intent entry for priority_weight", failures)
+
+func _test_intent_report_counts_attacker_and_target_entries(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-2.0, 0.0), 6.0)
+	_prepare(store, 1, 1, Vector2.ZERO, 0.0)
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var intents: Array = report.get("intents", [])
+	_assert_eq(int(intents.size()), 1, "intent report should only expose attacker claim entries", failures)
+
+func _test_attack_holder_intent_report_exposes_boosted_priority_weight(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-2.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-0.5, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var intents: Array = report.get("intents", [])
+	var holder_weight := -1.0
+	var claimer_weight := -1.0
+	for intent_variant in intents:
+		var intent: Dictionary = intent_variant
+		if int(intent.get("entity_id", -1)) == 0:
+			holder_weight = float(intent.get("priority_weight", -1.0))
+		elif int(intent.get("entity_id", -1)) == 1:
+			claimer_weight = float(intent.get("priority_weight", -1.0))
+	_assert_true(holder_weight > 1000.0, "attack-holder intent report should expose boosted priority_weight", failures)
+	_assert_true(holder_weight > claimer_weight, "attack-holder boosted priority_weight should exceed new claimer weight", failures)
+
+func _test_intent_report_hides_reverse_side_entries(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-2.0, 0.0), 6.0)
+	_prepare(store, 1, 1, Vector2.ZERO, 0.0)
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var intents: Array = report.get("intents", [])
+	for intent_variant in intents:
+		var intent: Dictionary = intent_variant
+		_assert_true(int(intent.get("entity_id", -1)) <= int(intent.get("target_id", -1)), "intent report should hide reverse-side mirrored entries", failures)
+
+func _test_assignment_report_exposes_exact_conflict_pair(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var assignments: Dictionary = report.get("assignments", {})
+	_assert_eq(int(assignments.size()), 2, "assignment report should only expose attacker-side conflict pair", failures)
+	_assert_true(assignments.has(0) and assignments.has(1), "assignment report should expose both attacker ids in conflict pair", failures)
+	_assert_true(not assignments.has(2), "assignment report should hide reverse-side target assignment entry", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)

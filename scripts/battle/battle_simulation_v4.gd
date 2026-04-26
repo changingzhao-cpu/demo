@@ -97,6 +97,8 @@ func _serialize_intents(intents: Array) -> Array:
 	var serialized: Array = []
 	for intent_variant in intents:
 		var intent = intent_variant
+		if int(intent.entity_id) > int(intent.target_id):
+			continue
 		serialized.append({
 			"entity_id": int(intent.entity_id),
 			"target_id": int(intent.target_id),
@@ -111,6 +113,8 @@ func _serialize_assignments(assignments: Dictionary) -> Dictionary:
 	for entity_id_variant in assignments.keys():
 		var entity_id := int(entity_id_variant)
 		var assignment = assignments[entity_id_variant]
+		if entity_id > int(assignment.target_id):
+			continue
 		serialized[entity_id] = {
 			"target_id": int(assignment.target_id),
 			"assigned_slot_index": int(assignment.assigned_slot_index),
