@@ -69,6 +69,8 @@ func run() -> Array[String]:
 	_test_holder_fixture_report_matches_store_committed_positions_for_success_unit(failures)
 	_test_holder_fixture_waiting_unit_keeps_zero_velocity(failures)
 	_test_holder_fixture_report_matches_store_committed_positions_for_waiting_unit(failures)
+	_test_holder_fixture_report_matches_store_committed_velocities_for_success_unit(failures)
+	_test_holder_fixture_report_matches_store_committed_velocities_for_waiting_unit(failures)
 	return failures
 
 func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
@@ -942,6 +944,37 @@ func _test_holder_fixture_report_matches_store_committed_positions_for_waiting_u
 	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
 	var waiting_after := Vector2(store.position_x[1], store.position_y[1])
 	_assert_eq(waiting_after, waiting_before, "holder fixture waiting unit should keep committed position", failures)
+
+func _test_holder_fixture_report_matches_store_committed_velocities_for_success_unit(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	_assert_true(absf(float(store.velocity_x[0])) > 0.0 or absf(float(store.velocity_y[0])) > 0.0, "holder fixture success unit should keep non-zero committed velocity", failures)
+
+func _test_holder_fixture_report_matches_store_committed_velocities_for_waiting_unit(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	_assert_eq(float(store.velocity_x[1]), 0.0, "holder fixture waiting unit should keep zero committed x velocity", failures)
+	_assert_eq(float(store.velocity_y[1]), 0.0, "holder fixture waiting unit should keep zero committed y velocity", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
