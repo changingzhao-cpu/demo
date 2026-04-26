@@ -41,6 +41,7 @@ func tick_bucket_with_report(store, delta: float, bucket_id: int, bucket_count: 
 		"assignments": serialized_assignments,
 		"contention": build_contention_report(intents, assignments),
 		"probe": {
+			"intents": serialized_intents,
 			"assignments": serialized_assignments
 		}
 	}
