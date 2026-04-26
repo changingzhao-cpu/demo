@@ -193,6 +193,8 @@ func run() -> Array[String]:
 	_test_holder_fixture_success_grid_neighbors_include_committed_unit_after_motion(failures)
 	_test_holder_fixture_waiting_grid_neighbors_exclude_waiting_unit_after_motion(failures)
 	_test_holder_fixture_success_grid_key_remains_cell_consistent_after_motion(failures)
+	_test_holder_fixture_waiting_grid_key_remains_unset_after_motion(failures)
+	_test_holder_fixture_success_grid_neighbors_track_committed_position_after_motion(failures)
 	return failures
 
 func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
@@ -3050,6 +3052,37 @@ func _test_holder_fixture_success_grid_key_remains_cell_consistent_after_motion(
 	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
 	var committed_pos := Vector2(store.position_x[0], store.position_y[0])
 	_assert_eq(grid.get_cell_key(0), Vector2i(int(floor(committed_pos.x / 10.0)), int(floor(committed_pos.y / 10.0))), "success grid key should remain cell-consistent after motion", failures)
+
+func _test_holder_fixture_waiting_grid_key_remains_unset_after_motion(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	_assert_eq(grid.get_cell_key(1), null, "waiting grid key should remain unset after motion", failures)
+
+func _test_holder_fixture_success_grid_neighbors_track_committed_position_after_motion(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var committed_pos := Vector2(store.position_x[0], store.position_y[0])
+	_assert_true(grid.query_neighbors(committed_pos).has(0), "success grid neighbors should track committed position after motion", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
