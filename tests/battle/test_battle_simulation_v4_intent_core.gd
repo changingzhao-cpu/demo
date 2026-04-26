@@ -185,6 +185,8 @@ func run() -> Array[String]:
 	_test_probe_assignments_match_assignment_report(failures)
 	_test_probe_intents_match_intent_report(failures)
 	_test_probe_assignments_keep_attacker_side_filter(failures)
+	_test_probe_assignments_keep_complete_assignment_fields(failures)
+	_test_probe_intents_keep_attacker_side_filter(failures)
 	_test_holder_fixture_success_unit_motion_updates_grid_position(failures)
 	_test_holder_fixture_waiting_unit_does_not_touch_grid_position(failures)
 	_test_holder_fixture_success_unit_appears_in_grid_neighbors_after_motion(failures)
@@ -2942,6 +2944,41 @@ func _test_probe_assignments_match_assignment_report(failures: Array[String]) ->
 	var probe_assignments: Dictionary = report.get("probe", {}).get("assignments", {})
 	_assert_eq(probe_assignments, assignments, "probe assignments should match assignment report snapshot", failures)
 
+func _test_probe_intents_keep_attacker_side_filter(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var probe_intents: Array = simulation.tick_bucket_with_report(store, 0.1, 0, 1).get("probe", {}).get("intents", [])
+	for intent_variant in probe_intents:
+		var intent: Dictionary = intent_variant
+		_assert_true(int(intent.get("entity_id", -1)) != 2, "probe intents should exclude target-side entity", failures)
+	_assert_eq(int(probe_intents.size()), 2, "probe intents should keep two attacker-side entries", failures)
+
+func _test_probe_assignments_keep_complete_assignment_fields(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var probe_assignments: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1).get("probe", {}).get("assignments", {})
+	for assignment_variant in probe_assignments.values():
+		var assignment: Dictionary = assignment_variant
+		_assert_true(assignment.has("target_id") and assignment.has("assigned_slot_index") and assignment.has("global_pos") and assignment.has("status"), "probe assignments should keep complete assignment fields", failures)
+
 func _test_probe_assignments_keep_attacker_side_filter(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
 	var grid = SpatialGrid.new(10.0)
@@ -2957,6 +2994,23 @@ func _test_probe_assignments_keep_attacker_side_filter(failures: Array[String]) 
 	var probe_assignments: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1).get("probe", {}).get("assignments", {})
 	_assert_true(not probe_assignments.has(2), "probe assignments should keep attacker-side filter", failures)
 	_assert_eq(int(probe_assignments.size()), 2, "probe assignments should keep two attacker-side entries", failures)
+
+func _test_probe_assignments_keep_complete_assignment_fields(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var probe_assignments: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1).get("probe", {}).get("assignments", {})
+	for assignment_variant in probe_assignments.values():
+		var assignment: Dictionary = assignment_variant
+		_assert_true(assignment.has("target_id") and assignment.has("assigned_slot_index") and assignment.has("global_pos") and assignment.has("status"), "probe assignments should keep complete assignment fields", failures)
 
 func _test_holder_fixture_success_unit_motion_updates_grid_position(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
