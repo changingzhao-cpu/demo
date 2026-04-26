@@ -179,6 +179,8 @@ func run() -> Array[String]:
 	_test_holder_fixture_contention_rate_stays_bounded_after_motion(failures)
 	_test_holder_fixture_success_unit_motion_updates_grid_position(failures)
 	_test_holder_fixture_waiting_unit_does_not_touch_grid_position(failures)
+	_test_holder_fixture_success_unit_appears_in_grid_neighbors_after_motion(failures)
+	_test_holder_fixture_waiting_unit_stays_absent_from_grid_neighbors_after_motion(failures)
 	return failures
 
 func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
@@ -2813,6 +2815,36 @@ func _test_holder_fixture_waiting_unit_does_not_touch_grid_position(failures: Ar
 	store.intent_state[0] = Types.INTENT_STATE_ATTACK
 	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
 	_assert_eq(grid.get_cell_key(1), null, "holder fixture waiting unit should not update grid cell", failures)
+
+func _test_holder_fixture_success_unit_appears_in_grid_neighbors_after_motion(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	_assert_true(grid.query_neighbors(Vector2.ZERO).has(0), "holder fixture success unit should appear in grid neighbors after motion", failures)
+
+func _test_holder_fixture_waiting_unit_stays_absent_from_grid_neighbors_after_motion(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	_assert_true(not grid.query_neighbors(Vector2.ZERO).has(1), "holder fixture waiting unit should stay absent from grid neighbors after motion", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
