@@ -167,6 +167,8 @@ func run() -> Array[String]:
 	_test_holder_fixture_reported_attacker_ids_match_expected_pair_after_motion(failures)
 	_test_holder_fixture_attacker_ids_remain_sorted_after_motion(failures)
 	_test_holder_fixture_assignment_keys_remain_sorted_after_motion(failures)
+	_test_holder_fixture_intent_priority_weights_remain_descending_after_motion(failures)
+	_test_holder_fixture_success_assignment_stays_first_by_entity_id_after_motion(failures)
 	return failures
 
 func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
@@ -2604,6 +2606,40 @@ func _test_holder_fixture_assignment_keys_remain_sorted_after_motion(failures: A
 	keys.sort()
 	_assert_eq(int(keys[0]), 0, "holder fixture should keep attacker assignment key 0 first after motion", failures)
 	_assert_eq(int(keys[1]), 1, "holder fixture should keep attacker assignment key 1 second after motion", failures)
+
+func _test_holder_fixture_intent_priority_weights_remain_descending_after_motion(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var intents: Array = report.get("intents", [])
+	_assert_true(float((intents[0] as Dictionary).get("priority_weight", -1.0)) >= float((intents[1] as Dictionary).get("priority_weight", -1.0)), "holder fixture intent priority weights should remain descending after motion", failures)
+
+func _test_holder_fixture_success_assignment_stays_first_by_entity_id_after_motion(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var assignments: Dictionary = report.get("assignments", {})
+	var keys := assignments.keys()
+	keys.sort()
+	_assert_eq(int(keys[0]), 0, "holder fixture success assignment should stay first by entity id after motion", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
