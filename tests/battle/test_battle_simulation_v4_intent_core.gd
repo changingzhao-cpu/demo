@@ -75,6 +75,8 @@ func run() -> Array[String]:
 	_test_holder_fixture_report_matches_store_committed_contact_slots(failures)
 	_test_holder_fixture_report_matches_store_committed_locked_slot_indexes(failures)
 	_test_holder_fixture_report_matches_store_committed_target_ids_for_both_attackers(failures)
+	_test_holder_fixture_store_and_report_keep_same_success_anchor(failures)
+	_test_holder_fixture_waiting_assignment_stays_off_contact_slot(failures)
 	return failures
 
 func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
@@ -1044,6 +1046,38 @@ func _test_holder_fixture_report_matches_store_committed_target_ids_for_both_att
 	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
 	_assert_eq(int(store.locked_target_id[0]), 2, "holder fixture should keep holder locked target id", failures)
 	_assert_eq(int(store.locked_target_id[1]), 2, "holder fixture should keep challenger locked target id", failures)
+
+func _test_holder_fixture_store_and_report_keep_same_success_anchor(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var assignments: Dictionary = report.get("assignments", {})
+	_assert_eq(assignments.get(0, {}).get("global_pos", null), Vector2.ZERO, "holder fixture success anchor should stay on target origin in report", failures)
+	_assert_true(Vector2(store.position_x[0], store.position_y[0]).distance_to(Vector2.ZERO) < 1.0, "holder fixture committed success position should move toward same target anchor", failures)
+
+func _test_holder_fixture_waiting_assignment_stays_off_contact_slot(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	_assert_eq(int(store.contact_slot[1]), -1, "holder fixture waiting assignment should stay off contact slot", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
