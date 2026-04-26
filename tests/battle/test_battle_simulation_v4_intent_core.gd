@@ -58,6 +58,9 @@ func run() -> Array[String]:
 	_test_holder_fixture_reports_match_contention_counts(failures)
 	_test_holder_fixture_preserves_attacker_side_assignment_pair(failures)
 	_test_holder_fixture_preserves_attacker_side_intent_pair(failures)
+	_test_holder_fixture_intents_and_assignments_share_target_id(failures)
+	_test_holder_fixture_intents_and_assignments_share_slot_indexes(failures)
+	_test_holder_fixture_intents_and_assignments_share_status_partition(failures)
 	return failures
 
 func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
@@ -708,6 +711,82 @@ func _test_holder_fixture_preserves_attacker_side_intent_pair(failures: Array[St
 	var first_id := int((intents[0] as Dictionary).get("entity_id", -1))
 	var second_id := int((intents[1] as Dictionary).get("entity_id", -1))
 	_assert_true((first_id == 0 and second_id == 1) or (first_id == 1 and second_id == 0), "holder fixture should preserve both attacker-side intent entries", failures)
+
+func _test_holder_fixture_intents_and_assignments_share_target_id(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var intents: Array = report.get("intents", [])
+	var assignments: Dictionary = report.get("assignments", {})
+	_assert_true(intents.size() == 2 and assignments.has(0) and assignments.has(1), "holder fixture should expose attacker intents and assignments for target comparison", failures)
+	for intent_variant in intents:
+		var intent: Dictionary = intent_variant
+		var entity_id := int(intent.get("entity_id", -1))
+		var assignment: Dictionary = assignments.get(entity_id, {})
+		_assert_eq(int(intent.get("target_id", -1)), int(assignment.get("target_id", -2)), "holder fixture intent and assignment should share target_id", failures)
+
+func _test_holder_fixture_intents_and_assignments_share_slot_indexes(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var intents: Array = report.get("intents", [])
+	var assignments: Dictionary = report.get("assignments", {})
+	_assert_true(intents.size() == 2 and assignments.has(0) and assignments.has(1), "holder fixture should expose attacker intents and assignments for slot comparison", failures)
+	for intent_variant in intents:
+		var intent: Dictionary = intent_variant
+		var entity_id := int(intent.get("entity_id", -1))
+		var assignment: Dictionary = assignments.get(entity_id, {})
+		if int(assignment.get("status", -1)) == 1:
+			_assert_eq(int(intent.get("desired_slot_index", -1)), 0, "holder fixture waiting intent should keep requested slot index", failures)
+			_assert_eq(int(assignment.get("assigned_slot_index", -2)), -1, "holder fixture waiting assignment should keep unresolved slot index", failures)
+		else:
+			_assert_eq(int(intent.get("desired_slot_index", -1)), int(assignment.get("assigned_slot_index", -2)), "holder fixture success intent and assignment should share slot index", failures)
+
+func _test_holder_fixture_intents_and_assignments_share_status_partition(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var intents: Array = report.get("intents", [])
+	var assignments: Dictionary = report.get("assignments", {})
+	var success_count := 0
+	var waiting_count := 0
+	for intent_variant in intents:
+		var intent: Dictionary = intent_variant
+		var entity_id := int(intent.get("entity_id", -1))
+		var assignment: Dictionary = assignments.get(entity_id, {})
+		if int(assignment.get("status", -1)) == 1:
+			waiting_count += 1
+		else:
+			success_count += 1
+	_assert_eq(success_count, 1, "holder fixture should keep exactly one successful attacker assignment", failures)
+	_assert_eq(waiting_count, 1, "holder fixture should keep exactly one waiting attacker assignment", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
