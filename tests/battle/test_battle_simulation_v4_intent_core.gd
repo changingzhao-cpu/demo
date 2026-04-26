@@ -103,6 +103,8 @@ func run() -> Array[String]:
 	_test_holder_fixture_success_unit_keeps_velocity_vector_after_commit(failures)
 	_test_holder_fixture_waiting_unit_keeps_velocity_vector_after_commit(failures)
 	_test_holder_fixture_success_unit_moves_closer_to_anchor_after_commit(failures)
+	_test_holder_fixture_waiting_unit_stays_same_distance_from_anchor_after_commit(failures)
+	_test_holder_fixture_success_unit_keeps_horizontal_motion_toward_anchor(failures)
 	return failures
 
 func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
@@ -1503,6 +1505,41 @@ func _test_holder_fixture_success_unit_moves_closer_to_anchor_after_commit(failu
 	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
 	var after := Vector2(store.position_x[0], store.position_y[0])
 	_assert_true(after.distance_to(Vector2.ZERO) < before.distance_to(Vector2.ZERO), "holder fixture should move success unit closer to anchor after commit", failures)
+
+func _test_holder_fixture_waiting_unit_stays_same_distance_from_anchor_after_commit(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	var before := Vector2(-3.0, 0.0)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, before, 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var after := Vector2(store.position_x[1], store.position_y[1])
+	_assert_eq(after.distance_to(Vector2.ZERO), before.distance_to(Vector2.ZERO), "holder fixture should keep waiting unit at same anchor distance after commit", failures)
+
+func _test_holder_fixture_success_unit_keeps_horizontal_motion_toward_anchor(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	var before := Vector2(-1.0, 0.0)
+	_prepare(store, 0, 0, before, 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var after := Vector2(store.position_x[0], store.position_y[0])
+	_assert_true(after.x > before.x, "holder fixture success unit should move horizontally toward anchor", failures)
+	_assert_eq(after.y, before.y, "holder fixture success unit should preserve horizontal path", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
