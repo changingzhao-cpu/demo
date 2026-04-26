@@ -61,6 +61,8 @@ func run() -> Array[String]:
 	_test_holder_fixture_intents_and_assignments_share_target_id(failures)
 	_test_holder_fixture_intents_and_assignments_share_slot_indexes(failures)
 	_test_holder_fixture_intents_and_assignments_share_status_partition(failures)
+	_test_holder_fixture_contention_matches_holder_status_partition(failures)
+	_test_holder_fixture_priority_weight_order_matches_assignment_outcome(failures)
 	return failures
 
 func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
@@ -787,6 +789,51 @@ func _test_holder_fixture_intents_and_assignments_share_status_partition(failure
 			success_count += 1
 	_assert_eq(success_count, 1, "holder fixture should keep exactly one successful attacker assignment", failures)
 	_assert_eq(waiting_count, 1, "holder fixture should keep exactly one waiting attacker assignment", failures)
+
+func _test_holder_fixture_contention_matches_holder_status_partition(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var contention: Dictionary = report.get("contention", {})
+	_assert_eq(int(contention.get("intent_count", -1)), 2, "holder fixture contention should keep two attacker claims", failures)
+	_assert_eq(int(contention.get("waiting_count", -1)), 1, "holder fixture contention should match one waiting attacker", failures)
+	_assert_eq(float(contention.get("claim_success_rate", -1.0)), 0.5, "holder fixture contention should match holder status partition", failures)
+
+func _test_holder_fixture_priority_weight_order_matches_assignment_outcome(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var intents: Array = report.get("intents", [])
+	var assignments: Dictionary = report.get("assignments", {})
+	var holder_weight := -1.0
+	var claimer_weight := -1.0
+	for intent_variant in intents:
+		var intent: Dictionary = intent_variant
+		if int(intent.get("entity_id", -1)) == 0:
+			holder_weight = float(intent.get("priority_weight", -1.0))
+		elif int(intent.get("entity_id", -1)) == 1:
+			claimer_weight = float(intent.get("priority_weight", -1.0))
+	_assert_true(holder_weight > claimer_weight, "holder fixture priority ordering should favor successful holder assignment", failures)
+	_assert_eq(int(assignments.get(0, {}).get("status", -1)), 0, "holder fixture should keep holder success assignment", failures)
+	_assert_eq(int(assignments.get(1, {}).get("status", -1)), 1, "holder fixture should keep challenger waiting assignment", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
