@@ -161,6 +161,7 @@ func run() -> Array[String]:
 	_test_holder_fixture_processed_count_stays_above_attacker_intents(failures)
 	_test_holder_fixture_contention_bucket_metadata_stays_constant(failures)
 	_test_holder_fixture_processed_count_matches_bucket_entity_count(failures)
+	_test_holder_fixture_bucket_metadata_stays_aligned_with_processed_count(failures)
 	_test_holder_fixture_contention_metrics_ignore_target_side_entity_after_motion(failures)
 	_test_holder_fixture_assignment_report_ignores_target_side_entity_after_motion(failures)
 	_test_holder_fixture_intent_report_ignores_target_side_entity_after_motion(failures)
@@ -204,6 +205,8 @@ func run() -> Array[String]:
 	_test_holder_fixture_waiting_grid_absence_matches_zero_velocity(failures)
 	_test_holder_fixture_success_assignment_anchor_remains_target_origin_after_grid_update(failures)
 	_test_holder_fixture_waiting_assignment_anchor_remains_target_origin_after_grid_update(failures)
+	_test_holder_fixture_assignment_anchor_matches_target_store_position_after_grid_update(failures)
+	_test_holder_fixture_assignment_anchor_remains_shared_across_attackers_after_grid_update(failures)
 	return failures
 
 func _test_holder_fixture_success_cell_key_matches_grid_neighbor_presence(failures: Array[String]) -> void:
@@ -2547,6 +2550,21 @@ func _test_holder_fixture_processed_count_matches_bucket_entity_count(failures: 
 	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
 	_assert_eq(int(report.get("processed", -1)), 3, "holder fixture processed count should match bucket entity count", failures)
 
+func _test_holder_fixture_bucket_metadata_stays_aligned_with_processed_count(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	_assert_true(int(report.get("processed", -1)) >= int(report.get("bucket_count", -1)), "holder fixture processed count should stay aligned with bucket metadata", failures)
+
 func _test_holder_fixture_contention_metrics_ignore_target_side_entity_after_motion(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
 	var grid = SpatialGrid.new(10.0)
@@ -3235,6 +3253,38 @@ func _test_holder_fixture_waiting_assignment_anchor_remains_target_origin_after_
 	store.intent_state[0] = Types.INTENT_STATE_ATTACK
 	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
 	_assert_eq(report.get("assignments", {}).get(1, {}).get("global_pos", null), Vector2.ZERO, "waiting assignment anchor should remain target origin after grid update", failures)
+
+func _test_holder_fixture_assignment_anchor_matches_target_store_position_after_grid_update(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var target_pos := Vector2(store.position_x[2], store.position_y[2])
+	_assert_eq(report.get("assignments", {}).get(0, {}).get("global_pos", null), target_pos, "assignment anchor should match target store position after grid update", failures)
+	_assert_eq(report.get("assignments", {}).get(1, {}).get("global_pos", null), target_pos, "waiting assignment anchor should match target store position after grid update", failures)
+
+func _test_holder_fixture_assignment_anchor_remains_shared_across_attackers_after_grid_update(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var assignments: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1).get("assignments", {})
+	_assert_eq(assignments.get(0, {}).get("global_pos", null), assignments.get(1, {}).get("global_pos", null), "assignment anchor should stay shared across attackers after grid update", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
