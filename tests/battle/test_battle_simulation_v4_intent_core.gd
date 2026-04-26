@@ -155,6 +155,8 @@ func run() -> Array[String]:
 	_test_holder_fixture_contention_waiting_count_stays_one_after_motion(failures)
 	_test_holder_fixture_contention_group_count_stays_one_after_motion_with_holder_lock(failures)
 	_test_holder_fixture_contention_intent_count_matches_attacker_assignments_after_motion(failures)
+	_test_holder_fixture_contention_waiting_count_matches_waiting_assignment_after_motion(failures)
+	_test_holder_fixture_contention_success_rate_matches_success_assignment_after_motion(failures)
 	return failures
 
 func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
@@ -2383,6 +2385,42 @@ func _test_holder_fixture_contention_intent_count_matches_attacker_assignments_a
 	var assignments: Dictionary = report.get("assignments", {})
 	var contention: Dictionary = report.get("contention", {})
 	_assert_eq(int(contention.get("intent_count", -1)), int(assignments.size()), "holder fixture intent count should match attacker assignment count after motion", failures)
+
+func _test_holder_fixture_contention_waiting_count_matches_waiting_assignment_after_motion(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var assignments: Dictionary = report.get("assignments", {})
+	var contention: Dictionary = report.get("contention", {})
+	_assert_eq(int(contention.get("waiting_count", -1)), 1, "holder fixture waiting count should match waiting assignment after motion", failures)
+	_assert_eq(int(assignments.get(1, {}).get("status", -1)), 1, "holder fixture should still serialize one waiting attacker assignment after motion", failures)
+
+func _test_holder_fixture_contention_success_rate_matches_success_assignment_after_motion(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var assignments: Dictionary = report.get("assignments", {})
+	var contention: Dictionary = report.get("contention", {})
+	_assert_eq(float(contention.get("claim_success_rate", -1.0)), 0.5, "holder fixture success rate should match one successful attacker assignment after motion", failures)
+	_assert_eq(int(assignments.get(0, {}).get("status", -1)), 0, "holder fixture should still serialize one successful attacker assignment after motion", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
