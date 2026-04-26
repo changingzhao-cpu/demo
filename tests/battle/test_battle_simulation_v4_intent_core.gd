@@ -39,6 +39,9 @@ func run() -> Array[String]:
 	_test_attack_holder_intent_report_exposes_boosted_priority_weight(failures)
 	_test_intent_report_hides_reverse_side_entries(failures)
 	_test_assignment_report_exposes_exact_conflict_pair(failures)
+	_test_contention_metrics_align_with_serialized_reports(failures)
+	_test_assignment_report_only_serializes_attacker_side_in_duel(failures)
+	_test_assignment_report_only_serializes_attacker_side_in_holder_conflict(failures)
 	return failures
 
 func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
@@ -399,6 +402,51 @@ func _test_assignment_report_exposes_exact_conflict_pair(failures: Array[String]
 	_assert_eq(int(assignments.size()), 2, "assignment report should only expose attacker-side conflict pair", failures)
 	_assert_true(assignments.has(0) and assignments.has(1), "assignment report should expose both attacker ids in conflict pair", failures)
 	_assert_true(not assignments.has(2), "assignment report should hide reverse-side target assignment entry", failures)
+
+func _test_contention_metrics_align_with_serialized_reports(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var intents: Array = report.get("intents", [])
+	var assignments: Dictionary = report.get("assignments", {})
+	var contention: Dictionary = report.get("contention", {})
+	_assert_eq(int(contention.get("intent_count", -1)), intents.size(), "contention intent_count should match serialized intent entries", failures)
+	_assert_eq(int(contention.get("waiting_count", -1)), 1, "contention waiting_count should match serialized waiting entry count", failures)
+	_assert_eq(int(assignments.size()), 2, "serialized assignments should stay aligned with attacker-side contention counts", failures)
+
+func _test_assignment_report_only_serializes_attacker_side_in_duel(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-2.0, 0.0), 6.0)
+	_prepare(store, 1, 1, Vector2.ZERO, 0.0)
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var assignments: Dictionary = report.get("assignments", {})
+	_assert_eq(int(assignments.size()), 1, "duel assignment report should only serialize attacker-side entry", failures)
+	_assert_true(assignments.has(0), "duel assignment report should keep attacker entry", failures)
+	_assert_true(not assignments.has(1), "duel assignment report should hide reverse-side target entry", failures)
+
+func _test_assignment_report_only_serializes_attacker_side_in_holder_conflict(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var assignments: Dictionary = report.get("assignments", {})
+	_assert_eq(int(assignments.size()), 2, "holder conflict assignment report should only serialize attacker-side entries", failures)
+	_assert_true(assignments.has(0) and assignments.has(1), "holder conflict assignment report should keep both attacker entries", failures)
+	_assert_true(not assignments.has(2), "holder conflict assignment report should hide reverse-side target entry", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
