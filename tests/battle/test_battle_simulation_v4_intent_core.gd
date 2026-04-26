@@ -119,6 +119,8 @@ func run() -> Array[String]:
 	_test_holder_fixture_waiting_assignment_matches_store_locked_target_pair(failures)
 	_test_holder_fixture_success_assignment_matches_store_locked_slot_pair(failures)
 	_test_holder_fixture_waiting_assignment_matches_store_locked_slot_pair(failures)
+	_test_holder_fixture_success_assignment_matches_store_locked_target_pair_after_motion(failures)
+	_test_holder_fixture_waiting_assignment_matches_store_locked_target_pair_after_motion(failures)
 	return failures
 
 func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]) -> void:
@@ -1784,6 +1786,38 @@ func _test_holder_fixture_waiting_assignment_matches_store_locked_slot_pair(fail
 	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
 	var assignment: Dictionary = report.get("assignments", {}).get(1, {})
 	_assert_eq(int(assignment.get("assigned_slot_index", -2)), int(store.locked_slot_index[1]), "holder waiting assignment should match locked slot pair", failures)
+
+func _test_holder_fixture_success_assignment_matches_store_locked_target_pair_after_motion(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var assignment: Dictionary = report.get("assignments", {}).get(0, {})
+	_assert_eq(int(assignment.get("target_id", -1)), int(store.locked_target_id[0]), "holder success assignment should still match locked target after motion", failures)
+
+func _test_holder_fixture_waiting_assignment_matches_store_locked_target_pair_after_motion(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var assignment: Dictionary = report.get("assignments", {}).get(1, {})
+	_assert_eq(int(assignment.get("target_id", -1)), int(store.locked_target_id[1]), "holder waiting assignment should still match locked target after motion", failures)
 
 func _test_attack_holder_keeps_slot_against_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
