@@ -185,6 +185,9 @@ func run() -> Array[String]:
 	_test_holder_fixture_waiting_position_stays_exact_after_motion(failures)
 	_test_holder_fixture_success_velocity_matches_expected_step_after_motion(failures)
 	_test_holder_fixture_waiting_velocity_remains_zero_after_motion(failures)
+	_test_holder_fixture_success_position_uses_expected_delta_step(failures)
+	_test_holder_fixture_success_position_and_velocity_stay_directionally_aligned(failures)
+	_test_holder_fixture_waiting_position_and_velocity_stay_directionally_neutral(failures)
 	_test_holder_fixture_success_position_and_velocity_stay_directionally_aligned(failures)
 	_test_holder_fixture_waiting_position_and_velocity_stay_directionally_neutral(failures)
 	return failures
@@ -2914,6 +2917,21 @@ func _test_holder_fixture_waiting_velocity_remains_zero_after_motion(failures: A
 	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
 	_assert_true(absf(float(store.velocity_x[1])) <= 0.001, "holder fixture waiting velocity x should remain zero after motion", failures)
 	_assert_true(absf(float(store.velocity_y[1])) <= 0.001, "holder fixture waiting velocity y should remain zero after motion", failures)
+
+func _test_holder_fixture_success_position_uses_expected_delta_step(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	_assert_true(Vector2(store.position_x[0], store.position_y[0]).distance_to(Vector2(-0.4, 0.0)) <= 0.001, "holder fixture success position should use expected delta step", failures)
 
 func _test_holder_fixture_success_position_and_velocity_stay_directionally_aligned(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
