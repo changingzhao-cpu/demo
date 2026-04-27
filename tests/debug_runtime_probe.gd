@@ -297,6 +297,10 @@ func _initialize() -> void:
 		printerr("[PROBE] missing v4 claim_success_rate: %s" % JSON.stringify(verify_probe))
 		quit(1)
 		return
+	if not verify_probe.has("late_commit_deviation"):
+		printerr("[PROBE] missing v4 late_commit_deviation: %s" % JSON.stringify(verify_probe))
+		quit(1)
+		return
 	var file := FileAccess.open(OUTPUT_PATH, FileAccess.WRITE)
 	if file == null:
 		printerr("[PROBE] failed to open output path")
