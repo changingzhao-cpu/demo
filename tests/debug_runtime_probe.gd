@@ -257,14 +257,8 @@ func _initialize() -> void:
 						"position": entity_payload.get("position", Vector2.ZERO),
 						"velocity": entity_payload.get("velocity", Vector2.ZERO)
 					},
-					"target": {
-						"entity_id": int(entity_target_payload.get("entity_id", -1)),
-						"state_name": entity_target_payload.get("state_name", ""),
-						"target_id": int(entity_target_payload.get("target_id", -1)),
-						"engagement_slot": int(entity_target_payload.get("engagement_slot", -1)),
-						"position": entity_target_payload.get("position", Vector2.ZERO),
-						"velocity": entity_target_payload.get("velocity", Vector2.ZERO)
-					},
+					"target": entity_target_payload,
+					"target_target": entity_target_target_payload,
 					"view": entity_view_snapshot
 				}
 			if bool(entity_payload.get("exists", false)):
@@ -298,6 +292,11 @@ func _initialize() -> void:
 		"runtime_probe": FileAccess.get_file_as_string(RUNTIME_PROBE),
 		"first_attack_times": attack_times
 	}
+	var verify_probe: Dictionary = output.get("v4_probe", {})
+	if not verify_probe.has("claim_success_rate"):
+		printerr("[PROBE] missing v4 claim_success_rate: %s" % JSON.stringify(verify_probe))
+		quit(1)
+		return
 	var file := FileAccess.open(OUTPUT_PATH, FileAccess.WRITE)
 	if file == null:
 		printerr("[PROBE] failed to open output path")
