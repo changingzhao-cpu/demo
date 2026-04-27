@@ -155,7 +155,8 @@ func _build_runtime_trace_probe_dump() -> Dictionary:
 		"backend": _get_runtime_backend_name(),
 		"history_limit": _runtime_anomaly_trace_history_limit,
 		"samples": _runtime_anomaly_trace_samples.duplicate(true),
-		"movement_anomalies": _runtime_movement_anomalies.duplicate(true)
+		"movement_anomalies": _runtime_movement_anomalies.duplicate(true),
+		"probe": _last_tick_report.get("probe", {}).duplicate(true) if _last_tick_report.has("probe") else {}
 	}
 
 func debug_dump_runtime_anomaly_trace() -> Dictionary:
@@ -656,6 +657,10 @@ func _runtime_trace_anomalies_noop5() -> void:
 
 func debug_force_simulation_backend(backend_name: String) -> void:
 	_simulation_backend = backend_name
+	if _spatial_grid != null:
+		_simulation = _create_simulation(_spatial_grid)
+	_clear_runtime_anomaly_trace()
+	_last_tick_report = {"processed": 0, "state": get_state(), "death_count": _recently_died_entities.size()}
 
 func debug_get_authoritative_battle_contract() -> Dictionary:
 	if _simulation == null or _entity_store == null:
@@ -1659,6 +1664,7 @@ func _has_recent_death_for_entity(entity_id: int) -> bool:
 	return false
 
 func _refresh_last_tick_report() -> void:
+	var preserved_probe := _last_tick_report.get("probe", {}).duplicate(true) if _last_tick_report.has("probe") else {}
 	if _last_tick_report.is_empty():
 		_last_tick_report = {"processed": 0, "moved": 0, "attacked": 0, "killed": 0, "idle": 0, "in_range": 0, "events": []}
 	_last_tick_report["state"] = get_state()
@@ -1667,6 +1673,8 @@ func _refresh_last_tick_report() -> void:
 	_last_tick_report["combat_event_count"] = _recent_combat_events.size()
 	_last_tick_report["targeted_count"] = _count_entities_with_targets()
 	_last_tick_report["advancing_count"] = _count_entities_in_state(UNIT_STATE_ADVANCE)
+	if not preserved_probe.is_empty():
+		_last_tick_report["probe"] = preserved_probe
 
 func _spawn_team(unit_count: int, team_id: int) -> void:
 	var own_positions: Array[Vector2] = []

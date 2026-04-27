@@ -15,6 +15,8 @@ const TEST_SUITES := [
 	{"name": "battle/test_motion_resolver", "path": "res://tests/battle/test_motion_resolver.gd"},
 	{"name": "battle/test_battle_simulation_v3_duel", "path": "res://tests/battle/test_battle_simulation_v3_duel.gd"},
 	{"name": "battle/test_battle_simulation_v3_skirmish", "path": "res://tests/battle/test_battle_simulation_v3_skirmish.gd"},
+	{"name": "battle/test_battle_runtime_probe_trace_contract", "path": "res://tests/battle/test_battle_runtime_probe_trace_contract.gd"},
+	{"name": "battle/test_v4_probe_wire_integrity", "path": "res://tests/battle/test_v4_probe_wire_integrity.gd"},
 	{"name": "battle/test_battle_projection", "path": "res://tests/battle/test_battle_projection.gd"},
 	{"name": "battle/test_unit_defs_loader", "path": "res://tests/battle/test_unit_defs_loader.gd"},
 	{"name": "battle/test_wave_defs_loader", "path": "res://tests/battle/test_wave_defs_loader.gd"},
