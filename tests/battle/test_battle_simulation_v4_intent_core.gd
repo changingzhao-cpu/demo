@@ -15,6 +15,7 @@ func run() -> Array[String]:
 	_test_assignment_survives_into_next_tick_snapshot(failures)
 	_test_attack_holder_keeps_slot_against_new_claimer(failures)
 	_test_success_assignment_moves_toward_global_anchor(failures)
+	_test_success_assignment_consumes_absolute_global_anchor(failures)
 	_test_attack_holder_priority_beats_nearer_new_claimer(failures)
 	_test_conflict_report_exposes_intents_and_assignments(failures)
 	_test_conflict_report_exposes_contention_metrics(failures)
@@ -182,6 +183,8 @@ func run() -> Array[String]:
 	_test_holder_fixture_contention_contested_groups_never_exceed_intent_count(failures)
 	_test_probe_report_exposes_assignment_snapshot(failures)
 	_test_probe_report_exposes_intent_snapshot(failures)
+	_test_probe_report_exposes_contention_metrics(failures)
+	_test_probe_contention_matches_contention_report(failures)
 	_test_probe_assignments_match_assignment_report(failures)
 	_test_probe_intents_match_intent_report(failures)
 	_test_probe_assignments_keep_attacker_side_filter(failures)
@@ -244,6 +247,22 @@ func _test_success_assignment_moves_toward_global_anchor(failures: Array[String]
 	simulation.tick_bucket_with_report(store, 0.1, 0, 1)
 	var after := Vector2(store.position_x[0], store.position_y[0])
 	_assert_true(after.distance_to(Vector2.ZERO) < before.distance_to(Vector2.ZERO), "success assignment should move the unit toward assignment.global_pos", failures)
+
+func _test_success_assignment_consumes_absolute_global_anchor(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(1.0, 0.0), 6.0)
+	_prepare(store, 1, 1, Vector2(10.0, 2.0), 0.0)
+	var before := Vector2(store.position_x[0], store.position_y[0])
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var after := Vector2(store.position_x[0], store.position_y[0])
+	var assignment: Dictionary = report.get("assignments", {}).get(0, {})
+	_assert_eq(assignment.get("global_pos", null), Vector2(10.0, 2.0), "success assignment should expose absolute target global_pos outside origin", failures)
+	_assert_true(after.distance_to(Vector2(10.0, 2.0)) < before.distance_to(Vector2(10.0, 2.0)), "success assignment should move closer to absolute assignment.global_pos outside origin", failures)
+	_assert_true(after.y > before.y, "success assignment should move vertically toward off-axis absolute assignment.global_pos", failures)
+	_assert_true(after.x > before.x, "success assignment should move horizontally toward absolute assignment.global_pos", failures)
+	_assert_true(grid.query_neighbors(after).has(0), "success assignment should update grid at moved position for absolute anchor consumption", failures)
 
 func _test_attack_holder_priority_beats_nearer_new_claimer(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
@@ -2913,6 +2932,45 @@ func _test_probe_report_exposes_intent_snapshot(failures: Array[String]) -> void
 	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
 	var probe: Dictionary = report.get("probe", {})
 	_assert_true(probe.has("intents"), "probe report should expose intent snapshot", failures)
+
+func _test_probe_report_exposes_contention_metrics(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var probe: Dictionary = report.get("probe", {})
+	_assert_true(probe.has("intent_count"), "probe report should expose intent_count", failures)
+	_assert_true(probe.has("waiting_count"), "probe report should expose waiting_count", failures)
+	_assert_true(probe.has("claim_success_rate"), "probe report should expose claim_success_rate", failures)
+	_assert_true(probe.has("contested_groups"), "probe report should expose contested_groups", failures)
+
+func _test_probe_contention_matches_contention_report(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var probe: Dictionary = report.get("probe", {})
+	var contention: Dictionary = report.get("contention", {})
+	_assert_eq(probe.get("intent_count", -1), contention.get("intent_count", -2), "probe intent_count should match contention report", failures)
+	_assert_eq(probe.get("waiting_count", -1), contention.get("waiting_count", -2), "probe waiting_count should match contention report", failures)
+	_assert_eq(probe.get("claim_success_rate", -1.0), contention.get("claim_success_rate", -2.0), "probe claim_success_rate should match contention report", failures)
+	_assert_eq(probe.get("contested_groups", -1), contention.get("contested_groups", -2), "probe contested_groups should match contention report", failures)
 
 func _test_probe_intents_match_intent_report(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)

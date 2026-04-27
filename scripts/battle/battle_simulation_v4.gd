@@ -33,16 +33,21 @@ func tick_bucket_with_report(store, delta: float, bucket_id: int, bucket_count: 
 		processed += 1
 	var serialized_intents := _serialize_intents(intents)
 	var serialized_assignments := _serialize_assignments(assignments)
+	var contention := build_contention_report(intents, assignments)
 	return {
 		"processed": processed,
 		"bucket_index": bucket_id,
 		"bucket_count": bucket_count,
 		"intents": serialized_intents,
 		"assignments": serialized_assignments,
-		"contention": build_contention_report(intents, assignments),
+		"contention": contention,
 		"probe": {
 			"intents": serialized_intents,
-			"assignments": serialized_assignments
+			"assignments": serialized_assignments,
+			"intent_count": int(contention.get("intent_count", 0)),
+			"waiting_count": int(contention.get("waiting_count", 0)),
+			"claim_success_rate": float(contention.get("claim_success_rate", 0.0)),
+			"contested_groups": int(contention.get("contested_groups", 0))
 		}
 	}
 
