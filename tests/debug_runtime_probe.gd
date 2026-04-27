@@ -327,6 +327,10 @@ func _initialize() -> void:
 		printerr("[PROBE] missing global_pos: %s" % JSON.stringify(first_assignment))
 		quit(1)
 		return
+	if not first_assignment.has("status"):
+		printerr("[PROBE] missing status: %s" % JSON.stringify(first_assignment))
+		quit(1)
+		return
 	var file := FileAccess.open(OUTPUT_PATH, FileAccess.WRITE)
 	if file == null:
 		printerr("[PROBE] failed to open output path")
