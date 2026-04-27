@@ -235,6 +235,9 @@ func run() -> Array[String]:
 			elapsed += step
 			continue
 		var tracked_entities: Dictionary = {}
+		var latest_probe: Dictionary = controller.call("debug_get_runtime_trace_payload").get("probe", {}) if controller != null and controller.has_method("debug_get_runtime_trace_payload") else {}
+		if not latest_probe.is_empty():
+			trajectories["__v4_probe__"] = [latest_probe]
 		for tracked_id in range(0, 64):
 			var entity_payload: Dictionary = controller.call("debug_get_entity_diagnostic", tracked_id) if controller != null and controller.has_method("debug_get_entity_diagnostic") else {"entity_id": tracked_id, "exists": false}
 			tracked_entities[str(tracked_id)] = {"controller": entity_payload}
@@ -260,9 +263,14 @@ func run() -> Array[String]:
 			file.store_string(JSON.stringify({
 				"trajectories": trajectories,
 				"battle_report_timeline": battle_report_timeline,
-				"anomaly_scan": anomaly_scan
+				"anomaly_scan": anomaly_scan,
+				"v4_probe": trajectories.get("__v4_probe__", [{}])[-1] if trajectories.has("__v4_probe__") else {}
 			}, "\t"))
 			file.close()
+			var payload: Variant = JSON.parse_string(FileAccess.get_file_as_string("user://runtime_probe_test_fixture.json"))
+			if payload is Dictionary and not payload.get("v4_probe", {}).has("claim_success_rate"):
+				failures.append("v4_probe_output=%s" % [JSON.stringify(payload.get("v4_probe", {}))])
+			_assert_true(payload is Dictionary and payload.get("v4_probe", {}).has("claim_success_rate"), "runtime probe fixture output should persist v4 probe claim_success_rate", failures)
 	instance.queue_free()
 	await process_frame
 	var attack_rebind_escapes: Array = anomaly_scan.get("attack_rebind_escapes", [])
