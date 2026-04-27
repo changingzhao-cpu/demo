@@ -5,7 +5,7 @@ const OUTPUT_PATH := "user://runtime_probe.json"
 const SAMPLE_TIMES := [0.0, 0.01, 0.03, 0.05, 0.1, 0.2, 0.5, 1.0, 1.1, 1.2, 1.25, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0, 16.0, 20.0]
 const INITIAL_PROBE := "user://transition_initial_probe.json"
 const RUNTIME_PROBE := "user://transition_runtime_probe.json"
-const FOCUS_ENTITY_IDS := [3, 30]
+const FOCUS_ENTITY_IDS := [3, 14, 30, 38]
 
 func _read_json(path: String) -> Dictionary:
 	var text := FileAccess.get_file_as_string(path)
@@ -209,7 +209,7 @@ func _initialize() -> void:
 	await process_frame
 	var controller = instance.get_node_or_null("BattleController")
 	if controller != null and controller.has_method("debug_force_simulation_backend"):
-		controller.call("debug_force_simulation_backend", "v2")
+		controller.call("debug_force_simulation_backend", "v4")
 	await process_frame
 	await process_frame
 	var samples: Array = []
@@ -286,12 +286,14 @@ func _initialize() -> void:
 		sample_index += 1
 	var attack_times: Dictionary = controller.call("debug_get_first_attack_times") if controller != null and controller.has_method("debug_get_first_attack_times") else {}
 	var battle_report_timeline: Array = controller.call("get_battle_report_timeline") if controller != null and controller.has_method("get_battle_report_timeline") else []
+	var runtime_trace_payload: Dictionary = controller.call("debug_get_runtime_trace_payload") if controller != null and controller.has_method("debug_get_runtime_trace_payload") else {}
 	var anomaly_scan := _build_anomaly_scan(trajectories, battle_report_timeline)
 	var output := {
 		"samples": samples,
 		"trajectories": trajectories,
 		"battle_report_timeline": battle_report_timeline,
 		"anomaly_scan": anomaly_scan,
+		"v4_probe": runtime_trace_payload.get("probe", {}),
 		"initial_probe": FileAccess.get_file_as_string(INITIAL_PROBE),
 		"runtime_probe": FileAccess.get_file_as_string(RUNTIME_PROBE),
 		"first_attack_times": attack_times
