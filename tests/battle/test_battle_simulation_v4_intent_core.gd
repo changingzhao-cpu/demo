@@ -185,8 +185,10 @@ func run() -> Array[String]:
 	_test_probe_report_exposes_intent_snapshot(failures)
 	_test_probe_report_exposes_contention_metrics(failures)
 	_test_probe_report_exposes_contention_index(failures)
+	_test_probe_report_exposes_late_commit_deviation(failures)
 	_test_probe_contention_matches_contention_report(failures)
 	_test_probe_contention_index_matches_contention_report(failures)
+	_test_probe_late_commit_deviation_matches_committed_positions(failures)
 	_test_probe_assignments_match_assignment_report(failures)
 	_test_probe_intents_match_intent_report(failures)
 	_test_probe_assignments_keep_attacker_side_filter(failures)
@@ -3006,6 +3008,28 @@ func _test_probe_contention_index_matches_contention_report(failures: Array[Stri
 	var probe: Dictionary = report.get("probe", {})
 	var contention: Dictionary = report.get("contention", {})
 	_assert_eq(probe.get("contention_index", -1.0), float(contention.get("contested_groups", 0)) / maxf(float(contention.get("intent_count", 0)), 1.0), "probe contention_index should match contention density", failures)
+
+func _test_probe_report_exposes_late_commit_deviation(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-4.0, 0.0), 6.0)
+	_prepare(store, 1, 1, Vector2.ZERO, 0.0)
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var probe: Dictionary = report.get("probe", {})
+	_assert_true(probe.has("late_commit_deviation"), "probe report should expose late_commit_deviation", failures)
+
+func _test_probe_late_commit_deviation_matches_committed_positions(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-4.0, 0.0), 6.0)
+	_prepare(store, 1, 1, Vector2.ZERO, 0.0)
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var after := Vector2(store.position_x[0], store.position_y[0])
+	var anchor: Vector2 = report.get("assignments", {}).get(0, {}).get("global_pos", Vector2.ZERO)
+	var expected := after.distance_to(anchor)
+	_assert_eq(report.get("probe", {}).get("late_commit_deviation", -1.0), expected, "probe late_commit_deviation should match committed distance from anchor", failures)
 
 func _test_probe_intents_match_intent_report(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
