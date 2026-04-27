@@ -319,6 +319,14 @@ func _initialize() -> void:
 		printerr("[PROBE] missing assigned_slot_index: %s" % JSON.stringify(first_assignment))
 		quit(1)
 		return
+	if not first_assignment.has("target_id"):
+		printerr("[PROBE] missing target_id: %s" % JSON.stringify(first_assignment))
+		quit(1)
+		return
+	if not first_assignment.has("global_pos"):
+		printerr("[PROBE] missing global_pos: %s" % JSON.stringify(first_assignment))
+		quit(1)
+		return
 	var file := FileAccess.open(OUTPUT_PATH, FileAccess.WRITE)
 	if file == null:
 		printerr("[PROBE] failed to open output path")
