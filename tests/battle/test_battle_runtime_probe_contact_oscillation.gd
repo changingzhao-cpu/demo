@@ -144,8 +144,45 @@ func _build_anomaly_scan(trajectories: Dictionary, battle_report_timeline: Array
 						"from_distance": from_distance,
 						"to_distance": to_distance,
 						"target_id": int(current_attack.get("target_id", -1)),
-						"slot": int(current_attack.get("slot", -1))
+						"slot": int(current_attack.get("slot", -1)),
+						"nearby_events": _build_nearby_events(entity_id, float(previous_attack.get("time", 0.0)), float(current_attack.get("time", 0.0)), battle_report_timeline),
+						"short_window": float(current_attack.get("time", 0.0)) - float(previous_attack.get("time", 0.0)) <= 0.2
 					}
+					if bool(sample.get("short_window", false)):
+						var window_points: Array = []
+						for point_variant in trajectories.get(str(entity_id), []):
+							var point: Dictionary = point_variant
+							var point_time := float(point.get("time", -999.0))
+							if point_time + 0.0001 < float(previous_attack.get("time", 0.0)) - 0.1:
+								continue
+							if point_time - 0.0001 > float(current_attack.get("time", 0.0)) + 0.1:
+								continue
+							window_points.append({
+								"time": point_time,
+								"state_name": point.get("state_name", ""),
+								"target_id": int(point.get("target_id", -1)),
+								"engagement_slot": int(point.get("engagement_slot", -1)),
+								"position": point.get("position", Vector2.ZERO),
+								"velocity": point.get("velocity", Vector2.ZERO)
+							})
+						sample["window_points"] = window_points
+						var target_window: Array = []
+						for point_variant in trajectories.get(str(int(current_attack.get("target_id", -1))), []):
+							var point: Dictionary = point_variant
+							var point_time := float(point.get("time", -999.0))
+							if point_time + 0.0001 < float(previous_attack.get("time", 0.0)) - 0.1:
+								continue
+							if point_time - 0.0001 > float(current_attack.get("time", 0.0)) + 0.1:
+								continue
+							target_window.append({
+								"time": point_time,
+								"state_name": point.get("state_name", ""),
+								"target_id": int(point.get("target_id", -1)),
+								"engagement_slot": int(point.get("engagement_slot", -1)),
+								"position": point.get("position", Vector2.ZERO),
+								"velocity": point.get("velocity", Vector2.ZERO)
+							})
+						sample["target_window_points"] = target_window
 					if from_distance < 1.5 and to_distance > 2.5:
 						attack_rebind_escapes.append(sample)
 					elif from_distance > 2.5 and to_distance < 2.5:
@@ -168,16 +205,24 @@ func run() -> Array[String]:
 	var failures: Array[String] = []
 	var scene: PackedScene = load(BATTLE_SCENE_PATH)
 	if scene == null:
-		failures.append("runtime probe fixture should load battle scene")
+		failures.append("runtime probe fixture should load battle scene without battle_controller v3 preload parse failure")
 		return failures
 	var instance: Node = scene.instantiate()
 	get_root().add_child(instance)
 	await process_frame
 	var controller = instance.get_node_or_null("BattleController")
 	if controller != null and controller.has_method("debug_force_simulation_backend"):
-		controller.call("debug_force_simulation_backend", "v2")
+		controller.call("debug_force_simulation_backend", "v4")
 	await process_frame
 	await process_frame
+	var probe_ready_elapsed := 0.0
+	var probe_ready_report: Dictionary = {}
+	while probe_ready_elapsed < 2.0:
+		await create_timer(0.05).timeout
+		probe_ready_elapsed += 0.05
+		probe_ready_report = controller.call("get_last_tick_report") if controller != null and controller.has_method("get_last_tick_report") else {}
+		if str(probe_ready_report.get("state", "")) == "combat" and int(probe_ready_report.get("processed", 0)) > 0:
+			break
 	var samples: Array = []
 	var trajectories: Dictionary = {}
 	var elapsed := 0.0
@@ -229,22 +274,39 @@ func run() -> Array[String]:
 	var focused_escapes: Array = []
 	for sample_variant in attack_rebind_escapes:
 		var sample: Dictionary = sample_variant
-		var entity_id := int(sample.get("entity_id", -1))
-		var target_id := int(sample.get("target_id", -1))
-		var slot := int(sample.get("slot", -1))
-		if entity_id == 30 and target_id == 3 and slot == 3:
-			focused_escapes.append({
-				"entity_id": entity_id,
-				"target_id": target_id,
-				"slot": int(sample.get("slot", -1)),
-				"from_distance": float(sample.get("from_distance", 0.0)),
-				"to_distance": float(sample.get("to_distance", 0.0)),
-				"start_time": float(sample.get("start_time", 0.0)),
-				"end_time": float(sample.get("end_time", 0.0))
-			})
+		focused_escapes.append({
+			"entity_id": int(sample.get("entity_id", -1)),
+			"target_id": int(sample.get("target_id", -1)),
+			"slot": int(sample.get("slot", -1)),
+			"from_distance": float(sample.get("from_distance", 0.0)),
+			"to_distance": float(sample.get("to_distance", 0.0)),
+			"start_time": float(sample.get("start_time", 0.0)),
+			"end_time": float(sample.get("end_time", 0.0))
+		})
 	if not focused_escapes.is_empty():
 		failures.append("attack_rebind_escapes=%s" % [JSON.stringify(focused_escapes)])
-	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate the remaining entity-30 target-3 slot-3 ATTACK rebind escape sample", failures)
+		var short_window_focus: Array = []
+		for sample_variant in attack_rebind_escapes:
+			var sample: Dictionary = sample_variant
+			if int(sample.get("target_id", -1)) != 32:
+				continue
+			if not bool(sample.get("short_window", false)):
+				continue
+			short_window_focus.append({
+				"entity_id": int(sample.get("entity_id", -1)),
+				"target_id": int(sample.get("target_id", -1)),
+				"slot": int(sample.get("slot", -1)),
+				"start_time": float(sample.get("start_time", 0.0)),
+				"end_time": float(sample.get("end_time", 0.0)),
+				"from_distance": float(sample.get("from_distance", 0.0)),
+				"to_distance": float(sample.get("to_distance", 0.0)),
+				"nearby_events": sample.get("nearby_events", []),
+				"window_points": sample.get("window_points", []),
+				"target_window_points": sample.get("target_window_points", [])
+			})
+		if not short_window_focus.is_empty():
+			failures.append("short_window_target_32=%s" % [JSON.stringify(short_window_focus)])
+	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate repeated ATTACK rebind escape samples", failures)
 	return failures
 
 func _initialize() -> void:
