@@ -268,10 +268,13 @@ func run() -> Array[String]:
 			}, "\t"))
 			file.close()
 			var payload: Variant = JSON.parse_string(FileAccess.get_file_as_string("user://runtime_probe_test_fixture.json"))
-			if payload is Dictionary and (not payload.get("v4_probe", {}).has("claim_success_rate") or not payload.get("v4_probe", {}).has("contention_index")):
+			if payload is Dictionary and (not payload.get("v4_probe", {}).has("claim_success_rate") or not payload.get("v4_probe", {}).has("contention_index") or not payload.get("v4_probe", {}).has("late_commit_deviation") or not payload.get("v4_probe", {}).has("assignments")):
 				failures.append("v4_probe_output=%s" % [JSON.stringify(payload.get("v4_probe", {}))])
 			_assert_true(payload is Dictionary and payload.get("v4_probe", {}).has("claim_success_rate"), "runtime probe fixture output should persist v4 probe claim_success_rate", failures)
 			_assert_true(payload is Dictionary and payload.get("v4_probe", {}).has("contention_index"), "runtime probe fixture output should persist v4 probe contention_index", failures)
+			_assert_true(payload is Dictionary and payload.get("v4_probe", {}).has("late_commit_deviation"), "runtime probe fixture output should persist v4 probe late_commit_deviation", failures)
+			_assert_true(payload is Dictionary and payload.get("v4_probe", {}).has("assignments"), "runtime probe fixture output should persist v4 probe assignments", failures)
+			_assert_true(payload is Dictionary and not payload.get("v4_probe", {}).get("assignments", {}).is_empty(), "runtime probe fixture output should persist non-empty v4 probe assignments", failures)
 	instance.queue_free()
 	await process_frame
 	var attack_rebind_escapes: Array = anomaly_scan.get("attack_rebind_escapes", [])
