@@ -7,6 +7,7 @@ const EntityStoreScript = preload("res://scripts/battle/entity_store.gd")
 const SpatialGridScript = preload("res://scripts/battle/spatial_grid.gd")
 const BattleSimulationScript = preload("res://scripts/battle/battle_simulation.gd")
 const BattleSimulationV2Script = preload("res://scripts/battle/battle_simulation_v2.gd")
+const BattleSimulationV4Script = preload("res://scripts/battle/battle_simulation_v4.gd")
 const BATTLE_SIMULATION_V3_PATH := "res://scripts/battle/battle_simulation_v3.gd"
 
 const DEFAULT_ALLY_COUNT := 18
@@ -676,6 +677,8 @@ func debug_get_runtime_projection() -> Dictionary:
 	}
 
 func _create_simulation(grid):
+	if _simulation_backend == "v4":
+		return BattleSimulationV4Script.new(grid)
 	if _simulation_backend == "v3":
 		var script = load(BATTLE_SIMULATION_V3_PATH)
 		if script != null:
@@ -1664,7 +1667,7 @@ func _has_recent_death_for_entity(entity_id: int) -> bool:
 	return false
 
 func _refresh_last_tick_report() -> void:
-	var preserved_probe := _last_tick_report.get("probe", {}).duplicate(true) if _last_tick_report.has("probe") else {}
+	var preserved_probe: Dictionary = _last_tick_report.get("probe", {}).duplicate(true) if _last_tick_report.has("probe") else {}
 	if _last_tick_report.is_empty():
 		_last_tick_report = {"processed": 0, "moved": 0, "attacked": 0, "killed": 0, "idle": 0, "in_range": 0, "events": []}
 	_last_tick_report["state"] = get_state()
