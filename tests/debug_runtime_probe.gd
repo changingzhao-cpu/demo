@@ -305,6 +305,20 @@ func _initialize() -> void:
 		printerr("[PROBE] missing v4 contention_index: %s" % JSON.stringify(verify_probe))
 		quit(1)
 		return
+	if not verify_probe.has("assignments"):
+		printerr("[PROBE] missing v4 assignments: %s" % JSON.stringify(verify_probe))
+		quit(1)
+		return
+	if verify_probe.get("assignments", {}).is_empty():
+		printerr("[PROBE] empty v4 assignments: %s" % JSON.stringify(verify_probe))
+		quit(1)
+		return
+	var first_assignment_key: Variant = verify_probe.get("assignments", {}).keys()[0]
+	var first_assignment: Dictionary = verify_probe.get("assignments", {}).get(first_assignment_key, {})
+	if not first_assignment.has("assigned_slot_index"):
+		printerr("[PROBE] missing assigned_slot_index: %s" % JSON.stringify(first_assignment))
+		quit(1)
+		return
 	var file := FileAccess.open(OUTPUT_PATH, FileAccess.WRITE)
 	if file == null:
 		printerr("[PROBE] failed to open output path")
