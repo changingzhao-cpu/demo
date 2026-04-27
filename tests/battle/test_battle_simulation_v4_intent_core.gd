@@ -184,7 +184,9 @@ func run() -> Array[String]:
 	_test_probe_report_exposes_assignment_snapshot(failures)
 	_test_probe_report_exposes_intent_snapshot(failures)
 	_test_probe_report_exposes_contention_metrics(failures)
+	_test_probe_report_exposes_contention_index(failures)
 	_test_probe_contention_matches_contention_report(failures)
+	_test_probe_contention_index_matches_contention_report(failures)
 	_test_probe_assignments_match_assignment_report(failures)
 	_test_probe_intents_match_intent_report(failures)
 	_test_probe_assignments_keep_attacker_side_filter(failures)
@@ -2952,6 +2954,22 @@ func _test_probe_report_exposes_contention_metrics(failures: Array[String]) -> v
 	_assert_true(probe.has("claim_success_rate"), "probe report should expose claim_success_rate", failures)
 	_assert_true(probe.has("contested_groups"), "probe report should expose contested_groups", failures)
 
+func _test_probe_report_exposes_contention_index(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var probe: Dictionary = report.get("probe", {})
+	_assert_true(probe.has("contention_index"), "probe report should expose contention_index", failures)
+
 func _test_probe_contention_matches_contention_report(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
 	var grid = SpatialGrid.new(10.0)
@@ -2971,6 +2989,23 @@ func _test_probe_contention_matches_contention_report(failures: Array[String]) -
 	_assert_eq(probe.get("waiting_count", -1), contention.get("waiting_count", -2), "probe waiting_count should match contention report", failures)
 	_assert_eq(probe.get("claim_success_rate", -1.0), contention.get("claim_success_rate", -2.0), "probe claim_success_rate should match contention report", failures)
 	_assert_eq(probe.get("contested_groups", -1), contention.get("contested_groups", -2), "probe contested_groups should match contention report", failures)
+
+func _test_probe_contention_index_matches_contention_report(failures: Array[String]) -> void:
+	var store = EntityStore.new(3)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-1.0, 0.0), 6.0)
+	_prepare(store, 1, 0, Vector2(-3.0, 0.0), 6.0)
+	_prepare(store, 2, 1, Vector2.ZERO, 0.0)
+	store.target_id[0] = 2
+	store.locked_target_id[0] = 2
+	store.locked_slot_index[0] = 0
+	store.contact_slot[0] = 0
+	store.intent_state[0] = Types.INTENT_STATE_ATTACK
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var probe: Dictionary = report.get("probe", {})
+	var contention: Dictionary = report.get("contention", {})
+	_assert_eq(probe.get("contention_index", -1.0), float(contention.get("contested_groups", 0)) / maxf(float(contention.get("intent_count", 0)), 1.0), "probe contention_index should match contention density", failures)
 
 func _test_probe_intents_match_intent_report(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)

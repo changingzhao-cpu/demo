@@ -47,7 +47,8 @@ func tick_bucket_with_report(store, delta: float, bucket_id: int, bucket_count: 
 			"intent_count": int(contention.get("intent_count", 0)),
 			"waiting_count": int(contention.get("waiting_count", 0)),
 			"claim_success_rate": float(contention.get("claim_success_rate", 0.0)),
-			"contested_groups": int(contention.get("contested_groups", 0))
+			"contested_groups": int(contention.get("contested_groups", 0)),
+			"contention_index": 0.0 if int(contention.get("intent_count", 0)) == 0 else float(contention.get("contested_groups", 0)) / float(contention.get("intent_count", 0))
 		}
 	}
 
