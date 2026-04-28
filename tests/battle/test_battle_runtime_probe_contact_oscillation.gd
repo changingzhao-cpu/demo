@@ -260,21 +260,73 @@ func run() -> Array[String]:
 	if OS.is_debug_build():
 		var file := FileAccess.open("user://runtime_probe_test_fixture.json", FileAccess.WRITE)
 		if file != null:
+			var v4_probe: Dictionary = trajectories.get("__v4_probe__", [{}])[-1] if trajectories.has("__v4_probe__") else {}
+			var v4_probe_fingerprint := {
+				"claim_success_rate": v4_probe.get("claim_success_rate", null),
+				"contention_index": v4_probe.get("contention_index", null),
+				"late_commit_deviation": v4_probe.get("late_commit_deviation", null),
+				"assignment_count": int(v4_probe.get("assignments", {}).size()) if v4_probe.get("assignments", {}) is Dictionary else -1
+			}
+			var v4_probe_baseline := "claim_success_rate=%s contention_index=%s late_commit_deviation=%s assignment_count=%s" % [
+				str(v4_probe_fingerprint.get("claim_success_rate", "missing")),
+				str(v4_probe_fingerprint.get("contention_index", "missing")),
+				str(v4_probe_fingerprint.get("late_commit_deviation", "missing")),
+				str(v4_probe_fingerprint.get("assignment_count", "missing"))
+			]
 			file.store_string(JSON.stringify({
 				"trajectories": trajectories,
 				"battle_report_timeline": battle_report_timeline,
 				"anomaly_scan": anomaly_scan,
-				"v4_probe": trajectories.get("__v4_probe__", [{}])[-1] if trajectories.has("__v4_probe__") else {}
+				"v4_probe": v4_probe,
+				"v4_probe_fingerprint": v4_probe_fingerprint,
+				"v4_probe_baseline": v4_probe_baseline,
+				"v4_probe_baseline_source": v4_probe_fingerprint,
+				"baseline_snapshot": {
+					"sample_name": "oscillation",
+					"snapshot_version": 1,
+					"baseline_text": v4_probe_baseline,
+					"fingerprint": v4_probe_fingerprint,
+					"baseline_source": v4_probe_fingerprint,
+					"capture_context": {
+						"fixture": "runtime_probe_test_fixture",
+						"backend": "v4"
+					}
+				}
 			}, "\t"))
 			file.close()
 			var payload: Variant = JSON.parse_string(FileAccess.get_file_as_string("user://runtime_probe_test_fixture.json"))
 			if payload is Dictionary and (not payload.get("v4_probe", {}).has("claim_success_rate") or not payload.get("v4_probe", {}).has("contention_index") or not payload.get("v4_probe", {}).has("late_commit_deviation") or not payload.get("v4_probe", {}).has("assignments")):
 				failures.append("v4_probe_output=%s" % [JSON.stringify(payload.get("v4_probe", {}))])
+			if payload is Dictionary:
+				var fingerprint: Dictionary = payload.get("v4_probe_fingerprint", {})
 			_assert_true(payload is Dictionary and payload.get("v4_probe", {}).has("claim_success_rate"), "runtime probe fixture output should persist v4 probe claim_success_rate", failures)
 			_assert_true(payload is Dictionary and payload.get("v4_probe", {}).has("contention_index"), "runtime probe fixture output should persist v4 probe contention_index", failures)
 			_assert_true(payload is Dictionary and payload.get("v4_probe", {}).has("late_commit_deviation"), "runtime probe fixture output should persist v4 probe late_commit_deviation", failures)
 			_assert_true(payload is Dictionary and payload.get("v4_probe", {}).has("assignments"), "runtime probe fixture output should persist v4 probe assignments", failures)
 			_assert_true(payload is Dictionary and not payload.get("v4_probe", {}).get("assignments", {}).is_empty(), "runtime probe fixture output should persist non-empty v4 probe assignments", failures)
+			_assert_true(payload is Dictionary and payload.has("v4_probe_fingerprint"), "runtime probe fixture output should persist v4 probe fingerprint", failures)
+			_assert_true(payload is Dictionary and payload.get("v4_probe_fingerprint", {}).has("claim_success_rate"), "runtime probe fixture output should persist v4 probe fingerprint claim_success_rate", failures)
+			_assert_true(payload is Dictionary and payload.get("v4_probe_fingerprint", {}).has("contention_index"), "runtime probe fixture output should persist v4 probe fingerprint contention_index", failures)
+			_assert_true(payload is Dictionary and payload.get("v4_probe_fingerprint", {}).has("late_commit_deviation"), "runtime probe fixture output should persist v4 probe fingerprint late_commit_deviation", failures)
+			_assert_true(payload is Dictionary and payload.get("v4_probe_fingerprint", {}).has("assignment_count"), "runtime probe fixture output should persist v4 probe fingerprint assignment_count", failures)
+			_assert_true(payload is Dictionary and payload.get("v4_probe_baseline", "") != "", "runtime probe fixture output should persist non-empty v4 probe baseline", failures)
+			_assert_true(payload is Dictionary and str(payload.get("v4_probe_baseline", "")).contains("claim_success_rate="), "runtime probe fixture output should persist readable claim_success_rate baseline", failures)
+			_assert_true(payload is Dictionary and str(payload.get("v4_probe_baseline", "")).contains("contention_index="), "runtime probe fixture output should persist readable contention_index baseline", failures)
+			_assert_true(payload is Dictionary and str(payload.get("v4_probe_baseline", "")).contains("late_commit_deviation="), "runtime probe fixture output should persist readable late_commit_deviation baseline", failures)
+			_assert_true(payload is Dictionary and str(payload.get("v4_probe_baseline", "")).contains("assignment_count="), "runtime probe fixture output should persist readable assignment_count baseline", failures)
+			_assert_true(payload is Dictionary and payload.get("v4_probe_fingerprint", {}).get("assignment_count", -1) >= 0, "runtime probe fixture output should persist non-negative fingerprint assignment_count", failures)
+			_assert_true(payload is Dictionary and payload.get("v4_probe_fingerprint", {}).get("assignment_count", 0) > 0, "runtime probe fixture output should persist positive fingerprint assignment_count", failures)
+			_assert_true(payload is Dictionary and payload.has("v4_probe_baseline_source"), "runtime probe fixture output should persist v4 probe baseline source", failures)
+			_assert_true(payload is Dictionary and payload.get("v4_probe_baseline_source", {}).get("claim_success_rate", null) == payload.get("v4_probe_fingerprint", {}).get("claim_success_rate", null), "runtime probe fixture output should keep baseline source claim_success_rate aligned with fingerprint", failures)
+			_assert_true(payload is Dictionary and payload.get("v4_probe_baseline_source", {}).get("contention_index", null) == payload.get("v4_probe_fingerprint", {}).get("contention_index", null), "runtime probe fixture output should keep baseline source contention_index aligned with fingerprint", failures)
+			_assert_true(payload is Dictionary and payload.get("v4_probe_baseline_source", {}).get("late_commit_deviation", null) == payload.get("v4_probe_fingerprint", {}).get("late_commit_deviation", null), "runtime probe fixture output should keep baseline source late_commit_deviation aligned with fingerprint", failures)
+			_assert_true(payload is Dictionary and payload.get("v4_probe_baseline_source", {}).get("assignment_count", null) == payload.get("v4_probe_fingerprint", {}).get("assignment_count", null), "runtime probe fixture output should keep baseline source assignment_count aligned with fingerprint", failures)
+			_assert_true(payload is Dictionary and payload.has("baseline_snapshot"), "runtime probe fixture output should persist baseline snapshot", failures)
+			_assert_true(payload is Dictionary and payload.get("baseline_snapshot", {}).get("sample_name", "") == "oscillation", "runtime probe fixture output should persist oscillation sample name", failures)
+			_assert_true(payload is Dictionary and int(payload.get("baseline_snapshot", {}).get("snapshot_version", -1)) == 1, "runtime probe fixture output should persist baseline snapshot version", failures)
+			_assert_true(payload is Dictionary and payload.get("baseline_snapshot", {}).get("baseline_text", "") == payload.get("v4_probe_baseline", ""), "runtime probe fixture output should align baseline snapshot text with v4 probe baseline", failures)
+			_assert_true(payload is Dictionary and payload.get("baseline_snapshot", {}).get("fingerprint", {}) == payload.get("v4_probe_fingerprint", {}), "runtime probe fixture output should align baseline snapshot fingerprint with v4 probe fingerprint", failures)
+			_assert_true(payload is Dictionary and payload.get("baseline_snapshot", {}).get("baseline_source", {}) == payload.get("v4_probe_baseline_source", {}), "runtime probe fixture output should align baseline snapshot source with v4 probe baseline source", failures)
 	instance.queue_free()
 	await process_frame
 	var attack_rebind_escapes: Array = anomaly_scan.get("attack_rebind_escapes", [])
@@ -297,6 +349,16 @@ func run() -> Array[String]:
 		})
 	if not focused_escapes.is_empty():
 		failures.append("attack_rebind_escapes=%s" % [JSON.stringify(focused_escapes)])
+	else:
+		var baseline_payload: Variant = JSON.parse_string(FileAccess.get_file_as_string("user://runtime_probe_test_fixture.json"))
+		if baseline_payload is Dictionary:
+			var fingerprint: Dictionary = baseline_payload.get("v4_probe_fingerprint", {})
+			failures.append("v4_probe_baseline=claim_success_rate=%s contention_index=%s late_commit_deviation=%s assignment_count=%s" % [
+				str(fingerprint.get("claim_success_rate", "missing")),
+				str(fingerprint.get("contention_index", "missing")),
+				str(fingerprint.get("late_commit_deviation", "missing")),
+				str(fingerprint.get("assignment_count", "missing"))
+			])
 		var short_window_focus: Array = []
 		for sample_variant in attack_rebind_escapes:
 			var sample: Dictionary = sample_variant
