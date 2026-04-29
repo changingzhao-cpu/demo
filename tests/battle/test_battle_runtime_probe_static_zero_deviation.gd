@@ -22,6 +22,16 @@ func run() -> Array[String]:
 	var probe: Dictionary = runtime_trace_payload.get("probe", {})
 	_assert_true(not probe.is_empty(), "static zero deviation fixture should capture non-empty probe", failures)
 	_assert_true(float(probe.get("late_commit_deviation", -1.0)) == 0.0, "static zero deviation fixture should keep late_commit_deviation at zero", failures)
+	var shadow_warning := {
+		"sample_name": "static_zero_deviation",
+		"warning_type": "contention_shadow_hit",
+		"contention_index": float(probe.get("contention_index", 0.0)),
+		"late_commit_deviation": float(probe.get("late_commit_deviation", 0.0)),
+		"claim_success_rate": float(probe.get("claim_success_rate", 0.0)),
+		"legacy_escape_hit": false
+	}
+	if float(shadow_warning.get("contention_index", 0.0)) > 0.0 or float(shadow_warning.get("late_commit_deviation", 0.0)) > 0.0:
+		push_warning("contention_shadow_hit=%s" % JSON.stringify(shadow_warning))
 	var anomaly_scan: Dictionary = controller.call("get_last_tick_report").get("anomaly_scan", {}) if controller != null and controller.has_method("get_last_tick_report") else {}
 	_assert_true(int(anomaly_scan.get("attack_rebind_escape_count", 0)) == 0, "static zero deviation fixture should not report attack rebind escapes", failures)
 	instance.queue_free()
