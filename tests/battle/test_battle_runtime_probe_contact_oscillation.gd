@@ -380,6 +380,16 @@ func run() -> Array[String]:
 			})
 		if not short_window_focus.is_empty():
 			failures.append("short_window_target_32=%s" % [JSON.stringify(short_window_focus)])
+	var latest_probe: Dictionary = trajectories.get("__v4_probe__", [{}])[-1] if trajectories.has("__v4_probe__") else {}
+	var shadow_warning := {
+		"sample_name": "oscillation",
+		"warning_type": "contention_shadow_hit",
+		"contention_index": float(latest_probe.get("contention_index", 0.0)),
+		"late_commit_deviation": float(latest_probe.get("late_commit_deviation", 0.0)),
+		"claim_success_rate": float(latest_probe.get("claim_success_rate", 0.0)),
+		"legacy_escape_hit": not focused_escapes.is_empty()
+	}
+	push_warning("contention_shadow_hit=%s" % JSON.stringify(shadow_warning))
 	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate repeated ATTACK rebind escape samples", failures)
 	return failures
 
