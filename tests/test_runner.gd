@@ -27,6 +27,7 @@ const TEST_SUITES := [
 	{"name": "battle/test_probe_golden_entry_membership", "path": "res://tests/battle/test_probe_golden_entry_membership.gd"},
 	{"name": "battle/test_probe_fast_suite_membership", "path": "res://tests/battle/test_probe_fast_suite_membership.gd"},
 	{"name": "battle/test_probe_slow_suite_membership", "path": "res://tests/battle/test_probe_slow_suite_membership.gd"},
+	{"name": "battle/test_probe_baseline_readiness_contract", "path": "res://tests/battle/test_probe_baseline_readiness_contract.gd"},
 	{"name": "battle/test_v4_probe_contract_matrix_v4_runner", "path": "res://tests/battle/test_v4_probe_contract_matrix_v4_runner.gd"},
 	{"name": "battle/test_probe_contract_suite_membership", "path": "res://tests/battle/test_probe_contract_suite_membership.gd"},
 	{"name": "battle/test_v4_runner_suite_membership", "path": "res://tests/battle/test_v4_runner_suite_membership.gd"},
