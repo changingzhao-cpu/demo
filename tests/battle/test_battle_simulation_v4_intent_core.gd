@@ -186,6 +186,7 @@ func run() -> Array[String]:
 	_test_probe_report_exposes_contention_metrics(failures)
 	_test_probe_report_exposes_contention_index(failures)
 	_test_probe_report_exposes_late_commit_deviation(failures)
+	_test_probe_contract_keeps_core_fields(failures)
 	_test_probe_contention_matches_contention_report(failures)
 	_test_probe_contention_index_matches_contention_report(failures)
 	_test_probe_late_commit_deviation_matches_committed_positions(failures)
@@ -2991,6 +2992,19 @@ func _test_probe_contention_matches_contention_report(failures: Array[String]) -
 	_assert_eq(probe.get("waiting_count", -1), contention.get("waiting_count", -2), "probe waiting_count should match contention report", failures)
 	_assert_eq(probe.get("claim_success_rate", -1.0), contention.get("claim_success_rate", -2.0), "probe claim_success_rate should match contention report", failures)
 	_assert_eq(probe.get("contested_groups", -1), contention.get("contested_groups", -2), "probe contested_groups should match contention report", failures)
+
+func _test_probe_contract_keeps_core_fields(failures: Array[String]) -> void:
+	var store = EntityStore.new(2)
+	var grid = SpatialGrid.new(10.0)
+	var simulation = BattleSimulationV4.new(grid)
+	_prepare(store, 0, 0, Vector2(-4.0, 0.0), 6.0)
+	_prepare(store, 1, 1, Vector2.ZERO, 0.0)
+	var report: Dictionary = simulation.tick_bucket_with_report(store, 0.1, 0, 1)
+	var probe: Dictionary = report.get("probe", {})
+	_assert_true(probe.has("claim_success_rate"), "probe contract should keep claim_success_rate", failures)
+	_assert_true(probe.has("contention_index"), "probe contract should keep contention_index", failures)
+	_assert_true(probe.has("late_commit_deviation"), "probe contract should keep late_commit_deviation", failures)
+	_assert_true(probe.has("assignments"), "probe contract should keep assignments", failures)
 
 func _test_probe_contention_index_matches_contention_report(failures: Array[String]) -> void:
 	var store = EntityStore.new(3)
