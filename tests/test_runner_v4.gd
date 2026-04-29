@@ -6,7 +6,8 @@ const TEST_SUITES := [
 	{"name": "battle/test_combat_state_core", "path": "res://tests/battle/test_combat_state_core.gd"},
 	{"name": "battle/test_contact_resolver", "path": "res://tests/battle/test_contact_resolver.gd"},
 	{"name": "battle/test_motion_resolver", "path": "res://tests/battle/test_motion_resolver.gd"},
-	{"name": "battle/test_battle_simulation_v4_intent_core", "path": "res://tests/battle/test_battle_simulation_v4_intent_core.gd"}
+	{"name": "battle/test_battle_simulation_v4_intent_core", "path": "res://tests/battle/test_battle_simulation_v4_intent_core.gd"},
+	{"name": "battle/test_v4_probe_contract_surface", "path": "res://tests/battle/test_v4_probe_contract_surface.gd"}
 ]
 
 var _failure_count := 0
