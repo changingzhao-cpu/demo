@@ -1,0 +1,39 @@
+extends SceneTree
+
+const BATTLE_SCENE_PATH := "res://scenes/battle/battle_scene.tscn"
+
+func run() -> Array[String]:
+	var failures: Array[String] = []
+	var scene: PackedScene = load(BATTLE_SCENE_PATH)
+	if scene == null:
+		failures.append("static zero deviation fixture should load battle scene")
+		return failures
+	var instance: Node = scene.instantiate()
+	get_root().add_child(instance)
+	await process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	if controller != null and controller.has_method("debug_force_simulation_backend"):
+		controller.call("debug_force_simulation_backend", "v4")
+	await process_frame
+	await process_frame
+	for _i in range(8):
+		await create_timer(0.05).timeout
+	var runtime_trace_payload: Dictionary = controller.call("debug_get_runtime_trace_payload") if controller != null and controller.has_method("debug_get_runtime_trace_payload") else {}
+	var probe: Dictionary = runtime_trace_payload.get("probe", {})
+	_assert_true(not probe.is_empty(), "static zero deviation fixture should capture non-empty probe", failures)
+	_assert_true(float(probe.get("late_commit_deviation", -1.0)) == 0.0, "static zero deviation fixture should keep late_commit_deviation at zero", failures)
+	var anomaly_scan: Dictionary = controller.call("get_last_tick_report").get("anomaly_scan", {}) if controller != null and controller.has_method("get_last_tick_report") else {}
+	_assert_true(int(anomaly_scan.get("attack_rebind_escape_count", 0)) == 0, "static zero deviation fixture should not report attack rebind escapes", failures)
+	instance.queue_free()
+	await process_frame
+	return failures
+
+func _initialize() -> void:
+	var failures := await run()
+	for failure in failures:
+		printerr("[FAIL] battle/test_battle_runtime_probe_static_zero_deviation: %s" % failure)
+	quit(1 if not failures.is_empty() else 0)
+
+func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
+	if not value:
+		failures.append(message)
