@@ -288,11 +288,53 @@ func _initialize() -> void:
 		"battle_report_timeline": battle_report_timeline,
 		"anomaly_scan": anomaly_scan,
 		"v4_probe": runtime_trace_payload.get("probe", {}),
+		"v4_probe_fingerprint": {},
 		"initial_probe": FileAccess.get_file_as_string(INITIAL_PROBE),
 		"runtime_probe": FileAccess.get_file_as_string(RUNTIME_PROBE),
 		"first_attack_times": attack_times
 	}
 	var verify_probe: Dictionary = output.get("v4_probe", {})
+	output["v4_probe_fingerprint"] = {
+		"claim_success_rate": verify_probe.get("claim_success_rate", null),
+		"contention_index": verify_probe.get("contention_index", null),
+		"late_commit_deviation": verify_probe.get("late_commit_deviation", null),
+		"assignment_count": int(verify_probe.get("assignments", {}).size()) if verify_probe.get("assignments", {}) is Dictionary else -1
+	}
+	output["v4_probe_baseline"] = "claim_success_rate=%s contention_index=%s late_commit_deviation=%s assignment_count=%s" % [
+		str(output["v4_probe_fingerprint"].get("claim_success_rate", "missing")),
+		str(output["v4_probe_fingerprint"].get("contention_index", "missing")),
+		str(output["v4_probe_fingerprint"].get("late_commit_deviation", "missing")),
+		str(output["v4_probe_fingerprint"].get("assignment_count", "missing"))
+	]
+	var fingerprint: Dictionary = output.get("v4_probe_fingerprint", {})
+	if not fingerprint.has("claim_success_rate"):
+		printerr("[PROBE] missing v4 fingerprint claim_success_rate: %s" % JSON.stringify(fingerprint))
+		quit(1)
+		return
+	if not fingerprint.has("contention_index"):
+		printerr("[PROBE] missing v4 fingerprint contention_index: %s" % JSON.stringify(fingerprint))
+		quit(1)
+		return
+	if not fingerprint.has("late_commit_deviation"):
+		printerr("[PROBE] missing v4 fingerprint late_commit_deviation: %s" % JSON.stringify(fingerprint))
+		quit(1)
+		return
+	if not fingerprint.has("assignment_count"):
+		printerr("[PROBE] missing v4 fingerprint assignment_count: %s" % JSON.stringify(fingerprint))
+		quit(1)
+		return
+	if not output.has("v4_probe_baseline") or str(output.get("v4_probe_baseline", "")) == "":
+		printerr("[PROBE] missing v4 baseline line: %s" % JSON.stringify(output.get("v4_probe_baseline", "")))
+		quit(1)
+		return
+	if int(fingerprint.get("assignment_count", -1)) < 0:
+		printerr("[PROBE] invalid v4 fingerprint assignment_count: %s" % JSON.stringify(fingerprint))
+		quit(1)
+		return
+	if int(fingerprint.get("assignment_count", 0)) == 0:
+		printerr("[PROBE] empty v4 fingerprint assignment_count: %s" % JSON.stringify(fingerprint))
+		quit(1)
+		return
 	if not verify_probe.has("claim_success_rate"):
 		printerr("[PROBE] missing v4 claim_success_rate: %s" % JSON.stringify(verify_probe))
 		quit(1)
