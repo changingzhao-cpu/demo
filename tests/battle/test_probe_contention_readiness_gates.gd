@@ -12,6 +12,8 @@ func run() -> Array[String]:
 	_assert_true(v4_source.contains('_test_probe_contention_index_matches_contention_report'), "v4 intent core should keep contention/report alignment coverage", failures)
 	_assert_true(oscillation_source.contains('_build_anomaly_scan('), "oscillation sample should still retain anomaly scan entry before contention-first upgrade", failures)
 	_assert_true(oscillation_source.contains('var anomaly_scan := _build_anomaly_scan('), "oscillation sample should still build anomaly scan before contention-first upgrade", failures)
+	_assert_true(oscillation_source.contains('focused_escapes.is_empty()'), "oscillation sample should keep legacy escape verdict as the main assertion", failures)
+	_assert_true(not oscillation_source.contains('failures.append("contention_shadow_hit'), "oscillation sample should not turn shadow warnings into hard failures", failures)
 	_assert_true(not v4_source.contains('test_probe_contention_readiness_gates'), "v4 intent core should not inline contention readiness suite membership", failures)
 	return failures
 
