@@ -30,6 +30,23 @@ func run() -> Array[String]:
 		"claim_success_rate": float(probe.get("claim_success_rate", 0.0)),
 		"legacy_escape_hit": false
 	}
+	var fingerprint_zone_summary := {
+		"sample_name": "static_zero_deviation",
+		"zone": "comfort",
+		"sample_count": 1,
+		"contention_index_min": float(probe.get("contention_index", 0.0)),
+		"contention_index_mean": float(probe.get("contention_index", 0.0)),
+		"contention_index_max": float(probe.get("contention_index", 0.0)),
+		"late_commit_deviation_min": float(probe.get("late_commit_deviation", 0.0)),
+		"late_commit_deviation_mean": float(probe.get("late_commit_deviation", 0.0)),
+		"late_commit_deviation_max": float(probe.get("late_commit_deviation", 0.0)),
+		"claim_success_rate_min": float(probe.get("claim_success_rate", 0.0)),
+		"claim_success_rate_mean": float(probe.get("claim_success_rate", 0.0)),
+		"claim_success_rate_max": float(probe.get("claim_success_rate", 0.0)),
+		"assignment_count_min": int(probe.get("assignments", {}).size()) if probe.get("assignments", {}) is Dictionary else 0,
+		"assignment_count_mean": int(probe.get("assignments", {}).size()) if probe.get("assignments", {}) is Dictionary else 0,
+		"assignment_count_max": int(probe.get("assignments", {}).size()) if probe.get("assignments", {}) is Dictionary else 0
+	}
 	if float(shadow_warning.get("contention_index", 0.0)) > 0.0 or float(shadow_warning.get("late_commit_deviation", 0.0)) > 0.0:
 		push_warning("contention_shadow_hit=%s" % JSON.stringify(shadow_warning))
 	var anomaly_scan: Dictionary = controller.call("get_last_tick_report").get("anomaly_scan", {}) if controller != null and controller.has_method("get_last_tick_report") else {}

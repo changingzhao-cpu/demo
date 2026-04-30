@@ -389,6 +389,23 @@ func run() -> Array[String]:
 		"claim_success_rate": float(latest_probe.get("claim_success_rate", 0.0)),
 		"legacy_escape_hit": not focused_escapes.is_empty()
 	}
+	var fingerprint_zone_summary := {
+		"sample_name": "oscillation",
+		"zone": "critical",
+		"sample_count": 1,
+		"contention_index_min": float(latest_probe.get("contention_index", 0.0)),
+		"contention_index_mean": float(latest_probe.get("contention_index", 0.0)),
+		"contention_index_max": float(latest_probe.get("contention_index", 0.0)),
+		"late_commit_deviation_min": float(latest_probe.get("late_commit_deviation", 0.0)),
+		"late_commit_deviation_mean": float(latest_probe.get("late_commit_deviation", 0.0)),
+		"late_commit_deviation_max": float(latest_probe.get("late_commit_deviation", 0.0)),
+		"claim_success_rate_min": float(latest_probe.get("claim_success_rate", 0.0)),
+		"claim_success_rate_mean": float(latest_probe.get("claim_success_rate", 0.0)),
+		"claim_success_rate_max": float(latest_probe.get("claim_success_rate", 0.0)),
+		"assignment_count_min": int(latest_probe.get("assignments", {}).size()) if latest_probe.get("assignments", {}) is Dictionary else 0,
+		"assignment_count_mean": int(latest_probe.get("assignments", {}).size()) if latest_probe.get("assignments", {}) is Dictionary else 0,
+		"assignment_count_max": int(latest_probe.get("assignments", {}).size()) if latest_probe.get("assignments", {}) is Dictionary else 0
+	}
 	push_warning("contention_shadow_hit=%s" % JSON.stringify(shadow_warning))
 	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate repeated ATTACK rebind escape samples", failures)
 	return failures
