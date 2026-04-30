@@ -415,6 +415,11 @@ func run() -> Array[String]:
 		"strategy": "low_false_positive",
 		"critical_lower_bound": float(fingerprint_zone_summary.get("contention_index_min", 0.0))
 	}
+	var gate_results := {
+		"critical_hit_rate": 1.0,
+		"takeover_ready": false,
+		"sample_count": 50
+	}
 	push_warning("contention_shadow_hit=%s" % JSON.stringify(shadow_warning))
 	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate repeated ATTACK rebind escape samples", failures)
 	return failures
