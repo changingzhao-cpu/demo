@@ -391,8 +391,12 @@ func run() -> Array[String]:
 	}
 	var fingerprint_zone_summary := {
 		"sample_name": "oscillation",
+		"artifact_format": "csv",
+		"artifact_format_json": "json",
+		"run_id": 0,
 		"zone": "critical",
 		"sample_count": 1,
+		"max_continuous_contention_ticks": 0,
 		"contention_index_min": float(latest_probe.get("contention_index", 0.0)),
 		"contention_index_mean": float(latest_probe.get("contention_index", 0.0)),
 		"contention_index_max": float(latest_probe.get("contention_index", 0.0)),

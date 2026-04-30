@@ -22,7 +22,8 @@ func run() -> Array[String]:
 		'"claim_success_rate_max"',
 		'"assignment_count_min"',
 		'"assignment_count_mean"',
-		'"assignment_count_max"'
+		'"assignment_count_max"',
+		'"max_continuous_contention_ticks"'
 	]
 	for token in expected_tokens:
 		_assert_true(oscillation_source.contains(token) or static_source.contains(token), "threshold summary contract should include %s" % token, failures)
