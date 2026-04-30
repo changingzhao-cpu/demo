@@ -67,7 +67,10 @@ func run() -> Array[String]:
 		"fast_false_positive_rate": 0.0,
 		"takeover_ready": false
 	}
-	var outliers := []
+	var outliers := {
+		"outlier_count": 0,
+		"outlier_samples": []
+	}
 	var scatter_plot := {
 		"svg_artifact": "scatter",
 		"x_axis": "p95_contention",

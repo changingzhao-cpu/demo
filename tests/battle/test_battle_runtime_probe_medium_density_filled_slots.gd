@@ -21,7 +21,10 @@ func run() -> Array[String]:
 		"p95_contention": 0.0,
 		"max_duration": 0
 	}
-	var outliers := []
+	var outliers := {
+		"outlier_count": 0,
+		"outlier_samples": []
+	}
 	var scatter_plot := {
 		"svg_artifact": "scatter",
 		"x_axis": "p95_contention",

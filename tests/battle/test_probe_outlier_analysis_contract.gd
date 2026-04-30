@@ -9,9 +9,10 @@ func run() -> Array[String]:
 	var static_source := FileAccess.get_file_as_string(STATIC_PATH)
 	var medium_source := FileAccess.get_file_as_string(MEDIUM_PATH)
 	var oscillation_source := FileAccess.get_file_as_string(OSCILLATION_PATH)
-	_assert_true(static_source.contains('"outliers"'), "comfort family should anchor outlier analysis", failures)
-	_assert_true(medium_source.contains('"outliers"'), "warning family should anchor outlier analysis", failures)
-	_assert_true(oscillation_source.contains('"outliers"'), "critical family should anchor outlier analysis", failures)
+	_assert_true(static_source.contains('"outlier_count"'), "comfort family should persist outlier count", failures)
+	_assert_true(medium_source.contains('"outlier_count"'), "warning family should persist outlier count", failures)
+	_assert_true(oscillation_source.contains('"outlier_count"'), "critical family should persist outlier count", failures)
+	_assert_true(oscillation_source.contains('"outlier_samples"'), "critical family should persist outlier sample list", failures)
 	_assert_true(oscillation_source.contains('"p95_contention"'), "critical family should anchor p95_contention scatter axis", failures)
 	_assert_true(oscillation_source.contains('"max_duration"'), "critical family should anchor max_duration scatter axis", failures)
 	return failures
