@@ -17,7 +17,15 @@ func run() -> Array[String]:
 		"zone": "warning",
 		"density_level": "warning",
 		"sample_count": 1,
-		"max_continuous_contention_ticks": 0
+		"max_continuous_contention_ticks": 0,
+		"p95_contention": 0.0,
+		"max_duration": 0
+	}
+	var outliers := []
+	var scatter_plot := {
+		"svg_artifact": "scatter",
+		"x_axis": "p95_contention",
+		"y_axis": "max_duration"
 	}
 	return failures
 

@@ -45,6 +45,7 @@ const TEST_SUITES := [
 	{"name": "battle/test_battle_runtime_probe_medium_density_filled_slots", "path": "res://tests/battle/test_battle_runtime_probe_medium_density_filled_slots.gd"},
 	{"name": "battle/test_probe_sampling_execution_contract", "path": "res://tests/battle/test_probe_sampling_execution_contract.gd"},
 	{"name": "battle/test_probe_real_threshold_formula_contract", "path": "res://tests/battle/test_probe_real_threshold_formula_contract.gd"},
+	{"name": "battle/test_probe_outlier_analysis_contract", "path": "res://tests/battle/test_probe_outlier_analysis_contract.gd"},
 	{"name": "battle/test_v4_probe_contract_matrix_v4_runner", "path": "res://tests/battle/test_v4_probe_contract_matrix_v4_runner.gd"},
 	{"name": "battle/test_probe_contract_suite_membership", "path": "res://tests/battle/test_probe_contract_suite_membership.gd"},
 	{"name": "battle/test_v4_runner_suite_membership", "path": "res://tests/battle/test_v4_runner_suite_membership.gd"},
