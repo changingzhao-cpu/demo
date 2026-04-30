@@ -438,11 +438,20 @@ func run() -> Array[String]:
 		"sample_count": 50,
 		"gate_c_no_false_positive_records": true
 	}
-	var outliers := []
 	var scatter_plot := {
 		"svg_artifact": "scatter",
 		"x_axis": "p95_contention",
 		"y_axis": "max_duration"
+	}
+	var sampling_results := {
+		"csv_output_path": "user://critical_sampling.csv",
+		"json_output_path": "user://critical_sampling.json",
+		"svg_output_path": "user://critical_sampling.svg",
+		"run_count_completed": 20
+	}
+	var outliers := {
+		"outlier_count": 0,
+		"outlier_samples": []
 	}
 	push_warning("contention_shadow_hit=%s" % JSON.stringify(shadow_warning))
 	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate repeated ATTACK rebind escape samples", failures)

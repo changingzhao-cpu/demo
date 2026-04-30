@@ -73,6 +73,12 @@ func run() -> Array[String]:
 		"x_axis": "p95_contention",
 		"y_axis": "max_duration"
 	}
+	var sampling_results := {
+		"csv_output_path": "user://comfort_sampling.csv",
+		"json_output_path": "user://comfort_sampling.json",
+		"svg_output_path": "user://comfort_sampling.svg",
+		"run_count_completed": 10
+	}
 	if float(shadow_warning.get("contention_index", 0.0)) > 0.0 or float(shadow_warning.get("late_commit_deviation", 0.0)) > 0.0:
 		push_warning("contention_shadow_hit=%s" % JSON.stringify(shadow_warning))
 	var anomaly_scan: Dictionary = controller.call("get_last_tick_report").get("anomaly_scan", {}) if controller != null and controller.has_method("get_last_tick_report") else {}

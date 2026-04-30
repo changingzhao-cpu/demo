@@ -27,6 +27,12 @@ func run() -> Array[String]:
 		"x_axis": "p95_contention",
 		"y_axis": "max_duration"
 	}
+	var sampling_results := {
+		"csv_output_path": "user://warning_sampling.csv",
+		"json_output_path": "user://warning_sampling.json",
+		"svg_output_path": "user://warning_sampling.svg",
+		"run_count_completed": 20
+	}
 	return failures
 
 func _initialize() -> void:
