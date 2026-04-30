@@ -28,6 +28,10 @@ var contact_anchor_x: PackedFloat32Array
 var contact_anchor_y: PackedFloat32Array
 var contact_settle_time: PackedFloat32Array
 var state: PackedInt32Array
+var intent_state: PackedInt32Array
+var contact_slot: PackedInt32Array
+var attack_permission: PackedByteArray
+var state_lock_until: PackedFloat32Array
 var alive: PackedByteArray
 var bucket_id: PackedInt32Array
 var grid_id: PackedInt32Array
@@ -60,6 +64,10 @@ func _init(max_entities: int) -> void:
 	contact_anchor_y.resize(capacity)
 	contact_settle_time.resize(capacity)
 	state.resize(capacity)
+	intent_state.resize(capacity)
+	contact_slot.resize(capacity)
+	attack_permission.resize(capacity)
+	state_lock_until.resize(capacity)
 	alive.resize(capacity)
 	bucket_id.resize(capacity)
 	grid_id.resize(capacity)
@@ -117,6 +125,10 @@ func _reset_slot(id: int) -> void:
 	contact_anchor_y[id] = 0.0
 	contact_settle_time[id] = 0.0
 	state[id] = 0
+	intent_state[id] = 0
+	contact_slot[id] = -1
+	attack_permission[id] = 0
+	state_lock_until[id] = 0.0
 	alive[id] = 0
 	bucket_id[id] = -1
 	grid_id[id] = -1

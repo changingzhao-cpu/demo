@@ -5,6 +5,7 @@ const OUTPUT_PATH := "user://runtime_probe.json"
 const SAMPLE_TIMES := [0.0, 0.01, 0.03, 0.05, 0.1, 0.2, 0.5, 1.0, 1.1, 1.2, 1.25, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0, 16.0, 20.0]
 const INITIAL_PROBE := "user://transition_initial_probe.json"
 const RUNTIME_PROBE := "user://transition_runtime_probe.json"
+const FOCUS_ENTITY_IDS := [3, 14, 30, 38]
 
 func _read_json(path: String) -> Dictionary:
 	var text := FileAccess.get_file_as_string(path)
@@ -43,11 +44,30 @@ func _build_nearby_events(entity_id: int, start_time: float, end_time: float, ba
 		})
 	return nearby_events
 
+func _is_attack_sample_eligible(entity_id: int, previous: Dictionary, current: Dictionary, battle_report_timeline: Array) -> bool:
+	if str(current.get("state_name", "")) != "ATTACK":
+		return false
+	if int(current.get("target_id", -1)) == -1:
+		return false
+	if int(current.get("engagement_slot", -1)) == -1:
+		return false
+	var nearby_events := _build_nearby_events(entity_id, float(current.get("time", 0.0)) - 0.05, float(current.get("time", 0.0)) + 0.05, battle_report_timeline)
+	for nearby_event_variant in nearby_events:
+		var nearby_event: Dictionary = nearby_event_variant
+		var event_type := str(nearby_event.get("event_type", ""))
+		if event_type == "target_changed" or event_type == "slot_changed" or event_type == "move_started":
+			return false
+	var previous_position := _parse_vector2(previous.get("position", Vector2.ZERO))
+	var current_position := _parse_vector2(current.get("position", Vector2.ZERO))
+	return previous_position.distance_to(current_position) <= 0.15
+
 func _build_anomaly_scan(trajectories: Dictionary, battle_report_timeline: Array) -> Dictionary:
 	var position_jumps: Array = []
 	var spiral_drifts: Array = []
 	var high_frequency_jitters: Array = []
-	var contact_distance_oscillations: Array = []
+	var attack_rebind_escapes: Array = []
+	var attack_rebind_recontacts: Array = []
+	var attack_midband_drifts: Array = []
 	for entity_id_key in trajectories.keys():
 		var entity_id := int(entity_id_key)
 		var points: Array = trajectories.get(entity_id_key, [])
@@ -107,7 +127,7 @@ func _build_anomaly_scan(trajectories: Dictionary, battle_report_timeline: Array
 						"state": str(current.get("state_name", "")),
 						"target_id": int(current.get("target_id", -1))
 					})
-			if str(current.get("state_name", "")) == "ATTACK" and int(current.get("target_id", -1)) != -1:
+			if _is_attack_sample_eligible(entity_id, previous, current, battle_report_timeline):
 				var target_points: Array = trajectories.get(str(int(current.get("target_id", -1))), [])
 				var target_snapshot: Dictionary = {}
 				for target_point_variant in target_points:
@@ -127,16 +147,33 @@ func _build_anomaly_scan(trajectories: Dictionary, battle_report_timeline: Array
 			for index in range(1, attack_distances.size()):
 				var previous_attack: Dictionary = attack_distances[index - 1]
 				var current_attack: Dictionary = attack_distances[index]
-				if absf(float(current_attack.get("distance", 0.0)) - float(previous_attack.get("distance", 0.0))) >= 1.0:
-					contact_distance_oscillations.append({
+				var from_distance := float(previous_attack.get("distance", 0.0))
+				var to_distance := float(current_attack.get("distance", 0.0))
+				if absf(to_distance - from_distance) >= 1.0:
+					var sample := {
 						"entity_id": entity_id,
 						"start_time": float(previous_attack.get("time", 0.0)),
 						"end_time": float(current_attack.get("time", 0.0)),
-						"from_distance": float(previous_attack.get("distance", 0.0)),
-						"to_distance": float(current_attack.get("distance", 0.0)),
+						"from_distance": from_distance,
+						"to_distance": to_distance,
 						"target_id": int(current_attack.get("target_id", -1)),
 						"slot": int(current_attack.get("slot", -1))
-					})
+					}
+					if from_distance < 1.5 and to_distance > 2.5:
+						attack_rebind_escapes.append(sample)
+					elif from_distance > 2.5 and to_distance < 2.5:
+						attack_rebind_recontacts.append(sample)
+					else:
+						attack_midband_drifts.append(sample)
+	attack_rebind_escapes.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return absf(float(a.get("to_distance", 0.0)) - float(a.get("from_distance", 0.0))) > absf(float(b.get("to_distance", 0.0)) - float(b.get("from_distance", 0.0)))
+	)
+	attack_rebind_recontacts.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return absf(float(a.get("to_distance", 0.0)) - float(a.get("from_distance", 0.0))) > absf(float(b.get("to_distance", 0.0)) - float(b.get("from_distance", 0.0)))
+	)
+	attack_midband_drifts.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return absf(float(a.get("to_distance", 0.0)) - float(a.get("from_distance", 0.0))) > absf(float(b.get("to_distance", 0.0)) - float(b.get("from_distance", 0.0)))
+	)
 	position_jumps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return float(a.get("speed", 0.0)) > float(b.get("speed", 0.0))
 	)
@@ -146,9 +183,6 @@ func _build_anomaly_scan(trajectories: Dictionary, battle_report_timeline: Array
 	high_frequency_jitters.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return float(a.get("end_time", 0.0)) < float(b.get("end_time", 0.0))
 	)
-	contact_distance_oscillations.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return absf(float(a.get("to_distance", 0.0)) - float(a.get("from_distance", 0.0))) > absf(float(b.get("to_distance", 0.0)) - float(b.get("from_distance", 0.0)))
-	)
 	return {
 		"position_jump_count": position_jumps.size(),
 		"position_jumps": position_jumps.slice(0, mini(50, position_jumps.size())),
@@ -156,8 +190,12 @@ func _build_anomaly_scan(trajectories: Dictionary, battle_report_timeline: Array
 		"spiral_drifts": spiral_drifts.slice(0, mini(50, spiral_drifts.size())),
 		"high_frequency_jitter_count": high_frequency_jitters.size(),
 		"high_frequency_jitters": high_frequency_jitters.slice(0, mini(50, high_frequency_jitters.size())),
-		"contact_distance_oscillation_count": contact_distance_oscillations.size(),
-		"contact_distance_oscillations": contact_distance_oscillations.slice(0, mini(50, contact_distance_oscillations.size()))
+		"attack_rebind_escape_count": attack_rebind_escapes.size(),
+		"attack_rebind_escapes": attack_rebind_escapes.slice(0, mini(50, attack_rebind_escapes.size())),
+		"attack_rebind_recontact_count": attack_rebind_recontacts.size(),
+		"attack_rebind_recontacts": attack_rebind_recontacts.slice(0, mini(50, attack_rebind_recontacts.size())),
+		"attack_midband_drift_count": attack_midband_drifts.size(),
+		"attack_midband_drifts": attack_midband_drifts.slice(0, mini(50, attack_midband_drifts.size()))
 	}
 
 func _initialize() -> void:
@@ -168,6 +206,10 @@ func _initialize() -> void:
 		return
 	var instance: Node = scene.instantiate()
 	root.add_child(instance)
+	await process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	if controller != null and controller.has_method("debug_force_simulation_backend"):
+		controller.call("debug_force_simulation_backend", "v4")
 	await process_frame
 	await process_frame
 	var samples: Array = []
@@ -181,7 +223,6 @@ func _initialize() -> void:
 			await create_timer(step).timeout
 			elapsed += step
 			continue
-		var controller := instance.get_node_or_null("BattleController")
 		var unit_layer := instance.get_node_or_null("UnitLayer")
 		var tracked_entities: Dictionary = {}
 		for tracked_id in range(0, 64):
@@ -205,12 +246,21 @@ func _initialize() -> void:
 							"pose": child.call("debug_get_pose_snapshot") if child.has_method("debug_get_pose_snapshot") else {}
 						}
 						break
-			tracked_entities[str(tracked_id)] = {
-				"controller": entity_payload,
-				"target": entity_target_payload,
-				"target_target": entity_target_target_payload,
-				"view": entity_view_snapshot
-			}
+			if FOCUS_ENTITY_IDS.has(tracked_id):
+				tracked_entities[str(tracked_id)] = {
+					"controller": {
+						"entity_id": tracked_id,
+						"exists": bool(entity_payload.get("exists", false)),
+						"state_name": entity_payload.get("state_name", ""),
+						"target_id": int(entity_payload.get("target_id", -1)),
+						"engagement_slot": int(entity_payload.get("engagement_slot", -1)),
+						"position": entity_payload.get("position", Vector2.ZERO),
+						"velocity": entity_payload.get("velocity", Vector2.ZERO)
+					},
+					"target": entity_target_payload,
+					"target_target": entity_target_target_payload,
+					"view": entity_view_snapshot
+				}
 			if bool(entity_payload.get("exists", false)):
 				var trajectory_key := str(tracked_id)
 				var points: Array = trajectories.get(trajectory_key, [])
@@ -219,91 +269,116 @@ func _initialize() -> void:
 					"state_name": entity_payload.get("state_name", ""),
 					"target_id": int(entity_payload.get("target_id", -1)),
 					"engagement_slot": int(entity_payload.get("engagement_slot", -1)),
-					"engagement_target": int(entity_payload.get("engagement_target", -1)),
-					"engagement_blocked_time": float(entity_payload.get("engagement_blocked_time", 0.0)),
 					"position": entity_payload.get("position", Vector2.ZERO),
-					"velocity": entity_payload.get("velocity", Vector2.ZERO),
-					"view_position": entity_view_snapshot.get("global_position", Vector2.ZERO),
-					"body_scale": entity_view_snapshot.get("sprite", {}).get("body_scale", Vector2.ZERO),
-					"body_texture": entity_view_snapshot.get("sprite", {}).get("body_texture", "")
+					"velocity": entity_payload.get("velocity", Vector2.ZERO)
 				})
 				trajectories[trajectory_key] = points
-		var recent_events_probe: Dictionary = _read_json("user://controller_recent_combat_events_probe.json")
-		var pair_distance_35_to_9 = null
-		var attacks_on_9: Array = []
-		for event_variant in recent_events_probe.get("events", []):
-			var event: Dictionary = event_variant
-			if int(event.get("attacker_id", -1)) == 35 and int(event.get("target_id", -1)) == 9 and str(event.get("type", "")) == "attack":
-				var attacker_position_35 := _parse_vector2(event.get("attacker_position", Vector2.ZERO))
-				var target_position_35 := _parse_vector2(event.get("target_position", Vector2.ZERO))
-				pair_distance_35_to_9 = attacker_position_35.distance_to(target_position_35)
-			if int(event.get("target_id", -1)) == 9 and str(event.get("type", "")) == "attack":
-				var attacker_position_9 := _parse_vector2(event.get("attacker_position", Vector2.ZERO))
-				var target_position_9 := _parse_vector2(event.get("target_position", Vector2.ZERO))
-				attacks_on_9.append({
-					"attacker_id": int(event.get("attacker_id", -1)),
-					"attacker_position": attacker_position_9,
-					"target_position": target_position_9
-				})
-		var entity_2: Dictionary = tracked_entities.get("2", {})
-		var entity_2_controller: Dictionary = entity_2.get("controller", {})
-		var entity_2_target: Dictionary = entity_2.get("target", {})
-		var entity_2_target_target: Dictionary = entity_2.get("target_target", {})
 		samples.append({
 			"time": elapsed,
-			"tick_before": _read_json("user://tick_probe_before.json"),
-			"payload_probe": _read_json("user://runtime_payload_probe.json"),
-			"view_probe": _read_json("user://runtime_view_probe.json"),
-			"combat_feedback_probe": _read_json("user://combat_feedback_probe.json"),
-			"combat_pulse_probe": _read_json("user://combat_pulse_probe.json"),
-			"controller_recent_combat_events_probe": recent_events_probe,
-			"controller_consume_combat_events_probe": _read_json("user://controller_consume_combat_events_probe.json"),
-			"unit_view_attack_pulse_probe_33": _read_json("user://unit_view_attack_pulse_probe_33.json"),
-			"unit_view_sync_probe_33": _read_json("user://unit_view_sync_probe_33.json"),
-			"runtime_view_probe": _read_json("user://runtime_view_probe.json"),
-			"controller_recent_deaths_probe": _read_json("user://controller_recent_deaths_probe.json"),
-			"tracked_entities": tracked_entities,
-			"pair_distance_35_to_9": pair_distance_35_to_9,
-			"attacks_on_9": attacks_on_9,
-			"entity_2_focus": {
-				"state_name": entity_2_controller.get("state_name", ""),
-				"target_id": int(entity_2_controller.get("target_id", -1)),
-				"engagement_target": int(entity_2_controller.get("engagement_target", -1)),
-				"engagement_slot": int(entity_2_controller.get("engagement_slot", -1)),
-				"engagement_blocked_time": float(entity_2_controller.get("engagement_blocked_time", 0.0)),
-				"position": entity_2_controller.get("position", Vector2.ZERO),
-				"velocity": entity_2_controller.get("velocity", Vector2.ZERO),
-				"target_position": entity_2_target.get("position", Vector2.ZERO),
-				"target_state_name": entity_2_target.get("state_name", ""),
-				"target_target_id": int(entity_2_target.get("target_id", -1)),
-				"target_target_position": entity_2_target_target.get("position", Vector2.ZERO),
-				"target_target_state_name": entity_2_target_target.get("state_name", "")
-			}
+			"tracked_entities": tracked_entities
 		})
 		sample_index += 1
-	var controller := instance.get_node_or_null("BattleController")
 	var attack_times: Dictionary = controller.call("debug_get_first_attack_times") if controller != null and controller.has_method("debug_get_first_attack_times") else {}
 	var battle_report_timeline: Array = controller.call("get_battle_report_timeline") if controller != null and controller.has_method("get_battle_report_timeline") else []
+	var runtime_trace_payload: Dictionary = controller.call("debug_get_runtime_trace_payload") if controller != null and controller.has_method("debug_get_runtime_trace_payload") else {}
 	var anomaly_scan := _build_anomaly_scan(trajectories, battle_report_timeline)
 	var output := {
 		"samples": samples,
 		"trajectories": trajectories,
 		"battle_report_timeline": battle_report_timeline,
 		"anomaly_scan": anomaly_scan,
+		"v4_probe": runtime_trace_payload.get("probe", {}),
+		"v4_probe_fingerprint": {},
 		"initial_probe": FileAccess.get_file_as_string(INITIAL_PROBE),
 		"runtime_probe": FileAccess.get_file_as_string(RUNTIME_PROBE),
-		"tick_before": FileAccess.get_file_as_string("user://tick_probe_before.json"),
-		"tick_after": FileAccess.get_file_as_string("user://tick_probe_after.json"),
-		"initial_to_runtime_delta": FileAccess.get_file_as_string("user://initial_to_runtime_delta_probe.json"),
-		"first_attack_times": attack_times,
-		"full_attack_history_probe": _read_json("user://controller_full_attack_history_probe.json")
+		"first_attack_times": attack_times
 	}
+	var verify_probe: Dictionary = output.get("v4_probe", {})
+	output["v4_probe_fingerprint"] = {
+		"claim_success_rate": verify_probe.get("claim_success_rate", null),
+		"contention_index": verify_probe.get("contention_index", null),
+		"late_commit_deviation": verify_probe.get("late_commit_deviation", null),
+		"assignment_count": int(verify_probe.get("assignments", {}).size()) if verify_probe.get("assignments", {}) is Dictionary else -1
+	}
+	output["v4_probe_baseline"] = "claim_success_rate=%s contention_index=%s late_commit_deviation=%s assignment_count=%s" % [
+		str(output["v4_probe_fingerprint"].get("claim_success_rate", "missing")),
+		str(output["v4_probe_fingerprint"].get("contention_index", "missing")),
+		str(output["v4_probe_fingerprint"].get("late_commit_deviation", "missing")),
+		str(output["v4_probe_fingerprint"].get("assignment_count", "missing"))
+	]
+	var fingerprint: Dictionary = output.get("v4_probe_fingerprint", {})
+	if not fingerprint.has("claim_success_rate"):
+		printerr("[PROBE] missing v4 fingerprint claim_success_rate: %s" % JSON.stringify(fingerprint))
+		quit(1)
+		return
+	if not fingerprint.has("contention_index"):
+		printerr("[PROBE] missing v4 fingerprint contention_index: %s" % JSON.stringify(fingerprint))
+		quit(1)
+		return
+	if not fingerprint.has("late_commit_deviation"):
+		printerr("[PROBE] missing v4 fingerprint late_commit_deviation: %s" % JSON.stringify(fingerprint))
+		quit(1)
+		return
+	if not fingerprint.has("assignment_count"):
+		printerr("[PROBE] missing v4 fingerprint assignment_count: %s" % JSON.stringify(fingerprint))
+		quit(1)
+		return
+	if not output.has("v4_probe_baseline") or str(output.get("v4_probe_baseline", "")) == "":
+		printerr("[PROBE] missing v4 baseline line: %s" % JSON.stringify(output.get("v4_probe_baseline", "")))
+		quit(1)
+		return
+	if int(fingerprint.get("assignment_count", -1)) < 0:
+		printerr("[PROBE] invalid v4 fingerprint assignment_count: %s" % JSON.stringify(fingerprint))
+		quit(1)
+		return
+	if int(fingerprint.get("assignment_count", 0)) == 0:
+		printerr("[PROBE] empty v4 fingerprint assignment_count: %s" % JSON.stringify(fingerprint))
+		quit(1)
+		return
+	if not verify_probe.has("claim_success_rate"):
+		printerr("[PROBE] missing v4 claim_success_rate: %s" % JSON.stringify(verify_probe))
+		quit(1)
+		return
+	if not verify_probe.has("late_commit_deviation"):
+		printerr("[PROBE] missing v4 late_commit_deviation: %s" % JSON.stringify(verify_probe))
+		quit(1)
+		return
+	if not verify_probe.has("contention_index"):
+		printerr("[PROBE] missing v4 contention_index: %s" % JSON.stringify(verify_probe))
+		quit(1)
+		return
+	if not verify_probe.has("assignments"):
+		printerr("[PROBE] missing v4 assignments: %s" % JSON.stringify(verify_probe))
+		quit(1)
+		return
+	if verify_probe.get("assignments", {}).is_empty():
+		printerr("[PROBE] empty v4 assignments: %s" % JSON.stringify(verify_probe))
+		quit(1)
+		return
+	var first_assignment_key: Variant = verify_probe.get("assignments", {}).keys()[0]
+	var first_assignment: Dictionary = verify_probe.get("assignments", {}).get(first_assignment_key, {})
+	if not first_assignment.has("assigned_slot_index"):
+		printerr("[PROBE] missing assigned_slot_index: %s" % JSON.stringify(first_assignment))
+		quit(1)
+		return
+	if not first_assignment.has("target_id"):
+		printerr("[PROBE] missing target_id: %s" % JSON.stringify(first_assignment))
+		quit(1)
+		return
+	if not first_assignment.has("global_pos"):
+		printerr("[PROBE] missing global_pos: %s" % JSON.stringify(first_assignment))
+		quit(1)
+		return
+	if not first_assignment.has("status"):
+		printerr("[PROBE] missing status: %s" % JSON.stringify(first_assignment))
+		quit(1)
+		return
 	var file := FileAccess.open(OUTPUT_PATH, FileAccess.WRITE)
 	if file == null:
-		printerr("[PROBE] failed to open output file")
+		printerr("[PROBE] failed to open output path")
 		quit(1)
 		return
 	file.store_string(JSON.stringify(output, "\t"))
 	file.close()
-	print("[PROBE] wrote ", ProjectSettings.globalize_path(OUTPUT_PATH))
-	quit(0)
+	print("[PROBE] wrote %s" % ProjectSettings.globalize_path(OUTPUT_PATH))
+	quit()

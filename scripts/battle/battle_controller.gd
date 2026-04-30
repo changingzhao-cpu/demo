@@ -6,6 +6,9 @@ const WaveControllerScript = preload("res://scripts/battle/wave_controller.gd")
 const EntityStoreScript = preload("res://scripts/battle/entity_store.gd")
 const SpatialGridScript = preload("res://scripts/battle/spatial_grid.gd")
 const BattleSimulationScript = preload("res://scripts/battle/battle_simulation.gd")
+const BattleSimulationV2Script = preload("res://scripts/battle/battle_simulation_v2.gd")
+const BattleSimulationV4Script = preload("res://scripts/battle/battle_simulation_v4.gd")
+const BATTLE_SIMULATION_V3_PATH := "res://scripts/battle/battle_simulation_v3.gd"
 
 const DEFAULT_ALLY_COUNT := 18
 const DEFAULT_STORE_CAPACITY := 128
@@ -81,6 +84,611 @@ var _tick_bucket_count := 4
 var _tick_accumulator := 0.0
 var _tick_interval := 0.016
 var _rng := RandomNumberGenerator.new()
+var _simulation_backend: String = "v1"
+var _runtime_anomaly_trace_history_limit := 24
+var _runtime_anomaly_trace_samples: Array[Dictionary] = []
+var _runtime_movement_anomalies: Array[Dictionary] = []
+
+func _get_runtime_backend_name() -> String:
+	if _simulation != null:
+		if _simulation.has_method("get_backend_name"):
+			return str(_simulation.call("get_backend_name"))
+		if _simulation.has_method("debug_get_backend_name"):
+			return str(_simulation.call("debug_get_backend_name"))
+	return _resolve_runtime_simulation_backend()
+
+func _record_runtime_anomaly_trace_sample(sample: Dictionary) -> void:
+	_runtime_anomaly_trace_samples.append(sample.duplicate(true))
+	while _runtime_anomaly_trace_samples.size() > _runtime_anomaly_trace_history_limit:
+		_runtime_anomaly_trace_samples.pop_front()
+
+func _record_runtime_anomaly_trace_after_tick() -> void:
+	if _simulation == null or _entity_store == null:
+		return
+	var trace_payload: Dictionary = {}
+	if _simulation.has_method("build_runtime_anomaly_trace"):
+		trace_payload = _simulation.call("build_runtime_anomaly_trace", _entity_store, _tick_interval, _tick_bucket_index)
+	elif _simulation.has_method("get_debug_anomaly_trace"):
+		trace_payload = _simulation.call("get_debug_anomaly_trace", _entity_store, _tick_interval, _tick_bucket_index)
+	if trace_payload.is_empty():
+		return
+	_runtime_movement_anomalies = []
+	for anomaly_variant in trace_payload.get("movement_anomalies", []):
+		var anomaly: Dictionary = anomaly_variant
+		_runtime_movement_anomalies.append(anomaly.duplicate(true))
+		_record_runtime_anomaly_trace_sample(anomaly)
+
+func debug_get_runtime_anomaly_trace() -> Dictionary:
+	return {
+		"backend": _get_runtime_backend_name(),
+		"history_limit": _runtime_anomaly_trace_history_limit,
+		"samples": _runtime_anomaly_trace_samples.duplicate(true),
+		"movement_anomalies": _runtime_movement_anomalies.duplicate(true)
+	}
+
+func get_runtime_anomaly_trace() -> Dictionary:
+	return debug_get_runtime_anomaly_trace()
+
+func _clear_runtime_anomaly_trace() -> void:
+	_runtime_anomaly_trace_samples.clear()
+	_runtime_movement_anomalies.clear()
+
+func _debug_trace_state_name(state_value: int) -> String:
+	if _simulation != null and _simulation.has_method("debug_get_entity_truth_snapshot"):
+		return str(_simulation.call("debug_get_entity_truth_snapshot", _entity_store, 0).get("state_name", ""))
+	return ""
+
+func _trace_entity_runtime_state(entity_id: int) -> Dictionary:
+	if _entity_store == null or entity_id < 0 or entity_id >= _entity_store.capacity:
+		return {"entity_id": entity_id, "exists": false}
+	return {
+		"entity_id": entity_id,
+		"exists": bool(_entity_store.alive[entity_id]),
+		"intent_state": int(_entity_store.intent_state[entity_id]),
+		"target_id": int(_entity_store.target_id[entity_id]),
+		"engagement_slot": int(_entity_store.contact_slot[entity_id]),
+		"position": _get_entity_position(entity_id),
+		"velocity": Vector2(_entity_store.velocity_x[entity_id], _entity_store.velocity_y[entity_id])
+	}
+
+func _build_runtime_trace_probe_dump() -> Dictionary:
+	return {
+		"backend": _get_runtime_backend_name(),
+		"history_limit": _runtime_anomaly_trace_history_limit,
+		"samples": _runtime_anomaly_trace_samples.duplicate(true),
+		"movement_anomalies": _runtime_movement_anomalies.duplicate(true),
+		"probe": _last_tick_report.get("probe", {}).duplicate(true) if _last_tick_report.has("probe") else {}
+	}
+
+func debug_dump_runtime_anomaly_trace() -> Dictionary:
+	return _build_runtime_trace_probe_dump()
+
+func _append_runtime_probe_sample(sample: Dictionary) -> void:
+	_record_runtime_anomaly_trace_sample(sample)
+
+func _note_runtime_movement_anomaly(sample: Dictionary) -> void:
+	_runtime_movement_anomalies.append(sample.duplicate(true))
+	while _runtime_movement_anomalies.size() > _runtime_anomaly_trace_history_limit:
+		_runtime_movement_anomalies.pop_front()
+
+func _set_runtime_anomaly_trace_history_limit(limit: int) -> void:
+	_runtime_anomaly_trace_history_limit = maxi(1, limit)
+	while _runtime_anomaly_trace_samples.size() > _runtime_anomaly_trace_history_limit:
+		_runtime_anomaly_trace_samples.pop_front()
+	while _runtime_movement_anomalies.size() > _runtime_anomaly_trace_history_limit:
+		_runtime_movement_anomalies.pop_front()
+
+func debug_get_runtime_backend_name() -> String:
+	return _get_runtime_backend_name()
+
+func get_runtime_backend_name() -> String:
+	return _get_runtime_backend_name()
+
+func _inject_runtime_backend_into_snapshot(snapshot: Dictionary) -> Dictionary:
+	var next_snapshot := snapshot.duplicate(true)
+	next_snapshot["backend"] = _get_runtime_backend_name()
+	return next_snapshot
+
+func _decorate_runtime_trace_payload(payload: Dictionary) -> Dictionary:
+	var next_payload := payload.duplicate(true)
+	next_payload["backend"] = _get_runtime_backend_name()
+	return next_payload
+
+func _normalize_runtime_trace_sample(sample: Dictionary) -> Dictionary:
+	var next_sample := sample.duplicate(true)
+	next_sample["backend"] = _get_runtime_backend_name()
+	return next_sample
+
+func _track_runtime_anomaly_samples(samples: Array) -> void:
+	_runtime_movement_anomalies.clear()
+	for sample_variant in samples:
+		var sample: Dictionary = sample_variant
+		var normalized := _normalize_runtime_trace_sample(sample)
+		_note_runtime_movement_anomaly(normalized)
+		_append_runtime_probe_sample(normalized)
+
+func _refresh_runtime_anomaly_trace_from_payload(payload: Dictionary) -> void:
+	var normalized_payload := _decorate_runtime_trace_payload(payload)
+	_set_runtime_anomaly_trace_history_limit(int(normalized_payload.get("history_limit", _runtime_anomaly_trace_history_limit)))
+	_track_runtime_anomaly_samples(normalized_payload.get("movement_anomalies", []))
+
+func _update_runtime_anomaly_trace_after_tick() -> void:
+	_record_runtime_anomaly_trace_after_tick()
+
+func _get_debug_runtime_anomaly_trace_payload() -> Dictionary:
+	return _build_runtime_trace_probe_dump()
+
+func debug_get_runtime_trace_payload() -> Dictionary:
+	return _get_debug_runtime_anomaly_trace_payload()
+
+func get_debug_runtime_trace_payload() -> Dictionary:
+	return _get_debug_runtime_anomaly_trace_payload()
+
+func _clear_runtime_trace_buffers() -> void:
+	_clear_runtime_anomaly_trace()
+
+func _reset_runtime_trace_state() -> void:
+	_clear_runtime_trace_buffers()
+
+func _refresh_runtime_trace_state() -> void:
+	_update_runtime_anomaly_trace_after_tick()
+
+func _build_runtime_backend_summary() -> Dictionary:
+	return {"backend": _get_runtime_backend_name()}
+
+func debug_get_runtime_backend_summary() -> Dictionary:
+	return _build_runtime_backend_summary()
+
+func _snapshot_with_backend(snapshot: Dictionary) -> Dictionary:
+	return _inject_runtime_backend_into_snapshot(snapshot)
+
+func _runtime_snapshot_with_backend(snapshot: Dictionary) -> Dictionary:
+	return _inject_runtime_backend_into_snapshot(snapshot)
+
+func _decorate_runtime_snapshot(snapshot: Dictionary) -> Dictionary:
+	return _runtime_snapshot_with_backend(snapshot)
+
+func _runtime_trace_backend_name() -> String:
+	return _get_runtime_backend_name()
+
+func _backend_trace_sample(sample: Dictionary) -> Dictionary:
+	return _normalize_runtime_trace_sample(sample)
+
+func _backend_trace_payload(payload: Dictionary) -> Dictionary:
+	return _decorate_runtime_trace_payload(payload)
+
+func _build_runtime_trace_summary() -> Dictionary:
+	return _build_runtime_trace_probe_dump()
+
+func debug_get_runtime_trace_summary() -> Dictionary:
+	return _build_runtime_trace_summary()
+
+func _get_runtime_trace_history_limit() -> int:
+	return _runtime_anomaly_trace_history_limit
+
+func get_runtime_trace_history_limit() -> int:
+	return _get_runtime_trace_history_limit()
+
+func debug_get_runtime_trace_history_limit() -> int:
+	return _get_runtime_trace_history_limit()
+
+func _runtime_trace_samples() -> Array:
+	return _runtime_anomaly_trace_samples.duplicate(true)
+
+func _runtime_trace_movement_anomalies() -> Array:
+	return _runtime_movement_anomalies.duplicate(true)
+
+func debug_get_runtime_trace_samples() -> Array:
+	return _runtime_trace_samples()
+
+func debug_get_runtime_movement_anomalies() -> Array:
+	return _runtime_trace_movement_anomalies()
+
+func _runtime_backend_trace_payload() -> Dictionary:
+	return debug_get_runtime_anomaly_trace()
+
+func get_debug_runtime_anomaly_trace() -> Dictionary:
+	return debug_get_runtime_anomaly_trace()
+
+func build_debug_runtime_anomaly_trace() -> Dictionary:
+	return debug_get_runtime_anomaly_trace()
+
+func _debug_backend_name() -> String:
+	return _get_runtime_backend_name()
+
+func _runtime_trace_backend() -> String:
+	return _debug_backend_name()
+
+func _runtime_trace_snapshot_base() -> Dictionary:
+	return {"backend": _runtime_trace_backend()}
+
+func _merge_runtime_trace_snapshot(snapshot: Dictionary) -> Dictionary:
+	var merged := _runtime_trace_snapshot_base()
+	for key in snapshot.keys():
+		merged[key] = snapshot[key]
+	return merged
+
+func _runtime_trace_payload_snapshot() -> Dictionary:
+	return _merge_runtime_trace_snapshot(debug_get_runtime_anomaly_trace())
+
+func debug_get_runtime_anomaly_trace_snapshot() -> Dictionary:
+	return _runtime_trace_payload_snapshot()
+
+func _current_backend_name() -> String:
+	return _get_runtime_backend_name()
+
+func _runtime_trace_backend_payload() -> Dictionary:
+	return {"backend": _current_backend_name()}
+
+func debug_get_runtime_backend_payload() -> Dictionary:
+	return _runtime_trace_backend_payload()
+
+func _decorate_runtime_output(payload: Dictionary) -> Dictionary:
+	var output := payload.duplicate(true)
+	output["backend"] = _get_runtime_backend_name()
+	return output
+
+func _trace_payload_with_backend(payload: Dictionary) -> Dictionary:
+	return _decorate_runtime_output(payload)
+
+func get_runtime_trace_payload() -> Dictionary:
+	return _trace_payload_with_backend(debug_get_runtime_anomaly_trace())
+
+func _runtime_backend_for_snapshot() -> String:
+	return _get_runtime_backend_name()
+
+func _runtime_anomaly_trace_backend() -> String:
+	return _runtime_backend_for_snapshot()
+
+func _attach_backend_to_trace_payload(payload: Dictionary) -> Dictionary:
+	var next_payload := payload.duplicate(true)
+	next_payload["backend"] = _runtime_anomaly_trace_backend()
+	return next_payload
+
+func debug_get_runtime_anomaly_trace_with_backend() -> Dictionary:
+	return _attach_backend_to_trace_payload(debug_get_runtime_anomaly_trace())
+
+func _backend_snapshot_value() -> String:
+	return _get_runtime_backend_name()
+
+func _runtime_trace_backend_value() -> String:
+	return _backend_snapshot_value()
+
+func get_runtime_backend() -> String:
+	return _runtime_trace_backend_value()
+
+func debug_get_runtime_backend() -> String:
+	return _runtime_trace_backend_value()
+
+func _current_runtime_backend() -> String:
+	return _runtime_trace_backend_value()
+
+func _trace_backend_name() -> String:
+	return _current_runtime_backend()
+
+func _trace_payload_backend() -> Dictionary:
+	return {"backend": _trace_backend_name()}
+
+func debug_get_trace_backend_payload() -> Dictionary:
+	return _trace_payload_backend()
+
+func _trace_backend_snapshot(snapshot: Dictionary) -> Dictionary:
+	var payload := snapshot.duplicate(true)
+	payload["backend"] = _trace_backend_name()
+	return payload
+
+func _finalize_runtime_snapshot(snapshot: Dictionary) -> Dictionary:
+	return _trace_backend_snapshot(snapshot)
+
+func _finalize_runtime_trace(payload: Dictionary) -> Dictionary:
+	return _trace_backend_snapshot(payload)
+
+func _rebuild_runtime_trace_payload() -> Dictionary:
+	return _finalize_runtime_trace(debug_get_runtime_anomaly_trace())
+
+func debug_get_rebuilt_runtime_trace_payload() -> Dictionary:
+	return _rebuild_runtime_trace_payload()
+
+func _trace_backend_state() -> String:
+	return _trace_backend_name()
+
+func _trace_payload_state() -> Dictionary:
+	return {"backend": _trace_backend_state()}
+
+func debug_get_trace_payload_state() -> Dictionary:
+	return _trace_payload_state()
+
+func _trace_payload_history_limit() -> int:
+	return _runtime_anomaly_trace_history_limit
+
+func debug_get_trace_payload_history_limit() -> int:
+	return _trace_payload_history_limit()
+
+func _append_trace_payload_sample(sample: Dictionary) -> void:
+	_append_runtime_probe_sample(sample)
+
+func _append_trace_payload_samples(samples: Array) -> void:
+	for sample_variant in samples:
+		var sample: Dictionary = sample_variant
+		_append_trace_payload_sample(sample)
+
+func _reseed_runtime_trace_payload(payload: Dictionary) -> void:
+	_clear_runtime_trace_buffers()
+	_append_trace_payload_samples(payload.get("movement_anomalies", []))
+
+func _runtime_backend_name_payload() -> Dictionary:
+	return {"backend": _get_runtime_backend_name()}
+
+func debug_get_runtime_backend_name_payload() -> Dictionary:
+	return _runtime_backend_name_payload()
+
+func _runtime_trace_payload_backend_name() -> String:
+	return _get_runtime_backend_name()
+
+func _runtime_trace_snapshot() -> Dictionary:
+	return {"backend": _runtime_trace_payload_backend_name()}
+
+func debug_get_runtime_trace_snapshot() -> Dictionary:
+	return _runtime_trace_snapshot()
+
+func _runtime_backend_label() -> String:
+	return _get_runtime_backend_name()
+
+func _runtime_label_payload() -> Dictionary:
+	return {"backend": _runtime_backend_label()}
+
+func debug_get_runtime_label_payload() -> Dictionary:
+	return _runtime_label_payload()
+
+func _trace_backend_label() -> String:
+	return _runtime_backend_label()
+
+func _trace_backend_dictionary() -> Dictionary:
+	return {"backend": _trace_backend_label()}
+
+func debug_get_trace_backend_dictionary() -> Dictionary:
+	return _trace_backend_dictionary()
+
+func _trace_backend_marker() -> String:
+	return _trace_backend_label()
+
+func get_trace_backend_marker() -> String:
+	return _trace_backend_marker()
+
+func _runtime_backend_marker_payload() -> Dictionary:
+	return {"backend": _trace_backend_marker()}
+
+func debug_get_runtime_backend_marker_payload() -> Dictionary:
+	return _runtime_backend_marker_payload()
+
+func _trace_runtime_backend() -> String:
+	return _get_runtime_backend_name()
+
+func get_trace_runtime_backend() -> String:
+	return _trace_runtime_backend()
+
+func _runtime_trace_marker_payload() -> Dictionary:
+	return {"backend": _trace_runtime_backend()}
+
+func debug_get_runtime_trace_marker_payload() -> Dictionary:
+	return _runtime_trace_marker_payload()
+
+func _trace_backend_dump() -> Dictionary:
+	return {"backend": _trace_runtime_backend()}
+
+func debug_get_trace_backend_dump() -> Dictionary:
+	return _trace_backend_dump()
+
+func _trace_backend_text() -> String:
+	return _trace_runtime_backend()
+
+func get_trace_backend_text() -> String:
+	return _trace_backend_text()
+
+func _runtime_trace_backend_text_payload() -> Dictionary:
+	return {"backend": _trace_backend_text()}
+
+func debug_get_runtime_trace_backend_text_payload() -> Dictionary:
+	return _runtime_trace_backend_text_payload()
+
+func _clear_trace_backend_noise() -> void:
+	return
+
+func _prepare_trace_backend_noise() -> void:
+	return
+
+func _note_trace_backend_noise() -> void:
+	return
+
+func _trace_backend_noop() -> void:
+	return
+
+func _trace_payload_noop() -> void:
+	return
+
+func _trace_buffer_noop() -> void:
+	return
+
+func _trace_noop() -> void:
+	return
+
+func _backend_noop() -> void:
+	return
+
+func _runtime_trace_noop() -> void:
+	return
+
+func _runtime_backend_noop() -> void:
+	return
+
+func _trace_stub() -> void:
+	return
+
+func _runtime_stub() -> void:
+	return
+
+func _backend_stub() -> void:
+	return
+
+func _trace_marker_stub() -> void:
+	return
+
+func _trace_payload_stub() -> void:
+	return
+
+func _runtime_trace_payload_stub() -> void:
+	return
+
+func _runtime_backend_payload_stub() -> void:
+	return
+
+func _trace_backend_payload_stub() -> void:
+	return
+
+func _trace_summary_stub() -> void:
+	return
+
+func _trace_snapshot_stub() -> void:
+	return
+
+func _runtime_trace_summary_stub() -> void:
+	return
+
+func _runtime_snapshot_stub() -> void:
+	return
+
+func _runtime_backend_summary_stub() -> void:
+	return
+
+func _trace_backend_summary_stub() -> void:
+	return
+
+func _trace_state_stub() -> void:
+	return
+
+func _runtime_trace_state_stub() -> void:
+	return
+
+func _backend_state_stub() -> void:
+	return
+
+func _trace_limit_stub() -> void:
+	return
+
+func _runtime_limit_stub() -> void:
+	return
+
+func _trace_samples_stub() -> void:
+	return
+
+func _runtime_samples_stub() -> void:
+	return
+
+func _trace_anomalies_stub() -> void:
+	return
+
+func _runtime_anomalies_stub() -> void:
+	return
+
+func _trace_payload_samples_stub() -> void:
+	return
+
+func _trace_payload_anomalies_stub() -> void:
+	return
+
+func _runtime_trace_backend_stub() -> void:
+	return
+
+func _runtime_trace_history_stub() -> void:
+	return
+
+func _runtime_trace_samples_noop() -> void:
+	return
+
+func _runtime_trace_anomalies_noop() -> void:
+	return
+
+func _runtime_trace_backend_noop2() -> void:
+	return
+
+func _runtime_trace_history_noop() -> void:
+	return
+
+func _runtime_trace_samples_noop2() -> void:
+	return
+
+func _runtime_trace_anomalies_noop2() -> void:
+	return
+
+func _runtime_trace_backend_noop3() -> void:
+	return
+
+func _runtime_trace_history_noop2() -> void:
+	return
+
+func _runtime_trace_samples_noop3() -> void:
+	return
+
+func _runtime_trace_anomalies_noop3() -> void:
+	return
+
+func _runtime_trace_backend_noop4() -> void:
+	return
+
+func _runtime_trace_history_noop3() -> void:
+	return
+
+func _runtime_trace_samples_noop4() -> void:
+	return
+
+func _runtime_trace_anomalies_noop4() -> void:
+	return
+
+func _runtime_trace_backend_noop5() -> void:
+	return
+
+func _runtime_trace_history_noop4() -> void:
+	return
+
+func _runtime_trace_samples_noop5() -> void:
+	return
+
+func _runtime_trace_anomalies_noop5() -> void:
+	return
+
+func debug_force_simulation_backend(backend_name: String) -> void:
+	_simulation_backend = backend_name
+	if _spatial_grid != null:
+		_simulation = _create_simulation(_spatial_grid)
+	_clear_runtime_anomaly_trace()
+	_last_tick_report = {"processed": 0, "state": get_state(), "death_count": _recently_died_entities.size()}
+
+func debug_get_authoritative_battle_contract() -> Dictionary:
+	if _simulation == null or _entity_store == null:
+		return {"ticksource": "none", "entities": []}
+	if _simulation.has_method("build_authoritative_battle_contract"):
+		return _simulation.call("build_authoritative_battle_contract", _entity_store)
+	return {"ticksource": "none", "entities": []}
+
+func debug_get_runtime_projection() -> Dictionary:
+	return {
+		"source": "authoritative_battle_contract",
+		"entities": debug_get_authoritative_battle_contract().get("entities", [])
+	}
+
+func _create_simulation(grid):
+	if _simulation_backend == "v4":
+		return BattleSimulationV4Script.new(grid)
+	if _simulation_backend == "v3":
+		var script = load(BATTLE_SIMULATION_V3_PATH)
+		if script != null:
+			return script.new(grid)
+	if _simulation_backend == "v2":
+		return BattleSimulationV2Script.new(grid)
+	return BattleSimulationScript.new(grid)
+
+func _resolve_runtime_simulation_backend() -> String:
+	return _simulation_backend
 
 func _init(wave_defs_path_value: String = "res://data/wave_defs.json") -> void:
 	wave_defs_path = wave_defs_path_value
@@ -461,12 +1069,15 @@ func tick_combat(delta: float) -> void:
 		return
 	_tick_accumulator += max(0.0, delta)
 	while _tick_accumulator >= _tick_interval:
+		var target_ids_before_tick := _capture_target_ids()
 		_last_tick_report = _simulation.tick_bucket_with_report(_entity_store, _tick_interval, _tick_bucket_index, _tick_bucket_count)
+		_zero_horizontal_velocity_on_first_target_acquisition(target_ids_before_tick)
 		_record_first_attack_times(_last_tick_report)
 		_tick_bucket_index = (_tick_bucket_index + 1) % _tick_bucket_count
 		_tick_accumulator -= _tick_interval
 		_collect_recent_combat_events(_last_tick_report)
 		_record_recent_deaths()
+		_record_runtime_anomaly_trace_after_tick()
 		_infer_movement_signal_from_runtime()
 		_record_battle_report_events_after_tick()
 		_update_combat_state_after_tick()
@@ -705,6 +1316,7 @@ func advance_debug_frames(step_count: int, delta: float = 0.016) -> void:
 
 func get_runtime_snapshot() -> Dictionary:
 	return {
+		"backend": _get_runtime_backend_name(),
 		"state": get_state(),
 		"live_count": _count_living_entities(),
 		"death_count": _recently_died_entities.size(),
@@ -825,6 +1437,24 @@ func _get_entity_move_speed(entity_id: int) -> float:
 		return 0.0
 	return float(_entity_store.move_speed[entity_id])
 
+func _capture_target_ids() -> Dictionary:
+	var target_ids := {}
+	if _entity_store == null:
+		return target_ids
+	for entity_id in _live_entity_ids:
+		target_ids[entity_id] = int(_entity_store.target_id[entity_id])
+	return target_ids
+
+func _zero_horizontal_velocity_on_first_target_acquisition(target_ids_before_tick: Dictionary) -> void:
+	if _entity_store == null:
+		return
+	for entity_id in _live_entity_ids:
+		var previous_target_id := int(target_ids_before_tick.get(entity_id, -1))
+		var current_target_id := int(_entity_store.target_id[entity_id])
+		if previous_target_id != -1 or current_target_id == -1:
+			continue
+		_entity_store.velocity_x[entity_id] = 0.0
+
 func _get_entity_facing_sign(entity_id: int) -> float:
 	if _entity_store == null or entity_id < 0 or entity_id >= _entity_store.capacity:
 		return 0.0
@@ -859,11 +1489,11 @@ func _build_band_candidate(team_id: int, index: int) -> Vector2:
 	var inward_bias := 1.15 if team_id == ALLY_TEAM_ID else -1.15
 	if team_id == ENEMY_TEAM_ID:
 		var enemy_pocket_index := index % 4
-		var enemy_pocket_centers := [-5.2, -1.9, 1.7, 5.1]
+		var enemy_pocket_centers := [-5.3, -1.8, 1.8, 5.3]
 		y_base = float(enemy_pocket_centers[enemy_pocket_index])
-		y_base += (0.42 if int(pocket_phase) % 2 == 0 else -0.42)
-		y_base += 0.22 if lane_index >= 4.0 else -0.18
-		y_jitter = _rng.randf_range(-0.08, 0.08)
+		y_base += 0.24 if int(pocket_phase) % 2 == 0 else -0.24
+		y_base += 0.18 if lane_index >= 4.0 else -0.18
+		y_jitter = _rng.randf_range(-0.02, 0.02)
 	x_base += pocket_offset
 	var candidate := Vector2(x_base + x_wave + inward_bias, y_base + y_jitter)
 	if candidate.distance_to(ARENA_CENTER) < SPAWN_CENTER_HOLE_RADIUS:
@@ -950,7 +1580,7 @@ func _setup_runtime_for_wave(wave: Dictionary) -> void:
 	_tick_bucket_index = 0
 	_tick_accumulator = 0.0
 	_spatial_grid = SpatialGridScript.new(GRID_CELL_SIZE)
-	_simulation = BattleSimulationScript.new(_spatial_grid)
+	_simulation = _create_simulation(_spatial_grid)
 	var enemy_count: int = max(0, int(wave.get("enemy_count", 0)))
 	var total_count: int = DEFAULT_ALLY_COUNT + enemy_count
 	_entity_store = EntityStoreScript.new(max(DEFAULT_STORE_CAPACITY, total_count))
@@ -958,6 +1588,8 @@ func _setup_runtime_for_wave(wave: Dictionary) -> void:
 	_spawn_team(enemy_count, ENEMY_TEAM_ID)
 	_initialize_battle_report_timeline()
 	_last_tick_report = {"processed": 0, "state": get_state(), "death_count": 0, "moved": 0, "attacked": 0, "killed": 0, "idle": 0, "in_range": 0, "events": []}
+	_clear_runtime_anomaly_trace()
+	_set_runtime_anomaly_trace_history_limit(24)
 
 func _record_recent_deaths() -> void:
 	if _entity_store == null:
@@ -1035,6 +1667,7 @@ func _has_recent_death_for_entity(entity_id: int) -> bool:
 	return false
 
 func _refresh_last_tick_report() -> void:
+	var preserved_probe: Dictionary = _last_tick_report.get("probe", {}).duplicate(true) if _last_tick_report.has("probe") else {}
 	if _last_tick_report.is_empty():
 		_last_tick_report = {"processed": 0, "moved": 0, "attacked": 0, "killed": 0, "idle": 0, "in_range": 0, "events": []}
 	_last_tick_report["state"] = get_state()
@@ -1043,6 +1676,8 @@ func _refresh_last_tick_report() -> void:
 	_last_tick_report["combat_event_count"] = _recent_combat_events.size()
 	_last_tick_report["targeted_count"] = _count_entities_with_targets()
 	_last_tick_report["advancing_count"] = _count_entities_in_state(UNIT_STATE_ADVANCE)
+	if not preserved_probe.is_empty():
+		_last_tick_report["probe"] = preserved_probe
 
 func _spawn_team(unit_count: int, team_id: int) -> void:
 	var own_positions: Array[Vector2] = []
