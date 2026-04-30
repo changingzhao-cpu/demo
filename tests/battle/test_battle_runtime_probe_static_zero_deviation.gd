@@ -47,6 +47,11 @@ func run() -> Array[String]:
 		"assignment_count_mean": int(probe.get("assignments", {}).size()) if probe.get("assignments", {}) is Dictionary else 0,
 		"assignment_count_max": int(probe.get("assignments", {}).size()) if probe.get("assignments", {}) is Dictionary else 0
 	}
+	var threshold_candidate := {
+		"sample_name": "static_zero_deviation",
+		"strategy": "low_false_positive",
+		"comfort_upper_bound": float(fingerprint_zone_summary.get("contention_index_max", 0.0))
+	}
 	if float(shadow_warning.get("contention_index", 0.0)) > 0.0 or float(shadow_warning.get("late_commit_deviation", 0.0)) > 0.0:
 		push_warning("contention_shadow_hit=%s" % JSON.stringify(shadow_warning))
 	var anomaly_scan: Dictionary = controller.call("get_last_tick_report").get("anomaly_scan", {}) if controller != null and controller.has_method("get_last_tick_report") else {}

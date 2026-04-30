@@ -35,6 +35,7 @@ const TEST_SUITES := [
 	{"name": "battle/test_probe_shadow_threshold_readiness", "path": "res://tests/battle/test_probe_shadow_threshold_readiness.gd"},
 	{"name": "battle/test_probe_threshold_summary_contract", "path": "res://tests/battle/test_probe_threshold_summary_contract.gd"},
 	{"name": "battle/test_probe_threshold_zone_contract", "path": "res://tests/battle/test_probe_threshold_zone_contract.gd"},
+	{"name": "battle/test_probe_threshold_candidate_contract", "path": "res://tests/battle/test_probe_threshold_candidate_contract.gd"},
 	{"name": "battle/test_v4_probe_contract_matrix_v4_runner", "path": "res://tests/battle/test_v4_probe_contract_matrix_v4_runner.gd"},
 	{"name": "battle/test_probe_contract_suite_membership", "path": "res://tests/battle/test_probe_contract_suite_membership.gd"},
 	{"name": "battle/test_v4_runner_suite_membership", "path": "res://tests/battle/test_v4_runner_suite_membership.gd"},
