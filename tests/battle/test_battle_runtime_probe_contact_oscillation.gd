@@ -429,14 +429,19 @@ func run() -> Array[String]:
 	}
 	var fitted_thresholds := {
 		"warning_threshold_value": 0.0,
-		"error_threshold_value": 0.0
+		"error_threshold_value": 0.0,
+		"fitted_from_sample_count": 50,
+		"warning_threshold_source": "old_escape_hit==true",
+		"error_threshold_source": "old_escape_hit==true"
 	}
 	var gate_results := {
-		"critical_hit_rate": 1.0,
-		"fast_false_positive_rate": 0.0,
+		"gate_a_critical_hit_rate": 1.0,
+		"gate_b_fast_false_positive_rate": 0.0,
+		"gate_c_no_false_positive_records": true,
 		"takeover_ready": false,
 		"sample_count": 50,
-		"gate_c_no_false_positive_records": true
+		"critical_hit_rate": 1.0,
+		"fast_false_positive_rate": 0.0
 	}
 	var scatter_plot := {
 		"svg_artifact": "scatter",

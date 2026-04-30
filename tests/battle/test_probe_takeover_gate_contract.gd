@@ -15,6 +15,9 @@ func run() -> Array[String]:
 	_assert_true(oscillation_source.contains('"gate_c_no_false_positive_records"'), "oscillation sample should persist gate C no-false-positive record anchor", failures)
 	_assert_true(oscillation_source.contains('"warning_threshold_value"'), "oscillation sample should persist warning threshold value anchor", failures)
 	_assert_true(oscillation_source.contains('"error_threshold_value"'), "oscillation sample should persist error threshold value anchor", failures)
+	_assert_true(oscillation_source.contains('"gate_a_critical_hit_rate"'), "sampling should persist gate A execution anchor", failures)
+	_assert_true(static_source.contains('"gate_b_fast_false_positive_rate"'), "sampling should persist gate B execution anchor", failures)
+	_assert_true(oscillation_source.contains('"gate_c_no_false_positive_records"'), "sampling should persist gate C execution anchor", failures)
 	return failures
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:

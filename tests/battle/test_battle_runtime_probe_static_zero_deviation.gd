@@ -64,6 +64,7 @@ func run() -> Array[String]:
 		"comfort_upper_bound": float(fingerprint_zone_summary.get("contention_index_max", 0.0))
 	}
 	var gate_results := {
+		"gate_b_fast_false_positive_rate": 0.0,
 		"fast_false_positive_rate": 0.0,
 		"takeover_ready": false
 	}
