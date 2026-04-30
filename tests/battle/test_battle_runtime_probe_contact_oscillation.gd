@@ -389,12 +389,19 @@ func run() -> Array[String]:
 		"claim_success_rate": float(latest_probe.get("claim_success_rate", 0.0)),
 		"legacy_escape_hit": not focused_escapes.is_empty()
 	}
+	var sampling_plan := {
+		"family": "critical",
+		"family_arg": "--family=critical",
+		"density_level": "critical",
+		"sample_count": 20
+	}
 	var fingerprint_zone_summary := {
 		"sample_name": "oscillation",
 		"artifact_format": "csv",
 		"artifact_format_json": "json",
 		"run_id": 0,
 		"zone": "critical",
+		"density_level": "critical",
 		"sample_count": 1,
 		"max_continuous_contention_ticks": 0,
 		"contention_index_min": float(latest_probe.get("contention_index", 0.0)),
