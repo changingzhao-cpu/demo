@@ -427,8 +427,13 @@ func run() -> Array[String]:
 		"error_formula": "mean(old_escape_hit==true)",
 		"primary_slice": "p95_contention"
 	}
+	var fitted_thresholds := {
+		"warning_threshold_value": 0.0,
+		"error_threshold_value": 0.0
+	}
 	var gate_results := {
 		"critical_hit_rate": 1.0,
+		"fast_false_positive_rate": 0.0,
 		"takeover_ready": false,
 		"sample_count": 50,
 		"gate_c_no_false_positive_records": true
