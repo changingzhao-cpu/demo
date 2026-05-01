@@ -477,9 +477,11 @@ func run() -> Array[String]:
 	var fitted_thresholds := {
 		"warning_threshold_value": 0.0,
 		"error_threshold_value": 0.0,
-		"fitted_from_sample_count": 50,
-		"warning_threshold_source": "old_escape_hit==true",
-		"error_threshold_source": "old_escape_hit==true"
+		"fitted_from_sample_count": 20,
+		"warning_threshold_source": "old_escape_hit==true/p95_contention",
+		"error_threshold_source": "old_escape_hit==true/p95_contention",
+		"old_escape_true_count": 0,
+		"old_escape_true_p95_contention_values": []
 	}
 	var probe_contract_snapshot := {
 		"gate_results": {
@@ -487,15 +489,20 @@ func run() -> Array[String]:
 			"gate_b_fast_false_positive_rate": 0.0,
 			"gate_c_no_false_positive_records": true,
 			"takeover_ready": false,
-			"sample_count": 50,
+			"sample_count": 20,
 			"critical_hit_rate": 1.0,
-			"fast_false_positive_rate": 0.0
+			"fast_false_positive_rate": 0.0,
+			"old_escape_hit_records": [],
+			"false_positive_records": [],
+			"takeover_blockers": []
 		},
 		"warning_threshold_value": 0.0,
 		"error_threshold_value": 0.0,
-		"fitted_from_sample_count": 50,
-		"warning_threshold_source": "old_escape_hit==true",
-		"error_threshold_source": "old_escape_hit==true"
+		"fitted_from_sample_count": 20,
+		"warning_threshold_source": "old_escape_hit==true/p95_contention",
+		"error_threshold_source": "old_escape_hit==true/p95_contention",
+		"old_escape_true_count": 0,
+		"old_escape_true_p95_contention_values": []
 	}
 	var gate_results: Dictionary = probe_contract_snapshot.get("gate_results", {})
 	var scatter_plot := {

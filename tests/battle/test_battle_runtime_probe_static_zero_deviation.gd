@@ -127,6 +127,7 @@ func run() -> Array[String]:
 	var gate_results := {
 		"gate_b_fast_false_positive_rate": 0.0,
 		"fast_false_positive_rate": 0.0,
+		"false_positive_records": [],
 		"takeover_ready": false
 	}
 	var outliers := {
