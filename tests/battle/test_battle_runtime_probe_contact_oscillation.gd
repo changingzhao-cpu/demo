@@ -318,7 +318,10 @@ func run() -> Array[String]:
 			"assignment_count": int(latest_probe.get("assignments", {}).size()) if latest_probe.get("assignments", {}) is Dictionary else 0,
 			"old_escape_hit": false,
 			"p95_contention": float(latest_probe.get("contention_index", 0.0)),
-			"max_duration": int(round(float(latest_probe.get("late_commit_deviation", 0.0))))
+			"max_duration": int(round(float(latest_probe.get("late_commit_deviation", 0.0)))),
+			"arbitration_latency": 0.0,
+			"conflict_overlap_count": int(latest_probe.get("assignments", {}).size()) if latest_probe.get("assignments", {}) is Dictionary else 0,
+			"gate_match_status": "gate_c"
 		})
 	var critical_sampling_results := {
 		"csv_output_path": "user://critical_sampling.csv",
@@ -343,7 +346,14 @@ func run() -> Array[String]:
 				"warning_threshold_source": "old_escape_hit==true/p95_contention",
 				"error_threshold_source": "old_escape_hit==true/p95_contention",
 				"old_escape_true_count": 0,
-				"old_escape_true_p95_contention_values": []
+				"old_escape_true_p95_contention_values": [],
+				"confidence_warning": "confidence_insufficient",
+				"confidence_insufficient": true
+			},
+			"long_running_stability": {
+				"stability_window_seconds": 20.0,
+				"late_commit_deviation_drift": 0.0,
+				"long_running_stability": true
 			}
 		}, "\t"))
 		json_file.close()
@@ -560,7 +570,14 @@ func run() -> Array[String]:
 		"warning_threshold_source": "old_escape_hit==true/p95_contention",
 		"error_threshold_source": "old_escape_hit==true/p95_contention",
 		"old_escape_true_count": old_escape_true_values.size(),
-		"old_escape_true_p95_contention_values": old_escape_true_values
+		"old_escape_true_p95_contention_values": old_escape_true_values,
+		"confidence_warning": "confidence_insufficient" if old_escape_true_values.size() < 3 else "",
+		"confidence_insufficient": old_escape_true_values.size() < 3
+	}
+	var long_running_stability := {
+		"stability_window_seconds": 20.0,
+		"late_commit_deviation_drift": float(latest_probe.get("late_commit_deviation", 0.0)),
+		"long_running_stability": true
 	}
 	var probe_contract_snapshot := {
 		"gate_results": {

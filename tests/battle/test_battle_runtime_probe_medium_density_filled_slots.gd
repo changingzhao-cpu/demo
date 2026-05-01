@@ -14,6 +14,9 @@ func _build_sample(run_id: int) -> Dictionary:
 		"old_escape_hit": false,
 		"p95_contention": 0.0,
 		"max_duration": 0,
+		"arbitration_latency": 0.0,
+		"conflict_overlap_count": 0,
+		"gate_match_status": "gate_b",
 		"seed": run_id
 	}
 

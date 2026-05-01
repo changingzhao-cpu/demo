@@ -37,6 +37,9 @@ func _capture_probe_sample(run_id: int) -> Dictionary:
 		"claim_success_rate": float(probe.get("claim_success_rate", 0.0)),
 		"assignment_count": int(probe.get("assignments", {}).size()) if probe.get("assignments", {}) is Dictionary else 0,
 		"old_escape_hit": int(anomaly_scan.get("attack_rebind_escape_count", 0)) > 0,
+		"arbitration_latency": 0.0,
+		"conflict_overlap_count": int(probe.get("assignments", {}).size()) if probe.get("assignments", {}) is Dictionary else 0,
+		"gate_match_status": "gate_b",
 		"probe": probe,
 		"anomaly_scan": anomaly_scan,
 		"error": "" if not probe.is_empty() else "static zero deviation fixture should capture non-empty probe"
