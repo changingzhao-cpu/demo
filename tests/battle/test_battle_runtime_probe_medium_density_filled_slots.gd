@@ -1,23 +1,48 @@
 extends SceneTree
 
+const BATTLE_SCENE_PATH := "res://scenes/battle/battle_scene.tscn"
 const WARNING_SAMPLE_OUTPUT_PATH := "user://warning_sampling.json"
 
-func _build_sample(run_id: int) -> Dictionary:
+func _capture_probe_sample(run_id: int) -> Dictionary:
+	var scene: PackedScene = load(BATTLE_SCENE_PATH)
+	if scene == null:
+		return {"error": "warning fixture should load battle scene"}
+	var instance: Node = scene.instantiate()
+	get_root().add_child(instance)
+	await process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	if controller != null and controller.has_method("debug_force_simulation_backend"):
+		controller.call("debug_force_simulation_backend", "v4")
+	await process_frame
+	await process_frame
+	var probe_ready_elapsed := 0.0
+	var probe_ready_report: Dictionary = {}
+	while probe_ready_elapsed < 2.0:
+		await create_timer(0.05).timeout
+		probe_ready_elapsed += 0.05
+		probe_ready_report = controller.call("get_last_tick_report") if controller != null and controller.has_method("get_last_tick_report") else {}
+		if str(probe_ready_report.get("state", "")) == "combat" and int(probe_ready_report.get("processed", 0)) > 0:
+			break
+	var runtime_trace_payload: Dictionary = controller.call("debug_get_runtime_trace_payload") if controller != null and controller.has_method("debug_get_runtime_trace_payload") else {}
+	var probe: Dictionary = runtime_trace_payload.get("probe", {})
+	instance.queue_free()
+	await process_frame
 	return {
 		"run_id": run_id,
 		"family": "warning",
 		"density_level": "warning",
-		"contention_index": 0.0,
-		"late_commit_deviation": 0.0,
-		"claim_success_rate": 0.0,
-		"assignment_count": 0,
+		"contention_index": float(probe.get("contention_index", 0.0)),
+		"late_commit_deviation": float(probe.get("late_commit_deviation", 0.0)),
+		"claim_success_rate": float(probe.get("claim_success_rate", 0.0)),
+		"assignment_count": int(probe.get("assignments", {}).size()) if probe.get("assignments", {}) is Dictionary else 0,
 		"old_escape_hit": false,
-		"p95_contention": 0.0,
-		"max_duration": 0,
+		"p95_contention": float(probe.get("contention_index", 0.0)),
+		"max_duration": int(round(float(probe.get("late_commit_deviation", 0.0)))),
 		"arbitration_latency": 0.0,
-		"conflict_overlap_count": 0,
+		"conflict_overlap_count": int(probe.get("assignments", {}).size()) if probe.get("assignments", {}) is Dictionary else 0,
 		"gate_match_status": "gate_b",
-		"seed": run_id
+		"seed": run_id,
+		"error": "" if not probe.is_empty() else "warning fixture should capture non-empty probe"
 	}
 
 func _write_sampling_artifacts(payload: Dictionary) -> void:
@@ -28,10 +53,10 @@ func _write_sampling_artifacts(payload: Dictionary) -> void:
 	var csv_path := str(payload.get("sampling_results", {}).get("csv_output_path", "user://warning_sampling.csv"))
 	var csv_file := FileAccess.open(csv_path, FileAccess.WRITE)
 	if csv_file != null:
-		csv_file.store_string("run_id,family,density_level,contention_index,late_commit_deviation,claim_success_rate,assignment_count,old_escape_hit,p95_contention,max_duration,seed\n")
+		csv_file.store_string("run_id,family,density_level,contention_index,late_commit_deviation,claim_success_rate,assignment_count,old_escape_hit,p95_contention,max_duration,arbitration_latency,conflict_overlap_count,gate_match_status,seed\n")
 		for sample_variant in payload.get("samples", []):
 			var sample: Dictionary = sample_variant
-			csv_file.store_string("%d,%s,%s,%s,%s,%s,%d,%s,%s,%s,%d\n" % [
+			csv_file.store_string("%d,%s,%s,%s,%s,%s,%d,%s,%s,%s,%s,%d,%s,%d\n" % [
 				int(sample.get("run_id", -1)),
 				str(sample.get("family", "")),
 				str(sample.get("density_level", "")),
@@ -42,6 +67,9 @@ func _write_sampling_artifacts(payload: Dictionary) -> void:
 				str(sample.get("old_escape_hit", false)),
 				str(sample.get("p95_contention", 0.0)),
 				str(sample.get("max_duration", 0)),
+				str(sample.get("arbitration_latency", 0.0)),
+				int(sample.get("conflict_overlap_count", 0)),
+				str(sample.get("gate_match_status", "")),
 				int(sample.get("seed", 0))
 			])
 		csv_file.close()
@@ -55,7 +83,10 @@ func run() -> Array[String]:
 	var failures: Array[String] = []
 	var samples: Array = []
 	for run_id in range(20):
-		samples.append(_build_sample(run_id))
+		var sample: Dictionary = await _capture_probe_sample(run_id)
+		samples.append(sample)
+		_assert_true(str(sample.get("error", "")) == "", str(sample.get("error", "")), failures)
+	var first_sample: Dictionary = samples[0] if not samples.is_empty() else {}
 	var sampling_plan := {
 		"family": "warning",
 		"family_arg": "--family=warning",
@@ -72,13 +103,13 @@ func run() -> Array[String]:
 		"density_level": "warning",
 		"sample_count": samples.size(),
 		"max_continuous_contention_ticks": 0,
-		"p95_contention": 0.0,
-		"max_duration": 0
+		"p95_contention": float(first_sample.get("p95_contention", 0.0)),
+		"max_duration": int(first_sample.get("max_duration", 0))
 	}
 	var threshold_candidate := {
 		"sample_name": "medium_density_filled_slots",
 		"strategy": "low_false_positive",
-		"warning_band_hint": 0.0
+		"warning_band_hint": float(first_sample.get("p95_contention", 0.0))
 	}
 	var outliers := {
 		"outlier_count": 0,
@@ -112,3 +143,7 @@ func _initialize() -> void:
 	for failure in failures:
 		printerr("[FAIL] battle/test_battle_runtime_probe_medium_density_filled_slots: %s" % failure)
 	quit(1 if not failures.is_empty() else 0)
+
+func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
+	if not value:
+		failures.append(message)
