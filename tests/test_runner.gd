@@ -53,6 +53,7 @@ const TEST_SUITES := [
 	{"name": "battle/test_probe_critical_confidence_contract", "path": "res://tests/battle/test_probe_critical_confidence_contract.gd"},
 	{"name": "battle/test_probe_sampling_payload_contract", "path": "res://tests/battle/test_probe_sampling_payload_contract.gd"},
 	{"name": "battle/test_probe_sampling_visual_contract", "path": "res://tests/battle/test_probe_sampling_visual_contract.gd"},
+	{"name": "battle/test_probe_sampling_svg_contract", "path": "res://tests/battle/test_probe_sampling_svg_contract.gd"},
 	{"name": "battle/test_probe_sampling_causality_contract", "path": "res://tests/battle/test_probe_sampling_causality_contract.gd"},
 	{"name": "battle/test_probe_long_running_stability_contract", "path": "res://tests/battle/test_probe_long_running_stability_contract.gd"},
 	{"name": "battle/test_v4_probe_contract_matrix_v4_runner", "path": "res://tests/battle/test_v4_probe_contract_matrix_v4_runner.gd"},

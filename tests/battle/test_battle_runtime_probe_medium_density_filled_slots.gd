@@ -48,7 +48,7 @@ func _write_sampling_artifacts(payload: Dictionary) -> void:
 	var svg_path := str(payload.get("sampling_results", {}).get("svg_output_path", "user://warning_sampling.svg"))
 	var svg_file := FileAccess.open(svg_path, FileAccess.WRITE)
 	if svg_file != null:
-		svg_file.store_string("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"160\" height=\"120\"><text x=\"8\" y=\"20\">warning scatter</text></svg>")
+		svg_file.store_string("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 160 120\" width=\"160\" height=\"120\"><text x=\"8\" y=\"20\">warning scatter</text><text x=\"8\" y=\"36\">Safety Zone</text><text x=\"8\" y=\"52\">Danger Zone</text><line class=\"threshold-line\" x1=\"20\" y1=\"70\" x2=\"140\" y2=\"70\" /></svg>")
 		svg_file.close()
 
 func run() -> Array[String]:

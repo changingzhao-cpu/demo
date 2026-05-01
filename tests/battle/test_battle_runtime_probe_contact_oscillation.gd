@@ -377,7 +377,7 @@ func run() -> Array[String]:
 		csv_file.close()
 	var svg_file := FileAccess.open(str(critical_sampling_results.get("svg_output_path", "user://critical_sampling.svg")), FileAccess.WRITE)
 	if svg_file != null:
-		svg_file.store_string("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"160\" height=\"120\"><text x=\"8\" y=\"20\">critical scatter</text></svg>")
+		svg_file.store_string("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 160 120\" width=\"160\" height=\"120\"><text x=\"8\" y=\"20\">critical scatter</text><text x=\"8\" y=\"36\">Safety Zone</text><text x=\"8\" y=\"52\">Danger Zone</text><line class=\"threshold-line\" x1=\"20\" y1=\"60\" x2=\"140\" y2=\"60\" /></svg>")
 		svg_file.close()
 	var battle_report_timeline: Array = controller.call("get_battle_report_timeline") if controller != null and controller.has_method("get_battle_report_timeline") else []
 	var anomaly_scan := _build_anomaly_scan(trajectories, battle_report_timeline)
