@@ -278,7 +278,24 @@ func run() -> Array[String]:
 	}
 	var json_file := FileAccess.open(str(critical_sampling_results.get("json_output_path", "user://critical_sampling.json")), FileAccess.WRITE)
 	if json_file != null:
-		json_file.store_string(JSON.stringify({"samples": family_samples, "sampling_results": critical_sampling_results}, "\t"))
+		json_file.store_string(JSON.stringify({
+			"samples": family_samples,
+			"sampling_results": critical_sampling_results,
+			"threshold_formula": {
+				"warning_formula": "min(old_escape_hit==true)*0.8",
+				"error_formula": "mean(old_escape_hit==true)",
+				"primary_slice": "p95_contention"
+			},
+			"fitted_thresholds": {
+				"warning_threshold_value": 0.0,
+				"error_threshold_value": 0.0,
+				"fitted_from_sample_count": 20,
+				"warning_threshold_source": "old_escape_hit==true/p95_contention",
+				"error_threshold_source": "old_escape_hit==true/p95_contention",
+				"old_escape_true_count": 0,
+				"old_escape_true_p95_contention_values": []
+			}
+		}, "\t"))
 		json_file.close()
 	var csv_file := FileAccess.open(str(critical_sampling_results.get("csv_output_path", "user://critical_sampling.csv")), FileAccess.WRITE)
 	if csv_file != null:
