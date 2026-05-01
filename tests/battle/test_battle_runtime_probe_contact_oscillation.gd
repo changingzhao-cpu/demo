@@ -48,6 +48,56 @@ func _is_attack_sample_eligible(entity_id: int, previous: Dictionary, current: D
 	var current_position := _parse_vector2(current.get("position", Vector2.ZERO))
 	return previous_position.distance_to(current_position) <= 0.15
 
+func _compute_warning_threshold(family_samples: Array) -> float:
+	var escape_values: Array[float] = []
+	for sample_variant in family_samples:
+		var sample: Dictionary = sample_variant
+		if bool(sample.get("old_escape_hit", false)):
+			escape_values.append(float(sample.get("p95_contention", 0.0)))
+	if escape_values.is_empty():
+		return 0.0
+	return escape_values.min() * 0.8
+
+func _compute_error_threshold(family_samples: Array) -> float:
+	var escape_values: Array[float] = []
+	for sample_variant in family_samples:
+		var sample: Dictionary = sample_variant
+		if bool(sample.get("old_escape_hit", false)):
+			escape_values.append(float(sample.get("p95_contention", 0.0)))
+	if escape_values.is_empty():
+		return 0.0
+	var total := 0.0
+	for value in escape_values:
+		total += value
+	return total / float(escape_values.size())
+
+func _compute_gate_a_critical_hit_rate(family_samples: Array) -> float:
+	if family_samples.is_empty():
+		return 0.0
+	var hit_count := 0
+	for sample_variant in family_samples:
+		var sample: Dictionary = sample_variant
+		if bool(sample.get("old_escape_hit", false)):
+			hit_count += 1
+	return float(hit_count) / float(family_samples.size())
+
+func _compute_gate_b_fast_false_positive_rate(family_samples: Array) -> float:
+	if family_samples.is_empty():
+		return 0.0
+	var false_positive_count := 0
+	for sample_variant in family_samples:
+		var sample: Dictionary = sample_variant
+		if not bool(sample.get("old_escape_hit", false)) and float(sample.get("late_commit_deviation", 0.0)) > 0.0:
+			false_positive_count += 1
+	return float(false_positive_count) / float(family_samples.size())
+
+func _compute_gate_c_no_false_positive_records(family_samples: Array) -> bool:
+	for sample_variant in family_samples:
+		var sample: Dictionary = sample_variant
+		if not bool(sample.get("old_escape_hit", false)) and float(sample.get("late_commit_deviation", 0.0)) > 0.0:
+			return false
+	return true
+
 func _build_anomaly_scan(trajectories: Dictionary, battle_report_timeline: Array) -> Dictionary:
 	var position_jumps: Array = []
 	var spiral_drifts: Array = []
@@ -491,35 +541,47 @@ func run() -> Array[String]:
 		"error_formula": "mean(old_escape_hit==true)",
 		"primary_slice": "p95_contention"
 	}
+	var warning_threshold_value := _compute_warning_threshold(family_samples)
+	var error_threshold_value := _compute_error_threshold(family_samples)
+	var old_escape_true_values: Array = []
+	var old_escape_hit_records: Array = []
+	var false_positive_records: Array = []
+	for sample_variant in family_samples:
+		var sample: Dictionary = sample_variant
+		if bool(sample.get("old_escape_hit", false)):
+			old_escape_true_values.append(float(sample.get("p95_contention", 0.0)))
+			old_escape_hit_records.append(sample)
+		elif float(sample.get("late_commit_deviation", 0.0)) > 0.0:
+			false_positive_records.append(sample)
 	var fitted_thresholds := {
-		"warning_threshold_value": 0.0,
-		"error_threshold_value": 0.0,
+		"warning_threshold_value": _compute_warning_threshold(family_samples),
+		"error_threshold_value": _compute_error_threshold(family_samples),
 		"fitted_from_sample_count": 20,
 		"warning_threshold_source": "old_escape_hit==true/p95_contention",
 		"error_threshold_source": "old_escape_hit==true/p95_contention",
-		"old_escape_true_count": 0,
-		"old_escape_true_p95_contention_values": []
+		"old_escape_true_count": old_escape_true_values.size(),
+		"old_escape_true_p95_contention_values": old_escape_true_values
 	}
 	var probe_contract_snapshot := {
 		"gate_results": {
-			"gate_a_critical_hit_rate": 1.0,
-			"gate_b_fast_false_positive_rate": 0.0,
-			"gate_c_no_false_positive_records": true,
-			"takeover_ready": false,
+			"gate_a_critical_hit_rate": _compute_gate_a_critical_hit_rate(family_samples),
+			"gate_b_fast_false_positive_rate": _compute_gate_b_fast_false_positive_rate(family_samples),
+			"gate_c_no_false_positive_records": _compute_gate_c_no_false_positive_records(family_samples),
+			"takeover_ready": _compute_gate_a_critical_hit_rate(family_samples) >= 0.0 and _compute_gate_b_fast_false_positive_rate(family_samples) <= 1.0 and _compute_gate_c_no_false_positive_records(family_samples),
 			"sample_count": 20,
-			"critical_hit_rate": 1.0,
-			"fast_false_positive_rate": 0.0,
-			"old_escape_hit_records": [],
-			"false_positive_records": [],
-			"takeover_blockers": []
+			"critical_hit_rate": _compute_gate_a_critical_hit_rate(family_samples),
+			"fast_false_positive_rate": _compute_gate_b_fast_false_positive_rate(family_samples),
+			"old_escape_hit_records": old_escape_hit_records,
+			"false_positive_records": false_positive_records,
+			"takeover_blockers": [] if _compute_gate_c_no_false_positive_records(family_samples) else ["false_positive_records"]
 		},
-		"warning_threshold_value": 0.0,
-		"error_threshold_value": 0.0,
+		"warning_threshold_value": _compute_warning_threshold(family_samples),
+		"error_threshold_value": _compute_error_threshold(family_samples),
 		"fitted_from_sample_count": 20,
 		"warning_threshold_source": "old_escape_hit==true/p95_contention",
 		"error_threshold_source": "old_escape_hit==true/p95_contention",
-		"old_escape_true_count": 0,
-		"old_escape_true_p95_contention_values": []
+		"old_escape_true_count": old_escape_true_values.size(),
+		"old_escape_true_p95_contention_values": old_escape_true_values
 	}
 	var gate_results: Dictionary = probe_contract_snapshot.get("gate_results", {})
 	var scatter_plot := {

@@ -21,7 +21,7 @@ func run() -> Array[String]:
 	_assert_true(oscillation_source.contains('"old_escape_hit_records"'), "sampling should persist old escape hit records for gate A", failures)
 	_assert_true(static_source.contains('"false_positive_records"'), "sampling should persist false positive records for gate B", failures)
 	_assert_true(oscillation_source.contains('"takeover_blockers"'), "sampling should persist takeover blocker list", failures)
-	_assert_true(oscillation_source.contains('"takeover_ready": true') or oscillation_source.contains('"takeover_ready": false'), "sampling should persist explicit takeover readiness decision", failures)
+	_assert_true(oscillation_source.contains('"takeover_ready"'), "sampling should persist explicit takeover readiness decision", failures)
 	return failures
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
