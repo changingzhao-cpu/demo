@@ -72,6 +72,11 @@ func run() -> Array[String]:
 		"p95_contention": 0.0,
 		"max_duration": 0
 	}
+	var threshold_candidate := {
+		"sample_name": "medium_density_filled_slots",
+		"strategy": "low_false_positive",
+		"warning_band_hint": 0.0
+	}
 	var outliers := {
 		"outlier_count": 0,
 		"outlier_samples": []
@@ -90,6 +95,7 @@ func run() -> Array[String]:
 	var payload := {
 		"sampling_plan": sampling_plan,
 		"fingerprint_zone_summary": fingerprint_zone_summary,
+		"threshold_candidate": threshold_candidate,
 		"outliers": outliers,
 		"scatter_plot": scatter_plot,
 		"sampling_results": sampling_results,

@@ -49,6 +49,7 @@ const TEST_SUITES := [
 	{"name": "battle/test_probe_fitted_threshold_contract", "path": "res://tests/battle/test_probe_fitted_threshold_contract.gd"},
 	{"name": "battle/test_probe_sampling_execution_results_contract", "path": "res://tests/battle/test_probe_sampling_execution_results_contract.gd"},
 	{"name": "battle/test_probe_critical_payload_enrichment_contract", "path": "res://tests/battle/test_probe_critical_payload_enrichment_contract.gd"},
+	{"name": "battle/test_probe_sampling_payload_contract", "path": "res://tests/battle/test_probe_sampling_payload_contract.gd"},
 	{"name": "battle/test_v4_probe_contract_matrix_v4_runner", "path": "res://tests/battle/test_v4_probe_contract_matrix_v4_runner.gd"},
 	{"name": "battle/test_probe_contract_suite_membership", "path": "res://tests/battle/test_probe_contract_suite_membership.gd"},
 	{"name": "battle/test_v4_runner_suite_membership", "path": "res://tests/battle/test_v4_runner_suite_membership.gd"},
