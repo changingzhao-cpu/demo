@@ -133,6 +133,10 @@ func run() -> Array[String]:
 		"false_positive_records": [],
 		"takeover_ready": false
 	}
+	var stability_summary := {
+		"late_commit_deviation_drift_mean": float(first_sample.get("late_commit_deviation", 0.0)),
+		"false_positive_free_ratio": 1.0
+	}
 	var outliers := {
 		"outlier_count": 0,
 		"outlier_samples": []
@@ -154,6 +158,7 @@ func run() -> Array[String]:
 		"fingerprint_zone_summary": fingerprint_zone_summary,
 		"threshold_candidate": threshold_candidate,
 		"gate_results": gate_results,
+		"stability_summary": stability_summary,
 		"outliers": outliers,
 		"scatter_plot": scatter_plot,
 		"sampling_results": sampling_results,
