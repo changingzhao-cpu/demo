@@ -54,6 +54,7 @@ const TEST_SUITES := [
 	{"name": "battle/test_probe_warning_clumping_contract", "path": "res://tests/battle/test_probe_warning_clumping_contract.gd"},
 	{"name": "battle/test_probe_warning_scenario_summary_contract", "path": "res://tests/battle/test_probe_warning_scenario_summary_contract.gd"},
 	{"name": "battle/test_probe_warning_independent_scene_executor_contract", "path": "res://tests/battle/test_probe_warning_independent_scene_executor_contract.gd"},
+	{"name": "battle/test_probe_warning_scene_runtime_branch_contract", "path": "res://tests/battle/test_probe_warning_scene_runtime_branch_contract.gd"},
 	{"name": "battle/test_probe_sampling_execution_contract", "path": "res://tests/battle/test_probe_sampling_execution_contract.gd"},
 	{"name": "battle/test_probe_real_threshold_formula_contract", "path": "res://tests/battle/test_probe_real_threshold_formula_contract.gd"},
 	{"name": "battle/test_probe_outlier_analysis_contract", "path": "res://tests/battle/test_probe_outlier_analysis_contract.gd"},

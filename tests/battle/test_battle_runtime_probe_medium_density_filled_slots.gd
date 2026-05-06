@@ -13,6 +13,13 @@ func _capture_funnel_sample(run_id: int) -> Dictionary:
 	return await _capture_probe_sample(run_id, "funnel")
 
 func _capture_probe_sample(run_id: int, scenario: String) -> Dictionary:
+	match scenario:
+		"corridor":
+			pass
+		"dynamic_orbit":
+			pass
+		"funnel":
+			pass
 	var scene: PackedScene = load(BATTLE_SCENE_PATH)
 	if scene == null:
 		return {"error": "warning fixture should load battle scene"}
