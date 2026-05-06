@@ -58,18 +58,22 @@ func _compute_warning_threshold(family_samples: Array) -> float:
 		return 0.0
 	return escape_values.min() * 0.8
 
-func _compute_error_threshold(family_samples: Array) -> float:
-	var escape_values: Array[float] = []
+func _compute_error_threshold_weighted(family_samples: Array) -> float:
+	var weighted_total := 0.0
+	var weight_sum := 0.0
 	for sample_variant in family_samples:
 		var sample: Dictionary = sample_variant
-		if bool(sample.get("old_escape_hit", false)):
-			escape_values.append(float(sample.get("p95_contention", 0.0)))
-	if escape_values.is_empty():
+		if not bool(sample.get("old_escape_hit", false)):
+			continue
+		var weight := float(sample.get("engagement_time_weight", 0.0))
+		weighted_total += float(sample.get("p95_contention", 0.0)) * weight
+		weight_sum += weight
+	if weight_sum <= 0.0:
 		return 0.0
-	var total := 0.0
-	for value in escape_values:
-		total += value
-	return total / float(escape_values.size())
+	return weighted_total / weight_sum
+
+func _compute_error_threshold(family_samples: Array) -> float:
+	return _compute_error_threshold_weighted(family_samples)
 
 func _compute_gate_a_critical_hit_rate(family_samples: Array) -> float:
 	if family_samples.is_empty():
@@ -321,7 +325,8 @@ func run() -> Array[String]:
 			"max_duration": int(round(float(latest_probe.get("late_commit_deviation", 0.0)))),
 			"arbitration_latency": 0.0,
 			"conflict_overlap_count": int(latest_probe.get("assignments", {}).size()) if latest_probe.get("assignments", {}) is Dictionary else 0,
-			"gate_match_status": "gate_c"
+			"gate_match_status": "gate_c",
+			"engagement_time_weight": 1.0
 		})
 	var critical_sampling_results := {
 		"csv_output_path": "user://critical_sampling.csv",
@@ -341,7 +346,8 @@ func run() -> Array[String]:
 			},
 			"fitted_thresholds": {
 				"warning_threshold_value": 0.0,
-				"error_threshold_value": 0.0,
+				"error_threshold_value": _compute_error_threshold_weighted(family_samples),
+				"engagement_time_weight": 1.0,
 				"fitted_from_sample_count": 20,
 				"warning_threshold_source": "old_escape_hit==true/p95_contention",
 				"error_threshold_source": "old_escape_hit==true/p95_contention",
@@ -552,7 +558,7 @@ func run() -> Array[String]:
 		"primary_slice": "p95_contention"
 	}
 	var warning_threshold_value := _compute_warning_threshold(family_samples)
-	var error_threshold_value := _compute_error_threshold(family_samples)
+	var error_threshold_value := _compute_error_threshold_weighted(family_samples)
 	var old_escape_true_values: Array = []
 	var old_escape_hit_records: Array = []
 	var false_positive_records: Array = []
@@ -565,7 +571,7 @@ func run() -> Array[String]:
 			false_positive_records.append(sample)
 	var fitted_thresholds := {
 		"warning_threshold_value": _compute_warning_threshold(family_samples),
-		"error_threshold_value": _compute_error_threshold(family_samples),
+		"error_threshold_value": _compute_error_threshold_weighted(family_samples),
 		"fitted_from_sample_count": 20,
 		"warning_threshold_source": "old_escape_hit==true/p95_contention",
 		"error_threshold_source": "old_escape_hit==true/p95_contention",
@@ -593,7 +599,7 @@ func run() -> Array[String]:
 			"takeover_blockers": [] if _compute_gate_c_no_false_positive_records(family_samples) else ["false_positive_records"]
 		},
 		"warning_threshold_value": _compute_warning_threshold(family_samples),
-		"error_threshold_value": _compute_error_threshold(family_samples),
+		"error_threshold_value": _compute_error_threshold_weighted(family_samples),
 		"fitted_from_sample_count": 20,
 		"warning_threshold_source": "old_escape_hit==true/p95_contention",
 		"error_threshold_source": "old_escape_hit==true/p95_contention",
