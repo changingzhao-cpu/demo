@@ -3,6 +3,15 @@ extends SceneTree
 const BATTLE_SCENE_PATH := "res://scenes/battle/battle_scene.tscn"
 const WARNING_SAMPLE_OUTPUT_PATH := "user://warning_sampling.json"
 
+func _capture_corridor_sample(run_id: int) -> Dictionary:
+	return await _capture_probe_sample(run_id, "corridor")
+
+func _capture_dynamic_orbit_sample(run_id: int) -> Dictionary:
+	return await _capture_probe_sample(run_id, "dynamic_orbit")
+
+func _capture_funnel_sample(run_id: int) -> Dictionary:
+	return await _capture_probe_sample(run_id, "funnel")
+
 func _capture_probe_sample(run_id: int, scenario: String) -> Dictionary:
 	var scene: PackedScene = load(BATTLE_SCENE_PATH)
 	if scene == null:
