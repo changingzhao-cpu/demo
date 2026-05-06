@@ -48,6 +48,7 @@ const TEST_SUITES := [
 	{"name": "battle/test_probe_warning_real_sampling_contract", "path": "res://tests/battle/test_probe_warning_real_sampling_contract.gd"},
 	{"name": "battle/test_probe_warning_aggregate_summary_contract", "path": "res://tests/battle/test_probe_warning_aggregate_summary_contract.gd"},
 	{"name": "battle/test_probe_warning_topology_contract", "path": "res://tests/battle/test_probe_warning_topology_contract.gd"},
+	{"name": "battle/test_probe_warning_physical_topology_contract", "path": "res://tests/battle/test_probe_warning_physical_topology_contract.gd"},
 	{"name": "battle/test_probe_warning_50_run_scene_plan_contract", "path": "res://tests/battle/test_probe_warning_50_run_scene_plan_contract.gd"},
 	{"name": "battle/test_probe_scene_type_contract", "path": "res://tests/battle/test_probe_scene_type_contract.gd"},
 	{"name": "battle/test_probe_warning_clumping_contract", "path": "res://tests/battle/test_probe_warning_clumping_contract.gd"},
