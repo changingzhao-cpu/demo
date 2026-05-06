@@ -195,9 +195,9 @@ func run() -> Array[String]:
 		"multi_flow_crossing": true
 	}
 	var scenario_summaries := {
-		"corridor": {"claim_success_rate_mean": 0.0, "late_commit_deviation_mean": 0.0, "conflict_overlap_count_mean": 0.0, "clumping_factor_mean": 0.0},
-		"dynamic_orbit": {"claim_success_rate_mean": 0.0, "late_commit_deviation_mean": 0.0, "conflict_overlap_count_mean": 0.0, "clumping_factor_mean": 0.0},
-		"funnel": {"claim_success_rate_mean": 0.0, "late_commit_deviation_mean": 0.0, "conflict_overlap_count_mean": 0.0, "clumping_factor_mean": 0.0}
+		"corridor": {"claim_success_rate_mean": 0.0, "late_commit_deviation_mean": 0.0, "conflict_overlap_count_mean": 0.0, "clumping_factor_mean": 0.0, "p95_contention_mean": 0.0, "arbitration_latency_mean": 0.0},
+		"dynamic_orbit": {"claim_success_rate_mean": 0.0, "late_commit_deviation_mean": 0.0, "conflict_overlap_count_mean": 0.0, "clumping_factor_mean": 0.0, "p95_contention_mean": 0.0, "arbitration_latency_mean": 0.0},
+		"funnel": {"claim_success_rate_mean": 0.0, "late_commit_deviation_mean": 0.0, "conflict_overlap_count_mean": 0.0, "clumping_factor_mean": 0.0, "p95_contention_mean": 0.0, "arbitration_latency_mean": 0.0}
 	}
 	for sample_variant in samples:
 		var sample: Dictionary = sample_variant
@@ -211,6 +211,11 @@ func run() -> Array[String]:
 			scenario_summary["late_commit_deviation_mean"] = float(scenario_summary.get("late_commit_deviation_mean", 0.0)) + float(sample.get("late_commit_deviation", 0.0))
 			scenario_summary["conflict_overlap_count_mean"] = float(scenario_summary.get("conflict_overlap_count_mean", 0.0)) + float(sample.get("conflict_overlap_count", 0))
 			scenario_summary["clumping_factor_mean"] = float(scenario_summary.get("clumping_factor_mean", 0.0)) + float(sample.get("clumping_factor", 0.0))
+			scenario_summary["p95_contention_mean"] = float(scenario_summary.get("p95_contention_mean", 0.0)) + float(sample.get("p95_contention", 0.0))
+			scenario_summary["arbitration_latency_mean"] = float(scenario_summary.get("arbitration_latency_mean", 0.0)) + float(sample.get("arbitration_latency", 0.0))
+			scenario_summaries[scenario_name] = scenario_summary
+			continue
+			scenario_summaries[scenario_name] = scenario_summary
 			scenario_summaries[scenario_name] = scenario_summary
 	var sample_count := maxf(1.0, float(samples.size()))
 	warning_summary["claim_success_rate_mean"] = float(warning_summary.get("claim_success_rate_mean", 0.0)) / sample_count
