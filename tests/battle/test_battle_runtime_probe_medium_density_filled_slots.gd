@@ -39,6 +39,7 @@ func _capture_probe_sample(run_id: int, scenario: String) -> Dictionary:
 	return {
 		"run_id": run_id,
 		"family": "warning",
+		"scene_type": scenario,
 		"scenario": scenario,
 		"scenario_family": "warning",
 		"density_level": "warning",

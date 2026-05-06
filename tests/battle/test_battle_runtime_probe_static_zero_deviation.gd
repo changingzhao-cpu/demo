@@ -135,6 +135,7 @@ func run() -> Array[String]:
 	}
 	var stability_summary := {
 		"late_commit_deviation_drift_mean": float(first_sample.get("late_commit_deviation", 0.0)),
+		"peak_to_peak_drift": float(first_sample.get("late_commit_deviation", 0.0)),
 		"false_positive_free_ratio": 1.0
 	}
 	var outliers := {
