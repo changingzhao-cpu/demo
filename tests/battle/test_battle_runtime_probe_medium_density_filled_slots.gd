@@ -111,6 +111,14 @@ func run() -> Array[String]:
 		"strategy": "low_false_positive",
 		"warning_band_hint": float(first_sample.get("p95_contention", 0.0))
 	}
+	var warning_summary := {
+		"claim_success_rate_mean": float(first_sample.get("claim_success_rate", 0.0)),
+		"late_commit_deviation_mean": float(first_sample.get("late_commit_deviation", 0.0)),
+		"conflict_overlap_count_mean": float(first_sample.get("conflict_overlap_count", 0)),
+		"funnel": true,
+		"dynamic_orbit": true,
+		"multi_flow_crossing": true
+	}
 	var outliers := {
 		"outlier_count": 0,
 		"outlier_samples": []
@@ -130,6 +138,7 @@ func run() -> Array[String]:
 		"sampling_plan": sampling_plan,
 		"fingerprint_zone_summary": fingerprint_zone_summary,
 		"threshold_candidate": threshold_candidate,
+		"warning_summary": warning_summary,
 		"outliers": outliers,
 		"scatter_plot": scatter_plot,
 		"sampling_results": sampling_results,
