@@ -59,6 +59,7 @@ const TEST_SUITES := [
 	{"name": "battle/test_probe_warning_scene_runtime_branch_contract", "path": "res://tests/battle/test_probe_warning_scene_runtime_branch_contract.gd"},
 	{"name": "battle/test_probe_warning_scene_signal_order_contract", "path": "res://tests/battle/test_probe_warning_scene_signal_order_contract.gd"},
 	{"name": "battle/test_probe_warning_scene_separation_contract", "path": "res://tests/battle/test_probe_warning_scene_separation_contract.gd"},
+	{"name": "battle/test_probe_warning_scene_gradient_contract", "path": "res://tests/battle/test_probe_warning_scene_gradient_contract.gd"},
 	{"name": "battle/test_probe_sampling_execution_contract", "path": "res://tests/battle/test_probe_sampling_execution_contract.gd"},
 	{"name": "battle/test_probe_real_threshold_formula_contract", "path": "res://tests/battle/test_probe_real_threshold_formula_contract.gd"},
 	{"name": "battle/test_probe_outlier_analysis_contract", "path": "res://tests/battle/test_probe_outlier_analysis_contract.gd"},
