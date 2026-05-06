@@ -3,7 +3,7 @@ extends SceneTree
 const BATTLE_SCENE_PATH := "res://scenes/battle/battle_scene.tscn"
 const WARNING_SAMPLE_OUTPUT_PATH := "user://warning_sampling.json"
 
-func _capture_probe_sample(run_id: int) -> Dictionary:
+func _capture_probe_sample(run_id: int, scenario: String) -> Dictionary:
 	var scene: PackedScene = load(BATTLE_SCENE_PATH)
 	if scene == null:
 		return {"error": "warning fixture should load battle scene"}
@@ -30,6 +30,8 @@ func _capture_probe_sample(run_id: int) -> Dictionary:
 	return {
 		"run_id": run_id,
 		"family": "warning",
+		"scenario": scenario,
+		"scenario_family": "warning",
 		"density_level": "warning",
 		"contention_index": float(probe.get("contention_index", 0.0)),
 		"late_commit_deviation": float(probe.get("late_commit_deviation", 0.0)),
@@ -53,12 +55,14 @@ func _write_sampling_artifacts(payload: Dictionary) -> void:
 	var csv_path := str(payload.get("sampling_results", {}).get("csv_output_path", "user://warning_sampling.csv"))
 	var csv_file := FileAccess.open(csv_path, FileAccess.WRITE)
 	if csv_file != null:
-		csv_file.store_string("run_id,family,density_level,contention_index,late_commit_deviation,claim_success_rate,assignment_count,old_escape_hit,p95_contention,max_duration,arbitration_latency,conflict_overlap_count,gate_match_status,seed\n")
+		csv_file.store_string("run_id,family,scenario,scenario_family,density_level,contention_index,late_commit_deviation,claim_success_rate,assignment_count,old_escape_hit,p95_contention,max_duration,arbitration_latency,conflict_overlap_count,gate_match_status,seed\n")
 		for sample_variant in payload.get("samples", []):
 			var sample: Dictionary = sample_variant
-			csv_file.store_string("%d,%s,%s,%s,%s,%s,%d,%s,%s,%s,%s,%d,%s,%d\n" % [
+			csv_file.store_string("%d,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s,%s,%d,%s,%d\n" % [
 				int(sample.get("run_id", -1)),
 				str(sample.get("family", "")),
+				str(sample.get("scenario", "")),
+				str(sample.get("scenario_family", "")),
 				str(sample.get("density_level", "")),
 				str(sample.get("contention_index", 0.0)),
 				str(sample.get("late_commit_deviation", 0.0)),
@@ -82,16 +86,24 @@ func _write_sampling_artifacts(payload: Dictionary) -> void:
 func run() -> Array[String]:
 	var failures: Array[String] = []
 	var samples: Array = []
-	for run_id in range(20):
-		var sample: Dictionary = await _capture_probe_sample(run_id)
+	var scenarios: Array[String] = ["corridor", "dynamic_orbit", "funnel"]
+	for run_id in range(50):
+		var scenario: String = scenarios[run_id % scenarios.size()]
+		var sample: Dictionary = await _capture_probe_sample(run_id, scenario)
 		samples.append(sample)
 		_assert_true(str(sample.get("error", "")) == "", str(sample.get("error", "")), failures)
+		_assert_true(str(sample.get("scenario_family", "")) == "warning", "warning fixture should keep warning scenario family tag", failures)
+		_assert_true(scenarios.has(str(sample.get("scenario", ""))), "warning fixture should keep scenario tag within approved topology set", failures)
 	var first_sample: Dictionary = samples[0] if not samples.is_empty() else {}
 	var sampling_plan := {
 		"family": "warning",
 		"family_arg": "--family=warning",
+		"scenario_family": "warning",
 		"density_level": "warning",
-		"sample_count": 20,
+		"sample_count": 50,
+		"scenario": "corridor",
+		"scenario_secondary": "dynamic_orbit",
+		"scenario_tertiary": "funnel",
 		"seed": 0,
 		"artifact_format": "csv",
 		"artifact_format_json": "json",
