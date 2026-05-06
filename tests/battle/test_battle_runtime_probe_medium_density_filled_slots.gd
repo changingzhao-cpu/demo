@@ -52,6 +52,7 @@ func _capture_probe_sample(run_id: int, scenario: String) -> Dictionary:
 		"max_duration": int(round(float(probe.get("late_commit_deviation", 0.0)))),
 		"arbitration_latency": 0.0,
 		"conflict_overlap_count": int(probe.get("assignments", {}).size()) if probe.get("assignments", {}) is Dictionary else 0,
+		"clumping_factor": 1.0,
 		"gate_match_status": "gate_b",
 		"seed": run_id,
 		"error": "" if not probe.is_empty() else "warning fixture should capture non-empty probe"
