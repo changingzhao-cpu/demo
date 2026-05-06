@@ -149,6 +149,11 @@ func run() -> Array[String]:
 		"strategy": "low_false_positive",
 		"warning_band_hint": float(first_sample.get("p95_contention", 0.0))
 	}
+	var scenario_param := {
+		"corridor": {"min_width": 1.2},
+		"funnel": {"entry_width": 10.0, "exit_width": 2.0},
+		"dynamic_orbit": {"motion": "irregular_sine"}
+	}
 	var warning_summary := {
 		"claim_success_rate_mean": float(first_sample.get("claim_success_rate", 0.0)),
 		"late_commit_deviation_mean": float(first_sample.get("late_commit_deviation", 0.0)),
@@ -181,6 +186,7 @@ func run() -> Array[String]:
 		"sampling_plan": sampling_plan,
 		"fingerprint_zone_summary": fingerprint_zone_summary,
 		"threshold_candidate": threshold_candidate,
+		"scenario_param": scenario_param,
 		"warning_summary": warning_summary,
 		"scenario_summaries": scenario_summaries,
 		"outliers": outliers,
