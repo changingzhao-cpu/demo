@@ -131,6 +131,11 @@ func run() -> Array[String]:
 		"dynamic_orbit": true,
 		"multi_flow_crossing": true
 	}
+	var scenario_summaries := {
+		"corridor": {"claim_success_rate_mean": float(first_sample.get("claim_success_rate", 0.0)), "late_commit_deviation_mean": float(first_sample.get("late_commit_deviation", 0.0))},
+		"dynamic_orbit": {"claim_success_rate_mean": float(first_sample.get("claim_success_rate", 0.0)), "late_commit_deviation_mean": float(first_sample.get("late_commit_deviation", 0.0))},
+		"funnel": {"claim_success_rate_mean": float(first_sample.get("claim_success_rate", 0.0)), "late_commit_deviation_mean": float(first_sample.get("late_commit_deviation", 0.0))}
+	}
 	var outliers := {
 		"outlier_count": 0,
 		"outlier_samples": []
@@ -151,6 +156,7 @@ func run() -> Array[String]:
 		"fingerprint_zone_summary": fingerprint_zone_summary,
 		"threshold_candidate": threshold_candidate,
 		"warning_summary": warning_summary,
+		"scenario_summaries": scenario_summaries,
 		"outliers": outliers,
 		"scatter_plot": scatter_plot,
 		"sampling_results": sampling_results,
