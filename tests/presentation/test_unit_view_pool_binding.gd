@@ -9,13 +9,18 @@ func run() -> Array[String]:
 	_test_sync_keeps_rebound_view_visible(failures)
 	return failures
 
+func _free_view(view) -> void:
+	if view != null:
+		view.queue_free()
+		view = null
+
 func _test_rebind_replaces_previous_entity_binding(failures: Array[String]) -> void:
 	var view = UnitViewScript.new()
 	view.bind_entity(2)
 	view.bind_entity(5)
 	_assert_eq(view.get_entity_id(), 5, "bind_entity should replace the previous entity binding", failures)
 	_assert_true(view.visible, "rebound view should remain visible", failures)
-	view.free()
+	_free_view(view)
 
 func _test_unbind_clears_binding_for_reuse(failures: Array[String]) -> void:
 	var view = UnitViewScript.new()
@@ -24,7 +29,7 @@ func _test_unbind_clears_binding_for_reuse(failures: Array[String]) -> void:
 	view.bind_entity(11)
 	_assert_eq(view.get_entity_id(), 11, "view should be reusable after unbind_entity", failures)
 	_assert_true(view.visible, "reused view should become visible after bind_entity", failures)
-	view.free()
+	_free_view(view)
 
 func _test_sync_keeps_rebound_view_visible(failures: Array[String]) -> void:
 	var view = UnitViewScript.new()
@@ -34,7 +39,7 @@ func _test_sync_keeps_rebound_view_visible(failures: Array[String]) -> void:
 	view.sync_from_entity(Vector2(-3.0, 6.5), true)
 	_assert_eq(view.global_position, Vector2(-3.0, 6.5), "sync_from_entity should update reused views", failures)
 	_assert_true(view.visible, "sync_from_entity should keep rebound live views visible", failures)
-	view.free()
+	_free_view(view)
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

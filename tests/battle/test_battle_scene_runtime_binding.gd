@@ -278,6 +278,13 @@ func _test_runtime_probe_exports_battle_report_timeline(failures: Array[String])
 		return
 	var payload: Dictionary = json.data
 	_assert_true(payload.has("battle_report_timeline"), "runtime probe output should expose battle_report_timeline key", failures)
+	if payload.has("warning_unified_snapshot") or payload.has("critical_unified_snapshot"):
+		var warning_unified_snapshot: Dictionary = payload.get("warning_unified_snapshot", {})
+		var critical_unified_snapshot: Dictionary = payload.get("critical_unified_snapshot", {})
+		_assert_true(str(warning_unified_snapshot.get("family", "")) == "warning", "runtime probe output should keep warning unified snapshot family", failures)
+		_assert_true(str(critical_unified_snapshot.get("family", "")) == "critical", "runtime probe output should keep critical unified snapshot family", failures)
+		_assert_true(warning_unified_snapshot.has("confidence_score"), "runtime probe output should keep warning unified snapshot confidence score", failures)
+		_assert_true(critical_unified_snapshot.has("confidence_score"), "runtime probe output should keep critical unified snapshot confidence score", failures)
 	var timeline: Array = payload.get("battle_report_timeline", [])
 	_assert_true(timeline is Array, "battle_report_timeline should remain an Array in runtime probe output", failures)
 	if timeline.is_empty():

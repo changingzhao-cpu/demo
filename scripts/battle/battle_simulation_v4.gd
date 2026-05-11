@@ -50,7 +50,11 @@ func tick_bucket_with_report(store, delta: float, bucket_id: int, bucket_count: 
 			"claim_success_rate": float(contention.get("claim_success_rate", 0.0)),
 			"contested_groups": int(contention.get("contested_groups", 0)),
 			"contention_index": 0.0 if int(contention.get("intent_count", 0)) == 0 else float(contention.get("contested_groups", 0)) / float(contention.get("intent_count", 0)),
-			"late_commit_deviation": late_commit_deviation
+			"late_commit_deviation": late_commit_deviation,
+			"p95_contention": _compute_probe_p95_contention(intents, assignments),
+			"conflict_overlap_count": _compute_probe_conflict_overlap_count(intents, assignments),
+			"clumping_factor": _compute_probe_clumping_factor(snapshot),
+			"arbitration_latency": _compute_probe_arbitration_latency(assignments)
 		}
 	}
 
@@ -146,6 +150,64 @@ func _compute_late_commit_deviation(store, assignments: Dictionary) -> float:
 		var committed := Vector2(store.position_x[entity_id], store.position_y[entity_id])
 		return committed.distance_to(assignment.global_pos)
 	return 0.0
+
+func _compute_probe_p95_contention(intents: Array, assignments: Dictionary) -> float:
+	var grouped_counts := {}
+	for intent_variant in intents:
+		var intent = intent_variant
+		if int(intent.entity_id) > int(intent.target_id):
+			continue
+		var key := "%s:%s" % [str(int(intent.target_id)), str(int(intent.desired_slot_index))]
+		grouped_counts[key] = int(grouped_counts.get(key, 0)) + 1
+	var peak_contention := 0.0
+	for count_variant in grouped_counts.values():
+		peak_contention = maxf(peak_contention, float(count_variant))
+	return peak_contention
+
+func _compute_probe_conflict_overlap_count(intents: Array, assignments: Dictionary) -> int:
+	var intent_count := 0
+	for intent_variant in intents:
+		var intent = intent_variant
+		if int(intent.entity_id) > int(intent.target_id):
+			continue
+		intent_count += 1
+	var assignment_count := 0
+	for entity_id_variant in assignments.keys():
+		var entity_id := int(entity_id_variant)
+		var assignment = assignments[entity_id_variant]
+		if entity_id > int(assignment.target_id):
+			continue
+		if int(assignment.status) != SlotAssignment.STATUS_SUCCESS:
+			continue
+		assignment_count += 1
+	return maxi(0, intent_count - assignment_count)
+
+func _compute_probe_clumping_factor(snapshot: Dictionary) -> float:
+	var entities: Array = snapshot.get("entities", [])
+	if entities.is_empty():
+		return 0.0
+	var min_pos := Vector2(INF, INF)
+	var max_pos := Vector2(-INF, -INF)
+	for entity_variant in entities:
+		var entity: Dictionary = entity_variant
+		var pos: Vector2 = entity.position
+		min_pos.x = minf(min_pos.x, pos.x)
+		min_pos.y = minf(min_pos.y, pos.y)
+		max_pos.x = maxf(max_pos.x, pos.x)
+		max_pos.y = maxf(max_pos.y, pos.y)
+	var area := maxf(0.001, (max_pos.x - min_pos.x + 1.0) * (max_pos.y - min_pos.y + 1.0))
+	return float(entities.size()) / area
+
+func _compute_probe_arbitration_latency(assignments: Dictionary) -> float:
+	var counted := 0.0
+	var waiting_count := 0.0
+	for assignment_variant in assignments.values():
+		var assignment = assignment_variant
+		counted += 1.0
+		if int(assignment.status) == SlotAssignment.STATUS_WAITING:
+			waiting_count += 1.0
+	var contention_index := 0.0 if counted <= 0.0 else waiting_count / counted
+	return 1.0 + (contention_index * 0.1)
 
 static func build_contention_report(intents: Array, assignments: Dictionary) -> Dictionary:
 	var grouped_counts := {}

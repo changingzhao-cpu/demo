@@ -31,7 +31,6 @@ const TEST_SUITES := [
 	{"name": "battle/test_probe_slow_suite_membership", "path": "res://tests/battle/test_probe_slow_suite_membership.gd"},
 	{"name": "battle/test_probe_baseline_readiness_contract", "path": "res://tests/battle/test_probe_baseline_readiness_contract.gd"},
 	{"name": "battle/test_probe_contention_readiness_gates", "path": "res://tests/battle/test_probe_contention_readiness_gates.gd"},
-	{"name": "battle/test_battle_runtime_probe_static_zero_deviation", "path": "res://tests/battle/test_battle_runtime_probe_static_zero_deviation.gd"},
 	{"name": "battle/test_probe_shadow_warning_contract", "path": "res://tests/battle/test_probe_shadow_warning_contract.gd"},
 	{"name": "battle/test_probe_shadow_overlap_contract", "path": "res://tests/battle/test_probe_shadow_overlap_contract.gd"},
 	{"name": "battle/test_probe_shadow_threshold_readiness", "path": "res://tests/battle/test_probe_shadow_threshold_readiness.gd"},
@@ -39,33 +38,26 @@ const TEST_SUITES := [
 	{"name": "battle/test_probe_threshold_zone_contract", "path": "res://tests/battle/test_probe_threshold_zone_contract.gd"},
 	{"name": "battle/test_probe_threshold_candidate_contract", "path": "res://tests/battle/test_probe_threshold_candidate_contract.gd"},
 	{"name": "battle/test_probe_sampling_artifact_contract", "path": "res://tests/battle/test_probe_sampling_artifact_contract.gd"},
-	{"name": "battle/test_battle_runtime_probe_high_density_contention", "path": "res://tests/battle/test_battle_runtime_probe_high_density_contention.gd"},
-	{"name": "battle/test_battle_runtime_probe_narrow_corridor_contention", "path": "res://tests/battle/test_battle_runtime_probe_narrow_corridor_contention.gd"},
 	{"name": "battle/test_probe_extreme_sample_contract", "path": "res://tests/battle/test_probe_extreme_sample_contract.gd"},
 	{"name": "battle/test_probe_takeover_gate_contract", "path": "res://tests/battle/test_probe_takeover_gate_contract.gd"},
 	{"name": "battle/test_probe_sampling_family_contract", "path": "res://tests/battle/test_probe_sampling_family_contract.gd"},
-	{"name": "battle/test_battle_runtime_probe_medium_density_filled_slots", "path": "res://tests/battle/test_battle_runtime_probe_medium_density_filled_slots.gd"},
-	{"name": "battle/test_probe_warning_real_sampling_contract", "path": "res://tests/battle/test_probe_warning_real_sampling_contract.gd"},
-	{"name": "battle/test_probe_warning_aggregate_summary_contract", "path": "res://tests/battle/test_probe_warning_aggregate_summary_contract.gd"},
-	{"name": "battle/test_probe_warning_topology_contract", "path": "res://tests/battle/test_probe_warning_topology_contract.gd"},
-	{"name": "battle/test_probe_warning_physical_topology_contract", "path": "res://tests/battle/test_probe_warning_physical_topology_contract.gd"},
-	{"name": "battle/test_probe_warning_parameterized_scene_contract", "path": "res://tests/battle/test_probe_warning_parameterized_scene_contract.gd"},
-	{"name": "battle/test_probe_warning_50_run_scene_plan_contract", "path": "res://tests/battle/test_probe_warning_50_run_scene_plan_contract.gd"},
 	{"name": "battle/test_probe_scene_type_contract", "path": "res://tests/battle/test_probe_scene_type_contract.gd"},
-	{"name": "battle/test_probe_warning_clumping_contract", "path": "res://tests/battle/test_probe_warning_clumping_contract.gd"},
-	{"name": "battle/test_probe_warning_scenario_summary_contract", "path": "res://tests/battle/test_probe_warning_scenario_summary_contract.gd"},
-	{"name": "battle/test_probe_warning_scene_divergence_contract", "path": "res://tests/battle/test_probe_warning_scene_divergence_contract.gd"},
-	{"name": "battle/test_probe_warning_independent_scene_executor_contract", "path": "res://tests/battle/test_probe_warning_independent_scene_executor_contract.gd"},
-	{"name": "battle/test_probe_warning_scene_runtime_branch_contract", "path": "res://tests/battle/test_probe_warning_scene_runtime_branch_contract.gd"},
-	{"name": "battle/test_probe_warning_scene_signal_order_contract", "path": "res://tests/battle/test_probe_warning_scene_signal_order_contract.gd"},
-	{"name": "battle/test_probe_warning_scene_separation_contract", "path": "res://tests/battle/test_probe_warning_scene_separation_contract.gd"},
-	{"name": "battle/test_probe_warning_scene_gradient_contract", "path": "res://tests/battle/test_probe_warning_scene_gradient_contract.gd"},
-	{"name": "battle/test_probe_warning_scenario_shape_contract", "path": "res://tests/battle/test_probe_warning_scenario_shape_contract.gd"},
+	{"name": "battle/test_probe_schema_contract", "path": "res://tests/battle/test_probe_schema_contract.gd"},
+	{"name": "battle/test_warning_aggregation_contract", "path": "res://tests/battle/test_warning_aggregation_contract.gd"},
+	{"name": "battle/test_probe_warning_sampler_core_boundary_contract", "path": "res://tests/battle/test_probe_warning_sampler_core_boundary_contract.gd"},
+	{"name": "battle/test_probe_warning_sampler_core_factory_contract", "path": "res://tests/battle/test_probe_warning_sampler_core_factory_contract.gd"},
+	{"name": "battle/test_probe_warning_runtime_variation_runner", "path": "res://tests/battle/test_probe_warning_runtime_variation_runner.gd"},
 	{"name": "battle/test_probe_sampling_execution_contract", "path": "res://tests/battle/test_probe_sampling_execution_contract.gd"},
 	{"name": "battle/test_probe_real_threshold_formula_contract", "path": "res://tests/battle/test_probe_real_threshold_formula_contract.gd"},
 	{"name": "battle/test_probe_outlier_analysis_contract", "path": "res://tests/battle/test_probe_outlier_analysis_contract.gd"},
 	{"name": "battle/test_probe_fitted_threshold_contract", "path": "res://tests/battle/test_probe_fitted_threshold_contract.gd"},
 	{"name": "battle/test_probe_sampling_execution_results_contract", "path": "res://tests/battle/test_probe_sampling_execution_results_contract.gd"},
+	{"name": "battle/test_warning_sampling_artifact_freshness", "path": "res://tests/battle/test_warning_sampling_artifact_freshness.gd"},
+	{"name": "battle/test_warning_sampling_behavior_contract", "path": "res://tests/battle/test_warning_sampling_behavior_contract.gd"},
+	{"name": "battle/test_warning_sampling_stability_contract", "path": "res://tests/battle/test_warning_sampling_stability_contract.gd"},
+	{"name": "battle/test_warning_sampling_artifact_content_contract", "path": "res://tests/battle/test_warning_sampling_artifact_content_contract.gd"},
+	{"name": "battle/test_warning_readiness_snapshot_contract", "path": "res://tests/battle/test_warning_readiness_snapshot_contract.gd"},
+	{"name": "battle/test_unified_snapshot_schema_contract", "path": "res://tests/battle/test_unified_snapshot_schema_contract.gd"},
 	{"name": "battle/test_probe_critical_payload_enrichment_contract", "path": "res://tests/battle/test_probe_critical_payload_enrichment_contract.gd"},
 	{"name": "battle/test_probe_critical_aggregated_thresholds_contract", "path": "res://tests/battle/test_probe_critical_aggregated_thresholds_contract.gd"},
 	{"name": "battle/test_probe_critical_weighted_error_threshold_contract", "path": "res://tests/battle/test_probe_critical_weighted_error_threshold_contract.gd"},
@@ -135,7 +127,6 @@ const TEST_SUITES := [
 	{"name": "battle/test_battle_scene_bootstrap", "path": "res://tests/battle/test_battle_scene_bootstrap.gd"},
 	{"name": "scenes/test_main_scene_bootstrap", "path": "res://tests/scenes/test_main_scene_bootstrap.gd"},
 	{"name": "battle/test_battle_controller_runtime_setup", "path": "res://tests/battle/test_battle_controller_runtime_setup.gd"},
-	{"name": "battle/test_battle_runtime_probe_contact_oscillation", "path": "res://tests/battle/test_battle_runtime_probe_contact_oscillation.gd"},
 	{"name": "presentation/test_unit_view_pool_binding", "path": "res://tests/presentation/test_unit_view_pool_binding.gd"},
 	{"name": "battle/test_battle_scene_runtime_binding", "path": "res://tests/battle/test_battle_scene_runtime_binding.gd"},
 	{"name": "battle/test_battle_scene_visual_bootstrap", "path": "res://tests/battle/test_battle_scene_visual_bootstrap.gd"},
@@ -180,13 +171,14 @@ var _test_count := 0
 func _initialize() -> void:
 	print("[TEST] Starting test run...")
 	for suite_def in TEST_SUITES:
-		_run_suite(str(suite_def.name), str(suite_def.path))
+		await _run_suite(str(suite_def.name), str(suite_def.path))
 
 	if _failure_count == 0:
 		print("[TEST] All %d test suite(s) passed." % _test_count)
 		quit(0)
 		return
 
+	await process_frame
 	printerr("[TEST] %d failure(s) across %d test suite(s)." % [_failure_count, _test_count])
 	quit(1)
 
@@ -207,7 +199,10 @@ func _run_suite(suite_name: String, suite_path: String) -> void:
 		_failure_count += 1
 		printerr("[FAIL] %s: script failed to instantiate" % suite_name)
 		return
-
+	if suite is Node or suite is SceneTree:
+		_failure_count += 1
+		printerr("[FAIL] %s: generic runner only supports RefCounted contracts" % suite_name)
+		return
 	if not suite.has_method("run"):
 		_failure_count += 1
 		printerr("[FAIL] %s: missing run() method" % suite_name)
@@ -218,7 +213,6 @@ func _run_suite(suite_name: String, suite_path: String) -> void:
 		await process_frame
 		print("[PASS] %s" % suite_name)
 		return
-
 	if result is Array:
 		await process_frame
 		for failure in result:

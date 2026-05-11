@@ -15,7 +15,7 @@ func _test_reward_panel_exposes_stage_copy_and_heading(failures: Array[String]) 
 	_assert_true(instance.get_node_or_null("PanelFrame") != null, "reward panel should expose a PanelFrame", failures)
 	_assert_true(instance.get_node_or_null("PanelFrame/TitleLabel") != null, "reward panel should expose a TitleLabel", failures)
 	_assert_true(instance.get_node_or_null("PanelFrame/HintLabel") != null, "reward panel should expose a HintLabel", failures)
-	instance.free()
+	instance.queue_free()
 
 func _test_show_rewards_updates_hint_text_and_options(failures: Array[String]) -> void:
 	var panel_scene: PackedScene = load("res://scenes/ui/reward_panel.tscn")
@@ -41,7 +41,8 @@ func _test_show_rewards_updates_hint_text_and_options(failures: Array[String]) -
 	if option_a != null:
 		_assert_true(String(option_a.text).contains("atk"), "reward panel should still surface reward option labels", failures)
 	main_loop.root.remove_child(instance)
-	instance.free()
+	instance.queue_free()
+	await main_loop.process_frame
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

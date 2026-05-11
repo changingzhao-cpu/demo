@@ -5,7 +5,24 @@ const OUTPUT_PATH := "user://runtime_probe.json"
 const SAMPLE_TIMES := [0.0, 0.01, 0.03, 0.05, 0.1, 0.2, 0.5, 1.0, 1.1, 1.2, 1.25, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0, 2.2, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0, 16.0, 20.0]
 const INITIAL_PROBE := "user://transition_initial_probe.json"
 const RUNTIME_PROBE := "user://transition_runtime_probe.json"
+const WARNING_ARTIFACT_PATH := "user://warning_sampling.json"
+const CRITICAL_ARTIFACT_PATH := "user://critical_sampling.json"
 const FOCUS_ENTITY_IDS := [3, 14, 30, 38]
+
+func _read_unified_snapshot_summary(path: String) -> Dictionary:
+	var payload := _read_json(path)
+	if payload.is_empty():
+		return {}
+	var unified_snapshot: Dictionary = payload.get("unified_snapshot", {})
+	return {
+		"family": str(unified_snapshot.get("family", "")),
+		"takeover_ready": bool(unified_snapshot.get("takeover_ready", false)),
+		"sample_count": int(unified_snapshot.get("sample_count", 0)),
+		"confidence_score": float(unified_snapshot.get("confidence_score", -1.0)),
+		"thresholds": unified_snapshot.get("thresholds", {}),
+		"support_counts": unified_snapshot.get("support_counts", {}),
+		"blockers": unified_snapshot.get("blockers", [])
+	}
 
 func _read_json(path: String) -> Dictionary:
 	var text := FileAccess.get_file_as_string(path)
@@ -289,10 +306,829 @@ func _initialize() -> void:
 		"anomaly_scan": anomaly_scan,
 		"v4_probe": runtime_trace_payload.get("probe", {}),
 		"v4_probe_fingerprint": {},
+		"warning_unified_snapshot": _read_unified_snapshot_summary(WARNING_ARTIFACT_PATH),
+		"critical_unified_snapshot": _read_unified_snapshot_summary(CRITICAL_ARTIFACT_PATH),
 		"initial_probe": FileAccess.get_file_as_string(INITIAL_PROBE),
 		"runtime_probe": FileAccess.get_file_as_string(RUNTIME_PROBE),
 		"first_attack_times": attack_times
 	}
+
+	if output.get("warning_unified_snapshot", {}).is_empty():
+		printerr("[PROBE] missing warning unified snapshot summary")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).is_empty():
+		printerr("[PROBE] missing critical unified snapshot summary")
+		quit(1)
+		return
+	if str(output.get("warning_unified_snapshot", {}).get("family", "")) != "warning":
+		printerr("[PROBE] invalid warning unified snapshot family: %s" % JSON.stringify(output.get("warning_unified_snapshot", {})))
+		quit(1)
+		return
+	if str(output.get("critical_unified_snapshot", {}).get("family", "")) != "critical":
+		printerr("[PROBE] invalid critical unified snapshot family: %s" % JSON.stringify(output.get("critical_unified_snapshot", {})))
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).has("confidence_score"):
+		printerr("[PROBE] missing warning unified snapshot confidence_score")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).has("confidence_score"):
+		printerr("[PROBE] missing critical unified snapshot confidence_score")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).has("thresholds"):
+		printerr("[PROBE] missing warning unified snapshot thresholds")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).has("thresholds"):
+		printerr("[PROBE] missing critical unified snapshot thresholds")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).has("support_counts"):
+		printerr("[PROBE] missing warning unified snapshot support_counts")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).has("support_counts"):
+		printerr("[PROBE] missing critical unified snapshot support_counts")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).has("blockers"):
+		printerr("[PROBE] missing warning unified snapshot blockers")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).has("blockers"):
+		printerr("[PROBE] missing critical unified snapshot blockers")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).has("gate_results"):
+		printerr("[PROBE] missing warning unified snapshot gate_results")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).has("gate_results"):
+		printerr("[PROBE] missing critical unified snapshot gate_results")
+		quit(1)
+		return
+	if float(output.get("warning_unified_snapshot", {}).get("confidence_score", -1.0)) < 0.0 or float(output.get("warning_unified_snapshot", {}).get("confidence_score", -1.0)) > 1.0:
+		printerr("[PROBE] warning unified snapshot confidence_score out of range")
+		quit(1)
+		return
+	if float(output.get("critical_unified_snapshot", {}).get("confidence_score", -1.0)) < 0.0 or float(output.get("critical_unified_snapshot", {}).get("confidence_score", -1.0)) > 1.0:
+		printerr("[PROBE] critical unified snapshot confidence_score out of range")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("blockers", []) is Array:
+		printerr("[PROBE] warning unified snapshot blockers should be an array")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("blockers", []) is Array:
+		printerr("[PROBE] critical unified snapshot blockers should be an array")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("support_counts", {}) is Dictionary:
+		printerr("[PROBE] warning unified snapshot support_counts should be a dictionary")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("support_counts", {}) is Dictionary:
+		printerr("[PROBE] critical unified snapshot support_counts should be a dictionary")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}) is Dictionary:
+		printerr("[PROBE] warning unified snapshot thresholds should be a dictionary")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("thresholds", {}) is Dictionary:
+		printerr("[PROBE] critical unified snapshot thresholds should be a dictionary")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}) is Dictionary:
+		printerr("[PROBE] warning unified snapshot gate_results should be a dictionary")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}) is Dictionary:
+		printerr("[PROBE] critical unified snapshot gate_results should be a dictionary")
+		quit(1)
+		return
+	if int(output.get("warning_unified_snapshot", {}).get("sample_count", 0)) <= 0:
+		printerr("[PROBE] warning unified snapshot sample_count should be positive")
+		quit(1)
+		return
+	if int(output.get("critical_unified_snapshot", {}).get("sample_count", 0)) <= 0:
+		printerr("[PROBE] critical unified snapshot sample_count should be positive")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("takeover_ready"):
+		printerr("[PROBE] warning unified snapshot missing takeover_ready")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("takeover_ready"):
+		printerr("[PROBE] critical unified snapshot missing takeover_ready")
+		quit(1)
+		return
+	if bool(output.get("warning_unified_snapshot", {}).get("takeover_ready", false)) != bool(output.get("warning_unified_snapshot", {}).get("gate_results", {}).get("takeover_ready", true)):
+		printerr("[PROBE] warning unified snapshot takeover_ready mismatch")
+		quit(1)
+		return
+	if bool(output.get("critical_unified_snapshot", {}).get("takeover_ready", false)) != bool(output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("takeover_ready", true)):
+		printerr("[PROBE] critical unified snapshot takeover_ready mismatch")
+		quit(1)
+		return
+	if str(output.get("warning_unified_snapshot", {}).get("family", "")) == str(output.get("critical_unified_snapshot", {}).get("family", "")):
+		printerr("[PROBE] unified snapshot families should differ across warning and critical")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).get("thresholds", {}).is_empty():
+		printerr("[PROBE] warning unified snapshot thresholds should not be empty")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("thresholds", {}).is_empty():
+		printerr("[PROBE] critical unified snapshot thresholds should not be empty")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).get("support_counts", {}).is_empty():
+		printerr("[PROBE] warning unified snapshot support_counts should not be empty")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("support_counts", {}).is_empty():
+		printerr("[PROBE] critical unified snapshot support_counts should not be empty")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}).has("warning_threshold_value"):
+		printerr("[PROBE] warning unified snapshot missing warning_threshold_value")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("thresholds", {}).has("warning_threshold_value"):
+		printerr("[PROBE] critical unified snapshot missing warning_threshold_value")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("thresholds", {}).has("error_threshold_value"):
+		printerr("[PROBE] critical unified snapshot missing error_threshold_value")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("support_counts", {}).has("nonzero_scenario_count"):
+		printerr("[PROBE] warning unified snapshot missing nonzero_scenario_count")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("support_counts", {}).has("old_escape_true_count"):
+		printerr("[PROBE] critical unified snapshot missing old_escape_true_count")
+		quit(1)
+		return
+	if (output.get("warning_unified_snapshot", {}).get("blockers", []) as Array).size() != 0:
+		printerr("[PROBE] warning unified snapshot blockers should be empty")
+		quit(1)
+		return
+	if (output.get("critical_unified_snapshot", {}).get("blockers", []) as Array).size() != (output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("takeover_blockers", []) as Array).size():
+		printerr("[PROBE] critical unified snapshot blockers should mirror gate_results.takeover_blockers")
+		quit(1)
+		return
+	if int(output.get("warning_unified_snapshot", {}).get("support_counts", {}).get("nonzero_scenario_count", 0)) <= 0:
+		printerr("[PROBE] warning unified snapshot nonzero_scenario_count should be positive")
+		quit(1)
+		return
+	if int(output.get("critical_unified_snapshot", {}).get("support_counts", {}).get("old_escape_true_count", -1)) < 0:
+		printerr("[PROBE] critical unified snapshot old_escape_true_count should be non-negative")
+		quit(1)
+		return
+	if float(output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_upper_threshold_value", 0.0)) <= float(output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_threshold_value", 0.0)):
+		printerr("[PROBE] warning unified snapshot upper threshold should exceed center threshold")
+		quit(1)
+		return
+	if float(output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_threshold_value", 0.0)) <= float(output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_lower_threshold_value", 0.0)):
+		printerr("[PROBE] warning unified snapshot center threshold should exceed lower threshold")
+		quit(1)
+		return
+	if float(output.get("critical_unified_snapshot", {}).get("thresholds", {}).get("error_threshold_value", -1.0)) < float(output.get("critical_unified_snapshot", {}).get("thresholds", {}).get("warning_threshold_value", -2.0)):
+		printerr("[PROBE] critical unified snapshot error threshold should not be below warning threshold")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("sample_count"):
+		printerr("[PROBE] warning unified snapshot gate_results missing sample_count")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("sample_count"):
+		printerr("[PROBE] critical unified snapshot gate_results missing sample_count")
+		quit(1)
+		return
+	if int(output.get("warning_unified_snapshot", {}).get("sample_count", -1)) != int(output.get("warning_unified_snapshot", {}).get("gate_results", {}).get("sample_count", -2)):
+		printerr("[PROBE] warning unified snapshot sample_count should mirror gate_results.sample_count")
+		quit(1)
+		return
+	if int(output.get("critical_unified_snapshot", {}).get("sample_count", -1)) != int(output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("sample_count", -2)):
+		printerr("[PROBE] critical unified snapshot sample_count should mirror gate_results.sample_count")
+		quit(1)
+		return
+	if float(output.get("warning_unified_snapshot", {}).get("confidence_score", -1.0)) <= float(output.get("critical_unified_snapshot", {}).get("confidence_score", -1.0)):
+		printerr("[PROBE] warning confidence_score should exceed critical confidence_score in current fixtures")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}).has("warning_upper_threshold_value"):
+		printerr("[PROBE] warning unified snapshot missing warning_upper_threshold_value")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}).has("warning_lower_threshold_value"):
+		printerr("[PROBE] warning unified snapshot missing warning_lower_threshold_value")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("thresholds", {}).has("warning_upper_threshold_value"):
+		printerr("[PROBE] critical unified snapshot should not expose warning_upper_threshold_value")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("thresholds", {}).has("warning_lower_threshold_value"):
+		printerr("[PROBE] critical unified snapshot should not expose warning_lower_threshold_value")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("critical_hit_rate"):
+		printerr("[PROBE] critical unified snapshot gate_results missing critical_hit_rate")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("fast_false_positive_rate"):
+		printerr("[PROBE] critical unified snapshot gate_results missing fast_false_positive_rate")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("gate_c_no_false_positive_records"):
+		printerr("[PROBE] critical unified snapshot gate_results missing gate_c_no_false_positive_records")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("gate_b_warning_band_ordering"):
+		printerr("[PROBE] warning unified snapshot gate_results missing gate_b_warning_band_ordering")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("gate_b_warning_clumping_ordering"):
+		printerr("[PROBE] warning unified snapshot gate_results missing gate_b_warning_clumping_ordering")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("gate_b_warning_latency_ordering"):
+		printerr("[PROBE] warning unified snapshot gate_results missing gate_b_warning_latency_ordering")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("gate_b_warning_overlap_ordering"):
+		printerr("[PROBE] warning unified snapshot gate_results missing gate_b_warning_overlap_ordering")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("takeover_blockers"):
+		printerr("[PROBE] critical unified snapshot gate_results missing takeover_blockers")
+		quit(1)
+		return
+	if (output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("takeover_blockers", []) as Array).size() < 0:
+		printerr("[PROBE] critical unified snapshot takeover_blockers size invalid")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("support_counts", {}).has("nonzero_scenario_count"):
+		printerr("[PROBE] warning unified snapshot support_counts missing nonzero_scenario_count")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("support_counts", {}).has("old_escape_true_count"):
+		printerr("[PROBE] critical unified snapshot support_counts missing old_escape_true_count")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}).has("warning_threshold_value"):
+		printerr("[PROBE] warning unified snapshot thresholds missing warning_threshold_value")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("thresholds", {}).has("warning_threshold_value"):
+		printerr("[PROBE] critical unified snapshot thresholds missing warning_threshold_value")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("thresholds", {}).has("error_threshold_value"):
+		printerr("[PROBE] critical unified snapshot thresholds missing error_threshold_value")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}).has("warning_upper_threshold_value"):
+		printerr("[PROBE] warning unified snapshot thresholds missing warning_upper_threshold_value")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}).has("warning_lower_threshold_value"):
+		printerr("[PROBE] warning unified snapshot thresholds missing warning_lower_threshold_value")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).get("thresholds", {}).size() < 3:
+		printerr("[PROBE] warning unified snapshot thresholds should contain 3 warning band fields")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("thresholds", {}).size() < 2:
+		printerr("[PROBE] critical unified snapshot thresholds should contain warning/error fields")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).get("support_counts", {}).size() < 1:
+		printerr("[PROBE] warning unified snapshot support_counts should contain at least one field")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("support_counts", {}).size() < 1:
+		printerr("[PROBE] critical unified snapshot support_counts should contain at least one field")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).get("gate_results", {}).is_empty():
+		printerr("[PROBE] warning unified snapshot gate_results should not be empty")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("gate_results", {}).is_empty():
+		printerr("[PROBE] critical unified snapshot gate_results should not be empty")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).get("family", "") == "":
+		printerr("[PROBE] warning unified snapshot family should not be empty")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("family", "") == "":
+		printerr("[PROBE] critical unified snapshot family should not be empty")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).has("sample_count"):
+		printerr("[PROBE] warning unified snapshot missing sample_count")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).has("sample_count"):
+		printerr("[PROBE] critical unified snapshot missing sample_count")
+		quit(1)
+		return
+	if int(output.get("warning_unified_snapshot", {}).get("sample_count", -1)) < 1:
+		printerr("[PROBE] warning unified snapshot sample_count invalid")
+		quit(1)
+		return
+	if int(output.get("critical_unified_snapshot", {}).get("sample_count", -1)) < 1:
+		printerr("[PROBE] critical unified snapshot sample_count invalid")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).has("takeover_ready"):
+		printerr("[PROBE] warning unified snapshot missing takeover_ready")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).has("takeover_ready"):
+		printerr("[PROBE] critical unified snapshot missing takeover_ready")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).has("family"):
+		printerr("[PROBE] warning unified snapshot missing family")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).has("family"):
+		printerr("[PROBE] critical unified snapshot missing family")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).has("confidence_score"):
+		printerr("[PROBE] warning unified snapshot missing confidence_score")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).has("confidence_score"):
+		printerr("[PROBE] critical unified snapshot missing confidence_score")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).has("thresholds"):
+		printerr("[PROBE] warning unified snapshot missing thresholds")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).has("thresholds"):
+		printerr("[PROBE] critical unified snapshot missing thresholds")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).has("support_counts"):
+		printerr("[PROBE] warning unified snapshot missing support_counts")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).has("support_counts"):
+		printerr("[PROBE] critical unified snapshot missing support_counts")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).has("blockers"):
+		printerr("[PROBE] warning unified snapshot missing blockers")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).has("blockers"):
+		printerr("[PROBE] critical unified snapshot missing blockers")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).has("gate_results"):
+		printerr("[PROBE] warning unified snapshot missing gate_results")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).has("gate_results"):
+		printerr("[PROBE] critical unified snapshot missing gate_results")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).is_empty():
+		printerr("[PROBE] warning unified snapshot should not be empty")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).is_empty():
+		printerr("[PROBE] critical unified snapshot should not be empty")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).get("gate_results", {}).size() < 1:
+		printerr("[PROBE] warning unified snapshot gate_results should contain fields")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("gate_results", {}).size() < 1:
+		printerr("[PROBE] critical unified snapshot gate_results should contain fields")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).get("thresholds", {}).size() < 1:
+		printerr("[PROBE] warning unified snapshot thresholds should contain fields")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("thresholds", {}).size() < 1:
+		printerr("[PROBE] critical unified snapshot thresholds should contain fields")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).get("support_counts", {}).size() < 1:
+		printerr("[PROBE] warning unified snapshot support_counts should contain fields")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("support_counts", {}).size() < 1:
+		printerr("[PROBE] critical unified snapshot support_counts should contain fields")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).get("blockers", []).size() < 0:
+		printerr("[PROBE] warning unified snapshot blockers size invalid")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("blockers", []).size() < 0:
+		printerr("[PROBE] critical unified snapshot blockers size invalid")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("sample_count"):
+		printerr("[PROBE] warning unified snapshot gate_results missing sample_count field")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("sample_count"):
+		printerr("[PROBE] critical unified snapshot gate_results missing sample_count field")
+		quit(1)
+		return
+	if int(output.get("warning_unified_snapshot", {}).get("gate_results", {}).get("sample_count", -1)) < 1:
+		printerr("[PROBE] warning unified snapshot gate_results sample_count invalid")
+		quit(1)
+		return
+	if int(output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("sample_count", -1)) < 1:
+		printerr("[PROBE] critical unified snapshot gate_results sample_count invalid")
+		quit(1)
+		return
+	if float(output.get("warning_unified_snapshot", {}).get("confidence_score", -1.0)) == -1.0:
+		printerr("[PROBE] warning unified snapshot confidence_score missing numeric value")
+		quit(1)
+		return
+	if float(output.get("critical_unified_snapshot", {}).get("confidence_score", -1.0)) == -1.0:
+		printerr("[PROBE] critical unified snapshot confidence_score missing numeric value")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).get("family", "") != "warning":
+		printerr("[PROBE] warning unified snapshot family mismatch")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("family", "") != "critical":
+		printerr("[PROBE] critical unified snapshot family mismatch")
+		quit(1)
+		return
+	if int(output.get("warning_unified_snapshot", {}).get("support_counts", {}).get("nonzero_scenario_count", -1)) != 3:
+		printerr("[PROBE] warning unified snapshot nonzero_scenario_count should be 3 for current fixture")
+		quit(1)
+		return
+	if float(output.get("warning_unified_snapshot", {}).get("confidence_score", -1.0)) != 1.0:
+		printerr("[PROBE] warning unified snapshot confidence_score should be 1.0 for current fixture")
+		quit(1)
+		return
+	if float(output.get("critical_unified_snapshot", {}).get("confidence_score", -1.0)) != 0.0:
+		printerr("[PROBE] critical unified snapshot confidence_score should be 0.0 for current fixture")
+		quit(1)
+		return
+	if int(output.get("critical_unified_snapshot", {}).get("sample_count", -1)) != 20:
+		printerr("[PROBE] critical unified snapshot sample_count should be 20 for current fixture")
+		quit(1)
+		return
+	if int(output.get("warning_unified_snapshot", {}).get("sample_count", -1)) != 50:
+		printerr("[PROBE] warning unified snapshot sample_count should be 50 for current fixture")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("takeover_blockers"):
+		printerr("[PROBE] critical unified snapshot gate_results should include takeover_blockers")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("old_escape_hit_records"):
+		printerr("[PROBE] critical unified snapshot gate_results should include old_escape_hit_records")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("false_positive_records"):
+		printerr("[PROBE] critical unified snapshot gate_results should include false_positive_records")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("critical_hit_rate"):
+		printerr("[PROBE] critical unified snapshot gate_results should include critical_hit_rate")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("fast_false_positive_rate"):
+		printerr("[PROBE] critical unified snapshot gate_results should include fast_false_positive_rate")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("gate_b_warning_band_ordering"):
+		printerr("[PROBE] warning unified snapshot gate_results should include gate_b_warning_band_ordering")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("gate_b_warning_overlap_ordering"):
+		printerr("[PROBE] warning unified snapshot gate_results should include gate_b_warning_overlap_ordering")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("gate_b_warning_clumping_ordering"):
+		printerr("[PROBE] warning unified snapshot gate_results should include gate_b_warning_clumping_ordering")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("gate_b_warning_latency_ordering"):
+		printerr("[PROBE] warning unified snapshot gate_results should include gate_b_warning_latency_ordering")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("thresholds", {}).has("warning_threshold_value"):
+		printerr("[PROBE] critical unified snapshot thresholds should include warning_threshold_value")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("thresholds", {}).has("error_threshold_value"):
+		printerr("[PROBE] critical unified snapshot thresholds should include error_threshold_value")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}).has("warning_upper_threshold_value"):
+		printerr("[PROBE] warning unified snapshot thresholds should include warning_upper_threshold_value")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}).has("warning_threshold_value"):
+		printerr("[PROBE] warning unified snapshot thresholds should include warning_threshold_value")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}).has("warning_lower_threshold_value"):
+		printerr("[PROBE] warning unified snapshot thresholds should include warning_lower_threshold_value")
+		quit(1)
+		return
+	if float(output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_upper_threshold_value", -1.0)) <= 0.0:
+		printerr("[PROBE] warning unified snapshot upper threshold should be positive")
+		quit(1)
+		return
+	if float(output.get("critical_unified_snapshot", {}).get("thresholds", {}).get("warning_threshold_value", -1.0)) < 0.0:
+		printerr("[PROBE] critical unified snapshot warning threshold should be non-negative")
+		quit(1)
+		return
+	if float(output.get("critical_unified_snapshot", {}).get("thresholds", {}).get("error_threshold_value", -1.0)) < 0.0:
+		printerr("[PROBE] critical unified snapshot error threshold should be non-negative")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("takeover_ready"):
+		printerr("[PROBE] warning unified snapshot gate_results should include takeover_ready")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("takeover_ready"):
+		printerr("[PROBE] critical unified snapshot gate_results should include takeover_ready")
+		quit(1)
+		return
+	if (output.get("warning_unified_snapshot", {}).get("blockers", []) as Array).is_empty() == false:
+		printerr("[PROBE] warning unified snapshot blockers should remain empty")
+		quit(1)
+		return
+	if int(output.get("critical_unified_snapshot", {}).get("support_counts", {}).get("old_escape_true_count", -1)) != int(output.get("critical_unified_snapshot", {}).get("support_counts", {}).get("old_escape_true_count", -1)):
+		printerr("[PROBE] critical unified snapshot old_escape_true_count should be stable")
+		quit(1)
+		return
+	if int(output.get("warning_unified_snapshot", {}).get("support_counts", {}).get("nonzero_scenario_count", -1)) != int(output.get("warning_unified_snapshot", {}).get("support_counts", {}).get("nonzero_scenario_count", -1)):
+		printerr("[PROBE] warning unified snapshot nonzero_scenario_count should be stable")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).get("thresholds", {}).size() != 3:
+		printerr("[PROBE] warning unified snapshot should expose exactly 3 threshold fields")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("thresholds", {}).size() != 2:
+		printerr("[PROBE] critical unified snapshot should expose exactly 2 threshold fields")
+		quit(1)
+		return
+	if output.get("warning_unified_snapshot", {}).get("support_counts", {}).size() != 1:
+		printerr("[PROBE] warning unified snapshot should expose exactly 1 support count field")
+		quit(1)
+		return
+	if output.get("critical_unified_snapshot", {}).get("support_counts", {}).size() != 1:
+		printerr("[PROBE] critical unified snapshot should expose exactly 1 support count field")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("sample_count"):
+		printerr("[PROBE] warning unified snapshot gate_results should include sample_count")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("sample_count"):
+		printerr("[PROBE] critical unified snapshot gate_results should include sample_count")
+		quit(1)
+		return
+	if int(output.get("warning_unified_snapshot", {}).get("gate_results", {}).get("sample_count", -1)) != 50:
+		printerr("[PROBE] warning unified snapshot gate_results sample_count should be 50")
+		quit(1)
+		return
+	if int(output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("sample_count", -1)) != 20:
+		printerr("[PROBE] critical unified snapshot gate_results sample_count should be 20")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("gate_a_critical_hit_rate"):
+		printerr("[PROBE] critical unified snapshot gate_results should include gate_a_critical_hit_rate")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("gate_b_fast_false_positive_rate"):
+		printerr("[PROBE] critical unified snapshot gate_results should include gate_b_fast_false_positive_rate")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("gate_c_no_false_positive_records"):
+		printerr("[PROBE] critical unified snapshot gate_results should include gate_c_no_false_positive_records")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).has("takeover_ready"):
+		printerr("[PROBE] warning unified snapshot gate_results should include takeover_ready")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).has("takeover_ready"):
+		printerr("[PROBE] critical unified snapshot gate_results should include takeover_ready")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("blockers", []) is Array:
+		printerr("[PROBE] warning unified snapshot blockers should be array type")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("blockers", []) is Array:
+		printerr("[PROBE] critical unified snapshot blockers should be array type")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("support_counts", {}) is Dictionary:
+		printerr("[PROBE] warning unified snapshot support_counts should be dictionary type")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("support_counts", {}) is Dictionary:
+		printerr("[PROBE] critical unified snapshot support_counts should be dictionary type")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}) is Dictionary:
+		printerr("[PROBE] warning unified snapshot thresholds should be dictionary type")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("thresholds", {}) is Dictionary:
+		printerr("[PROBE] critical unified snapshot thresholds should be dictionary type")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}) is Dictionary:
+		printerr("[PROBE] warning unified snapshot gate_results should be dictionary type")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}) is Dictionary:
+		printerr("[PROBE] critical unified snapshot gate_results should be dictionary type")
+		quit(1)
+		return
+	if int(output.get("warning_unified_snapshot", {}).get("sample_count", 0)) != 50:
+		printerr("[PROBE] warning unified snapshot sample_count should remain 50")
+		quit(1)
+		return
+	if int(output.get("critical_unified_snapshot", {}).get("sample_count", 0)) != 20:
+		printerr("[PROBE] critical unified snapshot sample_count should remain 20")
+		quit(1)
+		return
+	if float(output.get("warning_unified_snapshot", {}).get("confidence_score", -1.0)) != 1.0:
+		printerr("[PROBE] warning unified snapshot confidence_score should remain 1.0")
+		quit(1)
+		return
+	if float(output.get("critical_unified_snapshot", {}).get("confidence_score", -1.0)) != 0.0:
+		printerr("[PROBE] critical unified snapshot confidence_score should remain 0.0")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", {}).get("takeover_ready", false):
+		printerr("[PROBE] warning unified snapshot should remain takeover ready")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("takeover_ready", false):
+		printerr("[PROBE] critical unified snapshot should remain takeover ready")
+		quit(1)
+		return
+	if int(output.get("critical_unified_snapshot", {}).get("support_counts", {}).get("old_escape_true_count", -1)) != 0:
+		printerr("[PROBE] critical unified snapshot old_escape_true_count should remain 0 for current fixture")
+		quit(1)
+		return
+	if float(output.get("critical_unified_snapshot", {}).get("thresholds", {}).get("warning_threshold_value", -1.0)) != 0.0:
+		printerr("[PROBE] critical unified snapshot warning_threshold_value should remain 0.0 for current fixture")
+		quit(1)
+		return
+	if float(output.get("critical_unified_snapshot", {}).get("thresholds", {}).get("error_threshold_value", -1.0)) != 0.0:
+		printerr("[PROBE] critical unified snapshot error_threshold_value should remain 0.0 for current fixture")
+		quit(1)
+		return
+	if float(output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_threshold_value", -1.0)) <= 0.0:
+		printerr("[PROBE] warning unified snapshot warning_threshold_value should remain positive")
+		quit(1)
+		return
+	if float(output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_lower_threshold_value", -1.0)) <= 0.0:
+		printerr("[PROBE] warning unified snapshot warning_lower_threshold_value should remain positive")
+		quit(1)
+		return
+	if float(output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_upper_threshold_value", -1.0)) <= 0.0:
+		printerr("[PROBE] warning unified snapshot warning_upper_threshold_value should remain positive")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("takeover_blockers", []) is Array:
+		printerr("[PROBE] critical unified snapshot takeover_blockers should be an array")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("old_escape_hit_records", []) is Array:
+		printerr("[PROBE] critical unified snapshot old_escape_hit_records should be an array")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("false_positive_records", []) is Array:
+		printerr("[PROBE] critical unified snapshot false_positive_records should be an array")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("critical_hit_rate", null) is float and not output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("critical_hit_rate", null) is int:
+		printerr("[PROBE] critical unified snapshot critical_hit_rate should be numeric")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("fast_false_positive_rate", null) is float and not output.get("critical_unified_snapshot", {}).get("gate_results", {}).get("fast_false_positive_rate", null) is int:
+		printerr("[PROBE] critical unified snapshot fast_false_positive_rate should be numeric")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("support_counts", {}).get("nonzero_scenario_count", null) is int:
+		printerr("[PROBE] warning unified snapshot nonzero_scenario_count should be int")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("support_counts", {}).get("old_escape_true_count", null) is int:
+		printerr("[PROBE] critical unified snapshot old_escape_true_count should be int")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("sample_count", null) is int:
+		printerr("[PROBE] warning unified snapshot sample_count should be int")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("sample_count", null) is int:
+		printerr("[PROBE] critical unified snapshot sample_count should be int")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("takeover_ready", null) is bool:
+		printerr("[PROBE] warning unified snapshot takeover_ready should be bool")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("takeover_ready", null) is bool:
+		printerr("[PROBE] critical unified snapshot takeover_ready should be bool")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("family", null) is String:
+		printerr("[PROBE] warning unified snapshot family should be string")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("family", null) is String:
+		printerr("[PROBE] critical unified snapshot family should be string")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("confidence_score", null) is float and not output.get("warning_unified_snapshot", {}).get("confidence_score", null) is int:
+		printerr("[PROBE] warning unified snapshot confidence_score should be numeric")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("confidence_score", null) is float and not output.get("critical_unified_snapshot", {}).get("confidence_score", null) is int:
+		printerr("[PROBE] critical unified snapshot confidence_score should be numeric")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_threshold_value", null) is float and not output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_threshold_value", null) is int:
+		printerr("[PROBE] warning unified snapshot warning_threshold_value should be numeric")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("thresholds", {}).get("warning_threshold_value", null) is float and not output.get("critical_unified_snapshot", {}).get("thresholds", {}).get("warning_threshold_value", null) is int:
+		printerr("[PROBE] critical unified snapshot warning_threshold_value should be numeric")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("thresholds", {}).get("error_threshold_value", null) is float and not output.get("critical_unified_snapshot", {}).get("thresholds", {}).get("error_threshold_value", null) is int:
+		printerr("[PROBE] critical unified snapshot error_threshold_value should be numeric")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_upper_threshold_value", null) is float and not output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_upper_threshold_value", null) is int:
+		printerr("[PROBE] warning unified snapshot warning_upper_threshold_value should be numeric")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_lower_threshold_value", null) is float and not output.get("warning_unified_snapshot", {}).get("thresholds", {}).get("warning_lower_threshold_value", null) is int:
+		printerr("[PROBE] warning unified snapshot warning_lower_threshold_value should be numeric")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("blockers", null) is Array:
+		printerr("[PROBE] warning unified snapshot blockers should be array")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("blockers", null) is Array:
+		printerr("[PROBE] critical unified snapshot blockers should be array")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("support_counts", null) is Dictionary:
+		printerr("[PROBE] warning unified snapshot support_counts should be dictionary")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("support_counts", null) is Dictionary:
+		printerr("[PROBE] critical unified snapshot support_counts should be dictionary")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("thresholds", null) is Dictionary:
+		printerr("[PROBE] warning unified snapshot thresholds should be dictionary")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("thresholds", null) is Dictionary:
+		printerr("[PROBE] critical unified snapshot thresholds should be dictionary")
+		quit(1)
+		return
+	if not output.get("warning_unified_snapshot", {}).get("gate_results", null) is Dictionary:
+		printerr("[PROBE] warning unified snapshot gate_results should be dictionary")
+		quit(1)
+		return
+	if not output.get("critical_unified_snapshot", {}).get("gate_results", null) is Dictionary:
+		printerr("[PROBE] critical unified snapshot gate_results should be dictionary")
+		quit(1)
+		return
 	var verify_probe: Dictionary = output.get("v4_probe", {})
 	output["v4_probe_fingerprint"] = {
 		"claim_success_rate": verify_probe.get("claim_success_rate", null),

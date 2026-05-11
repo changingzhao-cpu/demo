@@ -580,6 +580,7 @@ func run() -> Array[String]:
 		"confidence_warning": "confidence_insufficient" if old_escape_true_values.size() < 3 else "",
 		"confidence_insufficient": old_escape_true_values.size() < 3
 	}
+	var confidence_score := clampf(float(old_escape_true_values.size()) / maxf(1.0, float(fitted_thresholds.get("fitted_from_sample_count", 0))), 0.0, 1.0)
 	var long_running_stability := {
 		"stability_window_seconds": 20.0,
 		"late_commit_deviation_drift": float(latest_probe.get("late_commit_deviation", 0.0)),
@@ -607,6 +608,21 @@ func run() -> Array[String]:
 		"old_escape_true_p95_contention_values": old_escape_true_values
 	}
 	var gate_results: Dictionary = probe_contract_snapshot.get("gate_results", {})
+	var unified_snapshot := {
+		"family": "critical",
+		"takeover_ready": bool(gate_results.get("takeover_ready", false)),
+		"sample_count": int(probe_contract_snapshot.get("fitted_from_sample_count", 0)),
+		"gate_results": gate_results,
+		"blockers": gate_results.get("takeover_blockers", []),
+		"support_counts": {
+			"old_escape_true_count": int(probe_contract_snapshot.get("old_escape_true_count", 0))
+		},
+		"confidence_score": confidence_score,
+		"thresholds": {
+			"warning_threshold_value": float(probe_contract_snapshot.get("warning_threshold_value", 0.0)),
+			"error_threshold_value": float(probe_contract_snapshot.get("error_threshold_value", 0.0))
+		}
+	}
 	var scatter_plot := {
 		"svg_artifact": "scatter",
 		"x_axis": "p95_contention",
@@ -622,6 +638,23 @@ func run() -> Array[String]:
 		"outlier_count": 0,
 		"outlier_samples": []
 	}
+	var payload := {
+		"sampling_plan": sampling_plan,
+		"fingerprint_zone_summary": fingerprint_zone_summary,
+		"threshold_formula": threshold_formula,
+		"fitted_thresholds": fitted_thresholds,
+		"probe_contract_snapshot": probe_contract_snapshot,
+		"unified_snapshot": unified_snapshot,
+		"long_running_stability": long_running_stability,
+		"scatter_plot": scatter_plot,
+		"critical_sampling_result_contract": critical_sampling_result_contract,
+		"outliers": outliers,
+		"samples": family_samples
+	}
+	var unified_json_file := FileAccess.open("user://critical_sampling.json", FileAccess.WRITE)
+	if unified_json_file != null:
+		unified_json_file.store_string(JSON.stringify(payload, "\t"))
+		unified_json_file.close()
 	push_warning("contention_shadow_hit=%s" % JSON.stringify(shadow_warning))
 	_assert_true(focused_escapes.is_empty(), "v3 runtime probe fixture should eliminate repeated ATTACK rebind escape samples", failures)
 	return failures

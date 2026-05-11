@@ -10,7 +10,7 @@ func run() -> Array[String]:
 	var medium_source := FileAccess.get_file_as_string(MEDIUM_PATH)
 	var oscillation_source := FileAccess.get_file_as_string(OSCILLATION_PATH)
 	_assert_true(static_source.contains('"sample_count": 10'), "comfort family should execute 10 runs", failures)
-	_assert_true(medium_source.contains('"sample_count": 20'), "warning family should execute 20 runs", failures)
+	_assert_true(medium_source.contains('"sample_count": 50'), "warning family should execute 50 runs", failures)
 	_assert_true(oscillation_source.contains('"sample_count": 20'), "critical family should execute 20 runs", failures)
 	_assert_true(static_source.contains('"artifact_format": "csv"') and static_source.contains('"artifact_format_json": "json"'), "comfort family should persist csv/json artifacts", failures)
 	_assert_true(oscillation_source.contains('"svg_artifact": "scatter"'), "critical family should persist svg scatter artifact", failures)

@@ -1,5 +1,27 @@
 extends SceneTree
 
+const WARNING_ARTIFACT_PATH := "user://warning_sampling.json"
+const CRITICAL_ARTIFACT_PATH := "user://critical_sampling.json"
+
+func _read_unified_snapshot_summary(path: String) -> Dictionary:
+	var text := FileAccess.get_file_as_string(path)
+	if text == "":
+		return {}
+	var json := JSON.new()
+	if json.parse(text) != OK:
+		return {}
+	var payload: Dictionary = json.data
+	var unified_snapshot: Dictionary = payload.get("unified_snapshot", {})
+	return {
+		"family": str(unified_snapshot.get("family", "")),
+		"takeover_ready": bool(unified_snapshot.get("takeover_ready", false)),
+		"sample_count": int(unified_snapshot.get("sample_count", 0)),
+		"confidence_score": float(unified_snapshot.get("confidence_score", -1.0)),
+		"thresholds": unified_snapshot.get("thresholds", {}),
+		"support_counts": unified_snapshot.get("support_counts", {}),
+		"blockers": unified_snapshot.get("blockers", [])
+	}
+
 func _initialize() -> void:
 	var scene: PackedScene = load("res://scenes/battle/battle_scene.tscn")
 	if scene == null:
@@ -51,6 +73,16 @@ func _initialize() -> void:
 	]
 	var contract: Dictionary = controller.call("debug_get_authoritative_battle_contract") if controller.has_method("debug_get_authoritative_battle_contract") else {}
 	var tick_report: Dictionary = controller.call("get_last_tick_report") if controller.has_method("get_last_tick_report") else {}
+	var warning_unified_snapshot := _read_unified_snapshot_summary(WARNING_ARTIFACT_PATH)
+	var critical_unified_snapshot := _read_unified_snapshot_summary(CRITICAL_ARTIFACT_PATH)
+	if warning_unified_snapshot.is_empty():
+		printerr("missing_warning_unified_snapshot")
+		quit(1)
+		return
+	if critical_unified_snapshot.is_empty():
+		printerr("missing_critical_unified_snapshot")
+		quit(1)
+		return
 	print(JSON.stringify({
 		"runtime_snapshot": runtime_snapshot,
 		"trace_payload": trace_payload,
@@ -58,6 +90,8 @@ func _initialize() -> void:
 		"v4_probe": v4_probe,
 		"v4_probe_fingerprint": v4_probe_fingerprint,
 		"v4_probe_baseline": v4_probe_baseline,
+		"warning_unified_snapshot": warning_unified_snapshot,
+		"critical_unified_snapshot": critical_unified_snapshot,
 		"contract": contract,
 		"tick_report": tick_report
 	}))
