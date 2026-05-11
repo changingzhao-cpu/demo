@@ -38,8 +38,11 @@ func run() -> Array[String]:
 	_assert_true(float(orbit.get("claim_success_rate", 0.0)) - float(corridor.get("claim_success_rate", 0.0)) > 0.45, "aggregation contract should keep a large claim success spread", failures)
 	_assert_true(float(corridor.get("late_commit_deviation", 0.0)) > float(funnel.get("late_commit_deviation", 0.0)) and float(funnel.get("late_commit_deviation", 0.0)) > float(orbit.get("late_commit_deviation", 0.0)), "aggregation contract should preserve late commit deviation gradient", failures)
 	_assert_true(float(corridor.get("contention_index", 0.0)) > float(funnel.get("contention_index", 0.0)) and float(funnel.get("contention_index", 0.0)) > float(orbit.get("contention_index", 0.0)), "aggregation contract should preserve contention index gradient", failures)
+	_assert_true(float(corridor.get("contention_index", 0.0)) - float(orbit.get("contention_index", 0.0)) > 8.0, "aggregation contract should keep a large contention index spread", failures)
 	_assert_true(int(corridor.get("conflict_overlap_count", 0)) > int(funnel.get("conflict_overlap_count", 0)) and int(funnel.get("conflict_overlap_count", 0)) > int(orbit.get("conflict_overlap_count", 0)), "aggregation contract should preserve overlap gradient", failures)
+	_assert_true(int(corridor.get("conflict_overlap_count", 0)) - int(orbit.get("conflict_overlap_count", 0)) >= 10, "aggregation contract should keep a large overlap spread", failures)
 	_assert_true(float(corridor.get("clumping_factor", 0.0)) > float(funnel.get("clumping_factor", 0.0)) and float(funnel.get("clumping_factor", 0.0)) > float(orbit.get("clumping_factor", 0.0)), "aggregation contract should preserve clumping gradient", failures)
+	_assert_true(float(corridor.get("clumping_factor", 0.0)) - float(orbit.get("clumping_factor", 0.0)) > 1.0, "aggregation contract should keep a large clumping spread", failures)
 	return failures
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
