@@ -1,18 +1,32 @@
 extends RefCounted
 
-const TARGET_PATH := "res://tests/battle/test_battle_runtime_probe_medium_density_filled_slots.gd"
+const ARTIFACT_PATH := "user://warning_sampling.json"
 
 func run() -> Array[String]:
 	var failures: Array[String] = []
-	var source := FileAccess.get_file_as_string(TARGET_PATH)
-	_assert_true(source.contains('scenario_summary["p95_contention_mean"] = float(scenario_summary.get("p95_contention_mean", 0.0)) / scenario_count'), "scenario summaries should normalize p95_contention_mean per scenario", failures)
-	_assert_true(source.contains('scenario_summary["arbitration_latency_mean"] = float(scenario_summary.get("arbitration_latency_mean", 0.0)) / scenario_count'), "scenario summaries should normalize arbitration_latency_mean per scenario", failures)
-	_assert_true(source.contains('scenario_summary["conflict_overlap_count_mean"] = float(scenario_summary.get("conflict_overlap_count_mean", 0.0)) / scenario_count'), "scenario summaries should normalize conflict_overlap_count_mean per scenario", failures)
-	_assert_true(source.contains('scenario_summary["clumping_factor_mean"] = float(scenario_summary.get("clumping_factor_mean", 0.0)) / scenario_count'), "scenario summaries should normalize clumping_factor_mean per scenario", failures)
-	_assert_true(source.contains('_assert_true(float(corridor_summary.get("p95_contention_mean", 0.0)) > float(funnel_summary.get("p95_contention_mean", 0.0)) and float(funnel_summary.get("p95_contention_mean", 0.0)) > float(orbit_summary.get("p95_contention_mean", 0.0)), "scenario summaries should show corridor > funnel > dynamic_orbit p95 contention"'), "scenario summaries should assert p95 contention divergence order", failures)
-	_assert_true(source.contains('_assert_true(float(orbit_summary.get("arbitration_latency_mean", 0.0)) > float(funnel_summary.get("arbitration_latency_mean", 0.0)) and float(funnel_summary.get("arbitration_latency_mean", 0.0)) > float(corridor_summary.get("arbitration_latency_mean", 0.0)), "scenario summaries should show dynamic_orbit > funnel > corridor arbitration latency"'), "scenario summaries should assert arbitration latency divergence order", failures)
-	_assert_true(source.contains('_assert_true(float(corridor_summary.get("conflict_overlap_count_mean", 0.0)) > float(funnel_summary.get("conflict_overlap_count_mean", 0.0)) and float(funnel_summary.get("conflict_overlap_count_mean", 0.0)) > float(orbit_summary.get("conflict_overlap_count_mean", 0.0)), "scenario summaries should show corridor > funnel > dynamic_orbit overlap"'), "scenario summaries should assert overlap divergence order", failures)
-	_assert_true(source.contains('_assert_true(float(corridor_summary.get("clumping_factor_mean", 0.0)) > float(funnel_summary.get("clumping_factor_mean", 0.0)) and float(funnel_summary.get("clumping_factor_mean", 0.0)) > float(orbit_summary.get("clumping_factor_mean", 0.0)), "scenario summaries should show corridor > funnel > dynamic_orbit clumping"'), "scenario summaries should assert clumping divergence order", failures)
+	var text := FileAccess.get_file_as_string(ARTIFACT_PATH)
+	_assert_true(text != "", "warning artifact should exist before scenario divergence checks", failures)
+	if text == "":
+		return failures
+	var json := JSON.new()
+	var parse_result := json.parse(text)
+	_assert_true(parse_result == OK, "warning artifact should parse as json", failures)
+	if parse_result != OK:
+		return failures
+	var payload: Dictionary = json.data
+	var scenario_summaries: Dictionary = payload.get("scenario_summaries", {})
+	var corridor: Dictionary = scenario_summaries.get("corridor", {})
+	var funnel: Dictionary = scenario_summaries.get("funnel", {})
+	var orbit: Dictionary = scenario_summaries.get("dynamic_orbit", {})
+	var p95_gap_cf := float(corridor.get("p95_contention_mean", 0.0)) - float(funnel.get("p95_contention_mean", 0.0))
+	var p95_gap_fo := float(funnel.get("p95_contention_mean", 0.0)) - float(orbit.get("p95_contention_mean", 0.0))
+	var overlap_gap_cf := float(corridor.get("conflict_overlap_count_mean", 0.0)) - float(funnel.get("conflict_overlap_count_mean", 0.0))
+	var overlap_gap_fo := float(funnel.get("conflict_overlap_count_mean", 0.0)) - float(orbit.get("conflict_overlap_count_mean", 0.0))
+	var clumping_gap_cf := float(corridor.get("clumping_factor_mean", 0.0)) - float(funnel.get("clumping_factor_mean", 0.0))
+	var clumping_gap_fo := float(funnel.get("clumping_factor_mean", 0.0)) - float(orbit.get("clumping_factor_mean", 0.0))
+	_assert_true(p95_gap_cf > p95_gap_fo * 2.0, "warning artifact should keep a stronger corridor→funnel p95 step than funnel→orbit", failures)
+	_assert_true(overlap_gap_cf > overlap_gap_fo * 2.0, "warning artifact should keep a stronger corridor→funnel overlap step than funnel→orbit", failures)
+	_assert_true(clumping_gap_cf > clumping_gap_fo * 2.0, "warning artifact should keep a stronger corridor→funnel clumping step than funnel→orbit", failures)
 	return failures
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
