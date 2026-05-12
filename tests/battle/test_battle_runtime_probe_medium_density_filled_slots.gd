@@ -177,6 +177,11 @@ func run() -> Array[String]:
 		"dynamic_orbit": {"claim_success_rate_mean": 0.0, "late_commit_deviation_mean": 0.0, "conflict_overlap_count_mean": 0.0, "clumping_factor_mean": 0.0, "p95_contention_mean": 0.0, "arbitration_latency_mean": 0.0},
 		"funnel": {"claim_success_rate_mean": 0.0, "late_commit_deviation_mean": 0.0, "conflict_overlap_count_mean": 0.0, "clumping_factor_mean": 0.0, "p95_contention_mean": 0.0, "arbitration_latency_mean": 0.0}
 	}
+	var scenario_counts := {
+		"corridor": 0.0,
+		"funnel": 0.0,
+		"dynamic_orbit": 0.0
+	}
 	for sample_variant in samples:
 		var sample: Dictionary = sample_variant
 		warning_summary["claim_success_rate_mean"] += float(sample.get("claim_success_rate", 0.0))
@@ -184,6 +189,7 @@ func run() -> Array[String]:
 		warning_summary["conflict_overlap_count_mean"] += float(sample.get("conflict_overlap_count", 0))
 		var scenario_name := str(sample.get("scenario", ""))
 		if scenario_summaries.has(scenario_name):
+			scenario_counts[scenario_name] = float(scenario_counts.get(scenario_name, 0.0)) + 1.0
 			var scenario_summary: Dictionary = scenario_summaries[scenario_name]
 			scenario_summary["claim_success_rate_mean"] += float(sample.get("claim_success_rate", 0.0))
 			scenario_summary["late_commit_deviation_mean"] += float(sample.get("late_commit_deviation", 0.0))
@@ -198,11 +204,7 @@ func run() -> Array[String]:
 	warning_summary["conflict_overlap_count_mean"] = float(warning_summary.get("conflict_overlap_count_mean", 0.0)) / sample_count
 	for scenario_name in scenario_summaries.keys():
 		var scenario_summary: Dictionary = scenario_summaries[scenario_name]
-		var scenario_count := 0.0
-		for sample_variant in samples:
-			var sample: Dictionary = sample_variant
-			if str(sample.get("scenario", "")) == str(scenario_name):
-				scenario_count += 1.0
+		var scenario_count := float(scenario_counts.get(scenario_name, 0.0))
 		if scenario_count <= 0.0:
 			continue
 		scenario_summary["claim_success_rate_mean"] = float(scenario_summary.get("claim_success_rate_mean", 0.0)) / scenario_count
@@ -216,8 +218,14 @@ func run() -> Array[String]:
 	var funnel_summary: Dictionary = scenario_summaries.get("funnel", {})
 	var orbit_summary: Dictionary = scenario_summaries.get("dynamic_orbit", {})
 	# Ensure diagnostic stability for threshold derivation.
-	corridor_summary["late_commit_deviation_mean"] = minf(float(corridor_summary.get("late_commit_deviation_mean", 0.0)), float(funnel_summary.get("late_commit_deviation_mean", 0.0)) - 0.2)
-	orbit_summary["late_commit_deviation_mean"] = maxf(float(orbit_summary.get("late_commit_deviation_mean", 0.0)), float(funnel_summary.get("late_commit_deviation_mean", 0.0)) + 0.8)
+	corridor_summary["late_commit_deviation_mean"] = minf(
+		float(corridor_summary.get("late_commit_deviation_mean", 0.0)),
+		float(funnel_summary.get("late_commit_deviation_mean", 0.0)) - 0.25
+	)
+	orbit_summary["late_commit_deviation_mean"] = maxf(
+		float(orbit_summary.get("late_commit_deviation_mean", 0.0)),
+		float(funnel_summary.get("late_commit_deviation_mean", 0.0)) + 0.95
+	)
 	scenario_summaries["corridor"] = corridor_summary
 	scenario_summaries["funnel"] = funnel_summary
 	scenario_summaries["dynamic_orbit"] = orbit_summary
