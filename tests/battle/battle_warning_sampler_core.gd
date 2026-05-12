@@ -50,10 +50,10 @@ func sample(probe: Dictionary) -> Dictionary:
 func _scenario_scale() -> Dictionary:
 	match _scenario:
 		"corridor":
-			return {"p95": 1.55, "overlap": 1.65, "clumping": 1.6, "latency": 0.85, "claim_success": 0.72}
+			return {"p95": 1.85, "overlap": 1.85, "clumping": 1.8, "latency": 0.95, "claim_success": 0.45}
 		"funnel":
-			return {"p95": 1.0, "overlap": 1.0, "clumping": 1.0, "latency": 1.0, "claim_success": 1.0}
+			return {"p95": 1.0, "overlap": 1.0, "clumping": 1.0, "latency": 1.25, "claim_success": 1.0}
 		"dynamic_orbit":
-			return {"p95": 0.55, "overlap": 0.45, "clumping": 0.55, "latency": 1.4, "claim_success": 1.28}
+			return {"p95": 0.35, "overlap": 0.28, "clumping": 0.4, "latency": 2.1, "claim_success": 1.9}
 		_:
 			return {"p95": 1.0, "overlap": 1.0, "clumping": 1.0, "latency": 1.0, "claim_success": 1.0}
