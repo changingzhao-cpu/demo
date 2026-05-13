@@ -69,6 +69,8 @@ func run() -> Array[String]:
 	_assert_true(bool(unified_snapshot.get("takeover_ready", false)) == bool(unified_gate_results.get("takeover_ready", true)), "critical unified snapshot should mirror nested gate takeover readiness", failures)
 	_assert_true(int(unified_snapshot.get("sample_count", -1)) == int(fitted_thresholds.get("fitted_from_sample_count", -2)), "critical unified snapshot should mirror fitted sample count", failures)
 	_assert_true(int(critical_support_counts.get("old_escape_true_count", -1)) == int(fitted_thresholds.get("old_escape_true_count", -2)), "critical unified snapshot should mirror fitted support count", failures)
+	_assert_true(int(critical_support_counts.get("old_escape_true_count", -1)) == int(legacy_probe_snapshot.get("old_escape_true_count", -2)), "critical unified support count should mirror probe contract snapshot old_escape count", failures)
+	_assert_true(int(unified_snapshot.get("sample_count", -1)) == int(legacy_probe_snapshot.get("fitted_from_sample_count", -2)), "critical unified sample count should mirror probe contract snapshot sample count", failures)
 	_assert_true(Array(unified_snapshot.get("blockers", [])).size() == Array(unified_gate_results.get("takeover_blockers", [])).size(), "critical unified blockers should mirror unified gate takeover blockers", failures)
 	_assert_true(int(unified_gate_results.get("sample_count", -1)) == int(unified_snapshot.get("sample_count", -2)), "critical unified gate sample_count should mirror unified sample count", failures)
 	_assert_true(str(fitted_thresholds.get("warning_threshold_source", "")) == "old_escape_hit==true/p95_contention", "sampling should persist warning threshold source", failures)

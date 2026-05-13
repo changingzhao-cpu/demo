@@ -16,6 +16,8 @@ func run() -> Array[String]:
 	if parse_result != OK:
 		return failures
 	var payload: Dictionary = json.data
+	var legacy_probe_snapshot: Dictionary = payload.get("probe_contract_snapshot", {})
+	var legacy_probe_gate_results: Dictionary = legacy_probe_snapshot.get("gate_results", {})
 	var unified_snapshot: Dictionary = payload.get("unified_snapshot", {})
 	var gate_results: Dictionary = unified_snapshot.get("gate_results", {})
 	_assert_true(int(unified_snapshot.get("sample_count", -1)) == 20, "oscillation sampling should anchor 20-run critical family scale", failures)
@@ -23,6 +25,9 @@ func run() -> Array[String]:
 	_assert_true(gate_results.has("critical_hit_rate"), "oscillation sample should persist critical hit rate gate", failures)
 	_assert_true(static_source.contains('"fast_false_positive_rate"'), "static sample should persist fast false positive gate", failures)
 	_assert_true(bool(unified_snapshot.get("takeover_ready", false)) == bool(gate_results.get("takeover_ready", false)), "critical unified snapshot should persist takeover readiness decision", failures)
+	_assert_true(bool(unified_snapshot.get("takeover_ready", false)) == bool(legacy_probe_gate_results.get("takeover_ready", false)), "critical unified takeover flag should mirror snapshot gate takeover flag", failures)
+	_assert_true(Array(unified_snapshot.get("blockers", [])).size() == Array(legacy_probe_gate_results.get("takeover_blockers", [])).size(), "critical unified blockers should mirror snapshot gate blockers", failures)
+	_assert_true(bool(gate_results.get("gate_c_no_false_positive_records", false)) == bool(legacy_probe_gate_results.get("gate_c_no_false_positive_records", false)), "critical unified gate results should mirror snapshot gate results", failures)
 	_assert_true(int(unified_snapshot.get("support_counts", {}).get("old_escape_true_count", -1)) == int(payload.get("fitted_thresholds", {}).get("old_escape_true_count", -2)), "critical unified snapshot should mirror old escape true count", failures)
 	_assert_true(gate_results.has("gate_c_no_false_positive_records"), "oscillation sample should persist gate C no-false-positive record anchor", failures)
 	_assert_true(payload.get("fitted_thresholds", {}).has("warning_threshold_value"), "oscillation sample should persist warning threshold value anchor", failures)
