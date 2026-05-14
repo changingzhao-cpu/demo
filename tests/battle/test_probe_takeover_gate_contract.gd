@@ -37,6 +37,9 @@ func run() -> Array[String]:
 	_assert_true(gate_results.has("old_escape_hit_records"), "sampling should persist old escape hit records for gate A", failures)
 	_assert_true(static_source.contains('"false_positive_records"'), "sampling should persist false positive records for gate B", failures)
 	_assert_true(unified_snapshot.has("blockers"), "critical unified snapshot should persist blocker list", failures)
+	_assert_true(gate_results.has("takeover_ready"), "critical unified gate results should expose takeover_ready for fast-track exit", failures)
+	_assert_true(typeof(unified_snapshot.get("takeover_ready", null)) == TYPE_BOOL, "critical unified snapshot should expose bool takeover_ready for fast-track exit", failures)
+	_assert_true(Array(unified_snapshot.get("blockers", [])).size() == Array(gate_results.get("takeover_blockers", [])).size(), "critical unified blockers should still mirror gate blockers after fast-track exit hardening", failures)
 	return failures
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:

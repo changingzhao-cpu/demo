@@ -559,6 +559,8 @@ func run() -> Array[String]:
 	}
 	var warning_threshold_value := _compute_warning_threshold(family_samples)
 	var error_threshold_value := _compute_error_threshold_weighted(family_samples)
+	if error_threshold_value <= warning_threshold_value:
+		error_threshold_value = warning_threshold_value + 1.0
 	var old_escape_true_values: Array = []
 	var old_escape_hit_records: Array = []
 	var false_positive_records: Array = []
