@@ -7,15 +7,53 @@ func run() -> Array[String]:
 		"backend": "v4"
 	}
 	var trace_payload := {
-		"backend": "v4",
-		"history_limit": 32,
-		"samples": [],
-		"movement_anomalies": [],
 		"probe": {
-			"claim_success_rate": 0.2,
-			"contention_index": 0.48,
-			"late_commit_deviation": 6.0
+			"backend": "v4",
+			"history_limit": 32,
+			"samples": [],
+			"movement_anomalies": [],
+			"probe": {
+				"claim_success_rate": 0.2,
+				"contention_index": 0.48,
+				"late_commit_deviation": 6.0
+			}
+		},
+		"warning_unified_snapshot": {
+			"family": "warning",
+			"confidence_score": 0.75,
+			"thresholds": {"warning_threshold_value": 1.0, "error_threshold_value": 2.0},
+			"support_counts": {"late_commit_true_count": 3},
+			"blockers": [],
+			"gate_results": {"takeover_ready": true}
+		},
+		"critical_unified_snapshot": {
+			"family": "critical",
+			"confidence_score": 0.8,
+			"thresholds": {"warning_threshold_value": 1.0, "error_threshold_value": 2.0},
+			"support_counts": {"old_escape_true_count": 4},
+			"blockers": [],
+			"gate_results": {"takeover_ready": true}
 		}
 	}
-	var core := TraceSamplerCore.new()
-	return core.validate(runtime_snapshot, trace_payload)
+	var failures := TraceSamplerCore.new().validate(runtime_snapshot, trace_payload.get("probe", {}))
+	_assert_trace_true(trace_payload.has("warning_unified_snapshot"), "runtime trace payload should expose warning unified snapshot", failures)
+	_assert_trace_true(trace_payload.has("critical_unified_snapshot"), "runtime trace payload should expose critical unified snapshot", failures)
+	var warning_unified_snapshot: Dictionary = trace_payload.get("warning_unified_snapshot", {})
+	var critical_unified_snapshot: Dictionary = trace_payload.get("critical_unified_snapshot", {})
+	_assert_trace_true(str(warning_unified_snapshot.get("family", "")) == "warning", "runtime trace payload should keep warning unified snapshot family", failures)
+	_assert_trace_true(str(critical_unified_snapshot.get("family", "")) == "critical", "runtime trace payload should keep critical unified snapshot family", failures)
+	_assert_trace_true(warning_unified_snapshot.has("confidence_score"), "runtime trace payload should expose warning unified snapshot confidence score", failures)
+	_assert_trace_true(critical_unified_snapshot.has("confidence_score"), "runtime trace payload should expose critical unified snapshot confidence score", failures)
+	_assert_trace_true(warning_unified_snapshot.has("thresholds"), "runtime trace payload should expose warning unified snapshot thresholds", failures)
+	_assert_trace_true(critical_unified_snapshot.has("thresholds"), "runtime trace payload should expose critical unified snapshot thresholds", failures)
+	_assert_trace_true(warning_unified_snapshot.has("support_counts"), "runtime trace payload should expose warning unified snapshot support counts", failures)
+	_assert_trace_true(critical_unified_snapshot.has("support_counts"), "runtime trace payload should expose critical unified snapshot support counts", failures)
+	_assert_trace_true(warning_unified_snapshot.has("blockers"), "runtime trace payload should expose warning unified snapshot blockers", failures)
+	_assert_trace_true(critical_unified_snapshot.has("blockers"), "runtime trace payload should expose critical unified snapshot blockers", failures)
+	_assert_trace_true(warning_unified_snapshot.has("gate_results"), "runtime trace payload should expose warning unified snapshot gate results", failures)
+	_assert_trace_true(critical_unified_snapshot.has("gate_results"), "runtime trace payload should expose critical unified snapshot gate results", failures)
+	return failures
+
+func _assert_trace_true(value: bool, message: String, failures: Array[String]) -> void:
+	if not value:
+		failures.append(message)

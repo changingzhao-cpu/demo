@@ -218,11 +218,37 @@ func _update_runtime_anomaly_trace_after_tick() -> void:
 func _get_debug_runtime_anomaly_trace_payload() -> Dictionary:
 	return _build_runtime_trace_probe_dump()
 
+func _read_json_file(path: String) -> Dictionary:
+	var text := FileAccess.get_file_as_string(path)
+	if text == "":
+		return {}
+	var json := JSON.new()
+	if json.parse(text) != OK:
+		return {}
+	return json.data if json.data is Dictionary else {}
+
+func _read_warning_unified_snapshot_for_debug() -> Dictionary:
+	return _read_json_file("user://warning_sampling.json").get("unified_snapshot", {})
+
+func _read_critical_unified_snapshot_for_debug() -> Dictionary:
+	return _read_json_file("user://critical_sampling.json").get("unified_snapshot", {})
+
+func _build_runtime_trace_payload() -> Dictionary:
+	return _build_runtime_trace_probe_dump()
+
 func debug_get_runtime_trace_payload() -> Dictionary:
-	return _get_debug_runtime_anomaly_trace_payload()
+	var probe_payload := _build_runtime_trace_payload()
+	var nested_probe: Dictionary = probe_payload.get("probe", {})
+	var output := probe_payload.duplicate(true)
+	output["probe"] = nested_probe.duplicate(true)
+	output["warning_unified_snapshot"] = _read_warning_unified_snapshot_for_debug()
+	output["critical_unified_snapshot"] = _read_critical_unified_snapshot_for_debug()
+	for key in nested_probe.keys():
+		output[key] = nested_probe[key]
+	return output
 
 func get_debug_runtime_trace_payload() -> Dictionary:
-	return _get_debug_runtime_anomaly_trace_payload()
+	return debug_get_runtime_trace_payload()
 
 func _clear_runtime_trace_buffers() -> void:
 	_clear_runtime_anomaly_trace()

@@ -18,6 +18,7 @@ func run() -> Array[String]:
 	_test_initial_layout_syncs_bound_entities_26_and_40_before_combat_starts(failures)
 	_test_initial_binding_keeps_slot_entity_ids_stable_across_instances(failures)
 	_test_runtime_probe_exports_battle_report_timeline(failures)
+	_test_controller_runtime_trace_payload_exposes_unified_snapshots(failures)
 	_test_battle_scene_can_run_with_v2_simulation_backend(failures)
 	return failures
 
@@ -285,11 +286,39 @@ func _test_runtime_probe_exports_battle_report_timeline(failures: Array[String])
 		_assert_true(str(critical_unified_snapshot.get("family", "")) == "critical", "runtime probe output should keep critical unified snapshot family", failures)
 		_assert_true(warning_unified_snapshot.has("confidence_score"), "runtime probe output should keep warning unified snapshot confidence score", failures)
 		_assert_true(critical_unified_snapshot.has("confidence_score"), "runtime probe output should keep critical unified snapshot confidence score", failures)
-	var timeline: Array = payload.get("battle_report_timeline", [])
-	_assert_true(timeline is Array, "battle_report_timeline should remain an Array in runtime probe output", failures)
-	if timeline.is_empty():
+		_assert_true(warning_unified_snapshot.has("thresholds"), "runtime probe output should keep warning unified snapshot thresholds", failures)
+		_assert_true(critical_unified_snapshot.has("thresholds"), "runtime probe output should keep critical unified snapshot thresholds", failures)
+		_assert_true(warning_unified_snapshot.has("support_counts"), "runtime probe output should keep warning unified snapshot support counts", failures)
+		_assert_true(critical_unified_snapshot.has("support_counts"), "runtime probe output should keep critical unified snapshot support counts", failures)
+		_assert_true(warning_unified_snapshot.has("blockers"), "runtime probe output should keep warning unified snapshot blockers", failures)
+		_assert_true(critical_unified_snapshot.has("blockers"), "runtime probe output should keep critical unified snapshot blockers", failures)
+		_assert_true(warning_unified_snapshot.has("gate_results"), "runtime probe output should keep warning unified snapshot gate results", failures)
+		_assert_true(critical_unified_snapshot.has("gate_results"), "runtime probe output should keep critical unified snapshot gate results", failures)
+
+func _test_controller_runtime_trace_payload_exposes_unified_snapshots(failures: Array[String]) -> void:
+	var battle_scene = _load_battle_scene()
+	_assert_true(battle_scene != null, "battle scene should load before runtime trace payload contract checks", failures)
+	if battle_scene == null:
 		return
-	_assert_true(str(timeline[0].get("event_type", "")) != "", "battle_report_timeline entries should include event_type when present", failures)
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = battle_scene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	_assert_true(controller != null, "battle scene should expose BattleController for runtime trace payload contract checks", failures)
+	if controller != null:
+		var payload: Dictionary = controller.call("debug_get_runtime_trace_payload")
+		_assert_true(payload.has("probe"), "battle scene controller runtime trace payload should expose probe payload", failures)
+		_assert_true(payload.has("warning_unified_snapshot"), "battle scene controller runtime trace payload should expose warning unified snapshot", failures)
+		_assert_true(payload.has("critical_unified_snapshot"), "battle scene controller runtime trace payload should expose critical unified snapshot", failures)
+		var warning_unified_snapshot: Dictionary = payload.get("warning_unified_snapshot", {})
+		var critical_unified_snapshot: Dictionary = payload.get("critical_unified_snapshot", {})
+		_assert_true(str(warning_unified_snapshot.get("family", "")) == "warning", "battle scene controller runtime trace payload should keep warning unified snapshot family", failures)
+		_assert_true(str(critical_unified_snapshot.get("family", "")) == "critical", "battle scene controller runtime trace payload should keep critical unified snapshot family", failures)
+		_assert_true(warning_unified_snapshot.has("confidence_score"), "battle scene controller runtime trace payload should keep warning unified snapshot confidence score", failures)
+		_assert_true(critical_unified_snapshot.has("confidence_score"), "battle scene controller runtime trace payload should keep critical unified snapshot confidence score", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
 
 func _test_runtime_keeps_units_visible_after_initial_layout(failures: Array[String]) -> void:
 	var battle_scene = _load_battle_scene()
