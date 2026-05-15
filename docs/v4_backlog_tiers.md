@@ -4,8 +4,8 @@
 
 | Item | Why it stays out of current slice |
 |---|---|
-| 基于真实业务数据建立 threshold baseline | 静默挂载已完成，下一步应进入真实数据基线拟合 |
-| 让 `takeover_ready` 或相关 gate 反馈业务层 | 属于下一阶段闭环激活，不在本轮静默挂载内 |
+| 用 V4 数据解释真实业务中的已知毛刺/拥挤点 | Baseline 已建立，下一步应进入真实问题解释 |
+| 降级式 gate feedback | 当 V4 报 Warning/Critical 时，优先做特效削减、AI 精度放宽、负载节流，而不是粗暴阻断战斗逻辑 |
 
 ## P2
 

@@ -22,6 +22,7 @@ func run() -> Array[String]:
 	var gate_results: Dictionary = unified_snapshot.get("gate_results", {})
 	_assert_true(payload.has("anomaly_scan"), "critical artifact should expose anomaly_scan for perturbation hardening", failures)
 	_assert_true(payload.has("perturbation_summary"), "critical artifact should expose perturbation_summary for perturbation hardening", failures)
+	_assert_true(payload.has("perturbation_summary"), "real business baseline should still preserve perturbation_summary for later interpretation", failures)
 	_assert_true(gate_results.has("takeover_ready"), "critical gate results should still expose takeover_ready during perturbation hardening", failures)
 	_assert_true(typeof(payload.get("anomaly_scan", null)) == TYPE_DICTIONARY, "critical anomaly_scan should remain a dictionary", failures)
 	_assert_true(typeof(payload.get("perturbation_summary", null)) == TYPE_DICTIONARY, "critical perturbation_summary should remain a dictionary", failures)

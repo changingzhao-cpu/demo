@@ -318,6 +318,12 @@ func _test_controller_runtime_trace_payload_exposes_unified_snapshots(failures: 
 		_assert_true(str(critical_unified_snapshot.get("family", "")) == "critical", "battle scene controller runtime trace payload should keep critical unified snapshot family", failures)
 		_assert_true(warning_unified_snapshot.has("confidence_score"), "battle scene controller runtime trace payload should keep warning unified snapshot confidence score", failures)
 		_assert_true(critical_unified_snapshot.has("confidence_score"), "battle scene controller runtime trace payload should keep critical unified snapshot confidence score", failures)
+		var events: Array = payload.get("business_probe_events", [])
+		_assert_true(events.size() > 0, "battle scene controller runtime trace payload should expose business probe events", failures)
+		var first_event: Dictionary = events[0] if not events.is_empty() else {}
+		_assert_true(first_event.has("wave"), "battle scene controller runtime trace payload should expose wave in business probe event", failures)
+		_assert_true(first_event.has("live_count"), "battle scene controller runtime trace payload should expose live_count in business probe event", failures)
+		_assert_true(first_event.has("combat_event_count"), "battle scene controller runtime trace payload should expose combat_event_count in business probe event", failures)
 		var critical_gate_results: Dictionary = critical_unified_snapshot.get("gate_results", {})
 		_assert_true(critical_gate_results.has("attack_rebind_escape_count"), "battle scene controller runtime trace payload should expose perturbation escape count", failures)
 		_assert_true(critical_gate_results.has("attack_rebind_recontact_count"), "battle scene controller runtime trace payload should expose perturbation recontact count", failures)

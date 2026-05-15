@@ -39,9 +39,17 @@
 | Runtime trace payload | warning/critical unified snapshots 持续可消费 |
 | Full runner | `All 163 test suite(s) passed.` |
 
+## Real Business Baseline
+- See `docs/v4_real_business_baseline.md`
+- Silent business events now expose wave/live_count/combat_event_count for baseline establishment
+
 ## Next Step
 - Baseline establishment on real business traces
 - Gate activation back into business battle logic
+
+## Gate Feedback Principle
+- V4 should first behave as a silent observer.
+- Feedback must be degradative before it becomes authoritative.
 
 ## Known Tail
 

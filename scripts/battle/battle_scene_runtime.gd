@@ -64,9 +64,14 @@ func _process(delta: float) -> void:
 	if _controller.has_method("tick_combat"):
 		_controller.call("tick_combat", delta)
 	if _controller.has_method("emit_v4_probe_event"):
+		var report: Dictionary = _controller.call("get_last_tick_report") if _controller.has_method("get_last_tick_report") else {}
+		var current_wave: Dictionary = _controller.call("get_current_wave") if _controller.has_method("get_current_wave") else {}
 		_controller.call("emit_v4_probe_event", {
 			"event_type": "battle_scene_runtime_tick",
-			"state": _controller.call("get_state")
+			"state": _controller.call("get_state"),
+			"wave": int(current_wave.get("wave", -1)),
+			"live_count": int(report.get("live_count", 0)),
+			"combat_event_count": int(report.get("combat_event_count", 0))
 		})
 	var state := str(_controller.call("get_state"))
 	if state == "reward":

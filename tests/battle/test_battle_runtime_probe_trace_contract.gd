@@ -19,7 +19,7 @@ func run() -> Array[String]:
 			}
 		},
 		"business_probe_events": [
-			{"event_type": "battle_scene_runtime_tick", "state": "combat"}
+			{"event_type": "battle_scene_runtime_tick", "state": "combat", "wave": 1, "live_count": 36, "combat_event_count": 4}
 		],
 		"warning_unified_snapshot": {
 			"family": "warning",
@@ -45,6 +45,14 @@ func run() -> Array[String]:
 	}
 	var failures := TraceSamplerCore.new().validate(runtime_snapshot, trace_payload.get("probe", {}))
 	_assert_trace_true(trace_payload.has("business_probe_events"), "runtime trace payload should expose business probe events", failures)
+	var business_probe_events: Array = trace_payload.get("business_probe_events", [])
+	_assert_trace_true(business_probe_events.size() > 0, "runtime trace payload should expose at least one business probe event", failures)
+	var first_event: Dictionary = business_probe_events[0] if not business_probe_events.is_empty() else {}
+	_assert_trace_true(first_event.has("event_type"), "business probe event should expose event_type", failures)
+	_assert_trace_true(first_event.has("state"), "business probe event should expose state", failures)
+	_assert_trace_true(first_event.has("wave"), "business probe event should expose wave", failures)
+	_assert_trace_true(first_event.has("live_count"), "business probe event should expose live_count", failures)
+	_assert_trace_true(first_event.has("combat_event_count"), "business probe event should expose combat_event_count", failures)
 	_assert_trace_true(trace_payload.has("warning_unified_snapshot"), "runtime trace payload should expose warning unified snapshot", failures)
 	_assert_trace_true(trace_payload.has("critical_unified_snapshot"), "runtime trace payload should expose critical unified snapshot", failures)
 	var warning_unified_snapshot: Dictionary = trace_payload.get("warning_unified_snapshot", {})
