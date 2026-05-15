@@ -8,6 +8,7 @@
 | Critical truth-hardening Phase 1 | done | fitted thresholds / payload mirrors stabilized |
 | Fast-track exit | done | runtime trace unified snapshots exposed |
 | Critical runtime perturbation hardening | done | anomaly_scan and perturbation_summary mirrored into critical gate results |
+| Project V4 Integration / Silent Integration | done | business path can emit V4 probe events without changing battle logic |
 
 ## Artifact Contract Map
 
@@ -37,6 +38,10 @@
 | Critical artifact | perturbation mirrors / takeover gate / payload contracts 保持绿 |
 | Runtime trace payload | warning/critical unified snapshots 持续可消费 |
 | Full runner | `All 163 test suite(s) passed.` |
+
+## Next Step
+- Baseline establishment on real business traces
+- Gate activation back into business battle logic
 
 ## Known Tail
 

@@ -37,6 +37,8 @@ func run() -> Array[String]:
 	_assert_true(not fitted_thresholds.is_empty(), "critical payload should persist fitted thresholds block", failures)
 	_assert_true(not unified_snapshot.is_empty(), "critical unified snapshot should remain populated", failures)
 	_assert_true(str(unified_snapshot.get("family", "")) == "critical", "critical unified snapshot should identify critical family", failures)
+	_assert_true(str(unified_snapshot.get("family", "")) == "critical", "business mounting should not change critical unified family", failures)
+	_assert_true(unified_snapshot.has("gate_results"), "business mounting should not remove unified gate_results", failures)
 	_assert_true(unified_snapshot.has("thresholds"), "critical unified snapshot should expose thresholds field", failures)
 	_assert_true(unified_snapshot.has("support_counts"), "critical unified snapshot should expose support_counts field", failures)
 	_assert_true(unified_snapshot.has("blockers"), "critical unified snapshot should expose blockers field", failures)

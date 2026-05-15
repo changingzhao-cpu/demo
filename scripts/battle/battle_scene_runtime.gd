@@ -63,6 +63,11 @@ func _process(delta: float) -> void:
 		return
 	if _controller.has_method("tick_combat"):
 		_controller.call("tick_combat", delta)
+	if _controller.has_method("emit_v4_probe_event"):
+		_controller.call("emit_v4_probe_event", {
+			"event_type": "battle_scene_runtime_tick",
+			"state": _controller.call("get_state")
+		})
 	var state := str(_controller.call("get_state"))
 	if state == "reward":
 		if not _reward_panel.visible and _reward_panel.has_method("show_rewards"):

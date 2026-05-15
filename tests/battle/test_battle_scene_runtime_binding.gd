@@ -309,6 +309,7 @@ func _test_controller_runtime_trace_payload_exposes_unified_snapshots(failures: 
 	if controller != null:
 		var payload: Dictionary = controller.call("debug_get_runtime_trace_payload")
 		_assert_true(payload.has("probe"), "battle scene controller runtime trace payload should expose probe payload", failures)
+		_assert_true(payload.has("business_probe_events"), "battle scene controller runtime trace payload should expose business_probe_events", failures)
 		_assert_true(payload.has("warning_unified_snapshot"), "battle scene controller runtime trace payload should expose warning unified snapshot", failures)
 		_assert_true(payload.has("critical_unified_snapshot"), "battle scene controller runtime trace payload should expose critical unified snapshot", failures)
 		var warning_unified_snapshot: Dictionary = payload.get("warning_unified_snapshot", {})

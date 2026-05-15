@@ -88,6 +88,7 @@ var _simulation_backend: String = "v1"
 var _runtime_anomaly_trace_history_limit := 24
 var _runtime_anomaly_trace_samples: Array[Dictionary] = []
 var _runtime_movement_anomalies: Array[Dictionary] = []
+var _v4_business_probe_events: Array[Dictionary] = []
 
 func _get_runtime_backend_name() -> String:
 	if _simulation != null:
@@ -233,6 +234,11 @@ func _read_warning_unified_snapshot_for_debug() -> Dictionary:
 func _read_critical_unified_snapshot_for_debug() -> Dictionary:
 	return _read_json_file("user://critical_sampling.json").get("unified_snapshot", {})
 
+func emit_v4_probe_event(event: Dictionary) -> void:
+	_v4_business_probe_events.append(event.duplicate(true))
+	while _v4_business_probe_events.size() > 32:
+		_v4_business_probe_events.pop_front()
+
 func _build_runtime_trace_payload() -> Dictionary:
 	return _build_runtime_trace_probe_dump()
 
@@ -241,6 +247,7 @@ func debug_get_runtime_trace_payload() -> Dictionary:
 	var nested_probe: Dictionary = probe_payload.get("probe", {})
 	var output := probe_payload.duplicate(true)
 	output["probe"] = nested_probe.duplicate(true)
+	output["business_probe_events"] = _v4_business_probe_events.duplicate(true)
 	output["warning_unified_snapshot"] = _read_warning_unified_snapshot_for_debug()
 	output["critical_unified_snapshot"] = _read_critical_unified_snapshot_for_debug()
 	for key in nested_probe.keys():

@@ -18,6 +18,9 @@ func run() -> Array[String]:
 				"late_commit_deviation": 6.0
 			}
 		},
+		"business_probe_events": [
+			{"event_type": "battle_scene_runtime_tick", "state": "combat"}
+		],
 		"warning_unified_snapshot": {
 			"family": "warning",
 			"confidence_score": 0.75,
@@ -41,6 +44,7 @@ func run() -> Array[String]:
 		}
 	}
 	var failures := TraceSamplerCore.new().validate(runtime_snapshot, trace_payload.get("probe", {}))
+	_assert_trace_true(trace_payload.has("business_probe_events"), "runtime trace payload should expose business probe events", failures)
 	_assert_trace_true(trace_payload.has("warning_unified_snapshot"), "runtime trace payload should expose warning unified snapshot", failures)
 	_assert_trace_true(trace_payload.has("critical_unified_snapshot"), "runtime trace payload should expose critical unified snapshot", failures)
 	var warning_unified_snapshot: Dictionary = trace_payload.get("warning_unified_snapshot", {})

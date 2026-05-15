@@ -2,9 +2,10 @@
 
 ## P1
 
-| Item | Why it stays out of closeout |
+| Item | Why it stays out of current slice |
 |---|---|
-| V4 接入真实业务战斗逻辑 | 下一阶段主线，但不属于本轮收口基础设施 |
+| 基于真实业务数据建立 threshold baseline | 静默挂载已完成，下一步应进入真实数据基线拟合 |
+| 让 `takeover_ready` 或相关 gate 反馈业务层 | 属于下一阶段闭环激活，不在本轮静默挂载内 |
 
 ## P2
 
