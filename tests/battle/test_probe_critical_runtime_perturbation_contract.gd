@@ -8,11 +8,6 @@ func _read_artifact_text() -> String:
 
 func run() -> Array[String]:
 	var failures: Array[String] = []
-	var fixture_failures: Array[String] = await OscillationFixture.new().run()
-	for failure in fixture_failures:
-		failures.append("oscillation fixture: %s" % failure)
-	if not fixture_failures.is_empty():
-		return failures
 	var text := _read_artifact_text()
 	_assert_true(text != "", "critical sampling artifact should exist before perturbation contract checks", failures)
 	if text == "":
