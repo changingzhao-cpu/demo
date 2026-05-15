@@ -32,7 +32,12 @@ func run() -> Array[String]:
 			"thresholds": {"warning_threshold_value": 1.0, "error_threshold_value": 2.0},
 			"support_counts": {"old_escape_true_count": 4},
 			"blockers": [],
-			"gate_results": {"takeover_ready": true}
+			"gate_results": {
+				"takeover_ready": true,
+				"attack_rebind_escape_count": 0,
+				"attack_rebind_recontact_count": 0,
+				"attack_midband_drift_count": 0
+			}
 		}
 	}
 	var failures := TraceSamplerCore.new().validate(runtime_snapshot, trace_payload.get("probe", {}))
@@ -52,6 +57,10 @@ func run() -> Array[String]:
 	_assert_trace_true(critical_unified_snapshot.has("blockers"), "runtime trace payload should expose critical unified snapshot blockers", failures)
 	_assert_trace_true(warning_unified_snapshot.has("gate_results"), "runtime trace payload should expose warning unified snapshot gate results", failures)
 	_assert_trace_true(critical_unified_snapshot.has("gate_results"), "runtime trace payload should expose critical unified snapshot gate results", failures)
+	var critical_gate_results: Dictionary = critical_unified_snapshot.get("gate_results", {})
+	_assert_trace_true(critical_gate_results.has("attack_rebind_escape_count"), "runtime trace payload should expose critical perturbation escape count through unified snapshot", failures)
+	_assert_trace_true(critical_gate_results.has("attack_rebind_recontact_count"), "runtime trace payload should expose critical perturbation recontact count through unified snapshot", failures)
+	_assert_trace_true(critical_gate_results.has("attack_midband_drift_count"), "runtime trace payload should expose critical perturbation midband drift count through unified snapshot", failures)
 	return failures
 
 func _assert_trace_true(value: bool, message: String, failures: Array[String]) -> void:

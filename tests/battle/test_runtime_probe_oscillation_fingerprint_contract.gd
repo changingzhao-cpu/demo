@@ -31,6 +31,9 @@ func run() -> Array[String]:
 	_assert_true(source.contains('"fingerprint": v4_probe_fingerprint'), "oscillation fixture should map baseline snapshot fingerprint to v4_probe_fingerprint", failures)
 	_assert_true(source.contains('"baseline_source": v4_probe_fingerprint'), "oscillation fixture should map baseline snapshot source to v4_probe_fingerprint", failures)
 	_assert_true(source.contains('"capture_context"'), "oscillation fixture should persist baseline snapshot capture context", failures)
+	_assert_true(source.contains('"attack_rebind_escape_count"'), "oscillation fingerprint should expose attack_rebind_escape_count", failures)
+	_assert_true(source.contains('"attack_rebind_recontact_count"'), "oscillation fingerprint should expose attack_rebind_recontact_count", failures)
+	_assert_true(source.contains('"attack_midband_drift_count"'), "oscillation fingerprint should expose attack_midband_drift_count", failures)
 	return failures
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:

@@ -102,6 +102,17 @@ func _compute_gate_c_no_false_positive_records(family_samples: Array) -> bool:
 			return false
 	return true
 
+func _build_critical_perturbation_summary(trajectories: Dictionary, battle_report_timeline: Array) -> Dictionary:
+	var anomaly_scan := _build_anomaly_scan(trajectories, battle_report_timeline)
+	return {
+		"attack_rebind_escape_count": int(anomaly_scan.get("attack_rebind_escape_count", 0)),
+		"attack_rebind_recontact_count": int(anomaly_scan.get("attack_rebind_recontact_count", 0)),
+		"attack_midband_drift_count": int(anomaly_scan.get("attack_midband_drift_count", 0)),
+		"position_jump_count": int(anomaly_scan.get("position_jump_count", 0)),
+		"spiral_drift_count": int(anomaly_scan.get("spiral_drift_count", 0)),
+		"high_frequency_jitter_count": int(anomaly_scan.get("high_frequency_jitter_count", 0))
+	}
+
 func _build_anomaly_scan(trajectories: Dictionary, battle_report_timeline: Array) -> Dictionary:
 	var position_jumps: Array = []
 	var spiral_drifts: Array = []
@@ -387,6 +398,7 @@ func run() -> Array[String]:
 		svg_file.close()
 	var battle_report_timeline: Array = controller.call("get_battle_report_timeline") if controller != null and controller.has_method("get_battle_report_timeline") else []
 	var anomaly_scan := _build_anomaly_scan(trajectories, battle_report_timeline)
+	var perturbation_summary := _build_critical_perturbation_summary(trajectories, battle_report_timeline)
 	if OS.is_debug_build():
 		var file := FileAccess.open("user://runtime_probe_test_fixture.json", FileAccess.WRITE)
 		if file != null:
@@ -599,7 +611,10 @@ func run() -> Array[String]:
 			"fast_false_positive_rate": _compute_gate_b_fast_false_positive_rate(family_samples),
 			"old_escape_hit_records": old_escape_hit_records,
 			"false_positive_records": false_positive_records,
-			"takeover_blockers": [] if _compute_gate_c_no_false_positive_records(family_samples) else ["false_positive_records"]
+			"takeover_blockers": [] if _compute_gate_c_no_false_positive_records(family_samples) else ["false_positive_records"],
+			"attack_rebind_escape_count": int(perturbation_summary.get("attack_rebind_escape_count", 0)),
+			"attack_rebind_recontact_count": int(perturbation_summary.get("attack_rebind_recontact_count", 0)),
+			"attack_midband_drift_count": int(perturbation_summary.get("attack_midband_drift_count", 0))
 		},
 		"warning_threshold_value": _compute_warning_threshold(family_samples),
 		"error_threshold_value": _compute_error_threshold_weighted(family_samples),
@@ -610,6 +625,9 @@ func run() -> Array[String]:
 		"old_escape_true_p95_contention_values": old_escape_true_values
 	}
 	var gate_results: Dictionary = probe_contract_snapshot.get("gate_results", {})
+	gate_results["attack_rebind_escape_count"] = int(perturbation_summary.get("attack_rebind_escape_count", 0))
+	gate_results["attack_rebind_recontact_count"] = int(perturbation_summary.get("attack_rebind_recontact_count", 0))
+	gate_results["attack_midband_drift_count"] = int(perturbation_summary.get("attack_midband_drift_count", 0))
 	var unified_snapshot := {
 		"family": "critical",
 		"takeover_ready": bool(gate_results.get("takeover_ready", false)),
@@ -647,6 +665,8 @@ func run() -> Array[String]:
 		"fitted_thresholds": fitted_thresholds,
 		"probe_contract_snapshot": probe_contract_snapshot,
 		"unified_snapshot": unified_snapshot,
+		"anomaly_scan": anomaly_scan,
+		"perturbation_summary": perturbation_summary,
 		"long_running_stability": long_running_stability,
 		"scatter_plot": scatter_plot,
 		"critical_sampling_result_contract": critical_sampling_result_contract,

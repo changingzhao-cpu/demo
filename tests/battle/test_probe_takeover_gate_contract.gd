@@ -40,6 +40,10 @@ func run() -> Array[String]:
 	_assert_true(gate_results.has("takeover_ready"), "critical unified gate results should expose takeover_ready for fast-track exit", failures)
 	_assert_true(typeof(unified_snapshot.get("takeover_ready", null)) == TYPE_BOOL, "critical unified snapshot should expose bool takeover_ready for fast-track exit", failures)
 	_assert_true(Array(unified_snapshot.get("blockers", [])).size() == Array(gate_results.get("takeover_blockers", [])).size(), "critical unified blockers should still mirror gate blockers after fast-track exit hardening", failures)
+	_assert_true(gate_results.has("attack_rebind_escape_count"), "critical unified gate results should expose perturbation escape count", failures)
+	_assert_true(gate_results.has("attack_rebind_recontact_count"), "critical unified gate results should expose perturbation recontact count", failures)
+	_assert_true(gate_results.has("attack_midband_drift_count"), "critical unified gate results should expose perturbation midband drift count", failures)
+	_assert_true(bool(unified_snapshot.get("takeover_ready", false)) == bool(gate_results.get("takeover_ready", false)), "critical unified snapshot should still mirror takeover_ready after perturbation hardening", failures)
 	return failures
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:

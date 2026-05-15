@@ -317,6 +317,10 @@ func _test_controller_runtime_trace_payload_exposes_unified_snapshots(failures: 
 		_assert_true(str(critical_unified_snapshot.get("family", "")) == "critical", "battle scene controller runtime trace payload should keep critical unified snapshot family", failures)
 		_assert_true(warning_unified_snapshot.has("confidence_score"), "battle scene controller runtime trace payload should keep warning unified snapshot confidence score", failures)
 		_assert_true(critical_unified_snapshot.has("confidence_score"), "battle scene controller runtime trace payload should keep critical unified snapshot confidence score", failures)
+		var critical_gate_results: Dictionary = critical_unified_snapshot.get("gate_results", {})
+		_assert_true(critical_gate_results.has("attack_rebind_escape_count"), "battle scene controller runtime trace payload should expose perturbation escape count", failures)
+		_assert_true(critical_gate_results.has("attack_rebind_recontact_count"), "battle scene controller runtime trace payload should expose perturbation recontact count", failures)
+		_assert_true(critical_gate_results.has("attack_midband_drift_count"), "battle scene controller runtime trace payload should expose perturbation midband drift count", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
 

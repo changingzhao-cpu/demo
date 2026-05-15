@@ -62,6 +62,7 @@ const TEST_SUITES := [
 	{"name": "battle/test_probe_critical_aggregated_thresholds_contract", "path": "res://tests/battle/test_probe_critical_aggregated_thresholds_contract.gd"},
 	{"name": "battle/test_probe_critical_weighted_error_threshold_contract", "path": "res://tests/battle/test_probe_critical_weighted_error_threshold_contract.gd"},
 	{"name": "battle/test_probe_critical_confidence_contract", "path": "res://tests/battle/test_probe_critical_confidence_contract.gd"},
+	{"name": "battle/test_probe_critical_runtime_perturbation_contract", "path": "res://tests/battle/test_probe_critical_runtime_perturbation_contract.gd"},
 	{"name": "battle/test_probe_sampling_payload_contract", "path": "res://tests/battle/test_probe_sampling_payload_contract.gd"},
 	{"name": "battle/test_probe_sampling_visual_contract", "path": "res://tests/battle/test_probe_sampling_visual_contract.gd"},
 	{"name": "battle/test_probe_sampling_svg_contract", "path": "res://tests/battle/test_probe_sampling_svg_contract.gd"},
