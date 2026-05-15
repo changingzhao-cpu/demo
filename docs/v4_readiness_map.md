@@ -1,5 +1,9 @@
 # V4 Readiness Map
 
+See also:
+- `docs/v4_delivery_archive.md`
+- `docs/v4_backlog_tiers.md`
+
 | Area | Status | Notes |
 |---|---|---|
 | Warning artifact | real-sampled | truth-hardening through Phase 3 |

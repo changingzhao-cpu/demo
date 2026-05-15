@@ -1,0 +1,8 @@
+[
+  "battle/test_warning_readiness_snapshot_contract",
+  "battle/test_probe_sampling_payload_contract",
+  "battle/test_probe_takeover_gate_contract",
+  "battle/test_probe_critical_runtime_perturbation_contract",
+  "battle/test_battle_runtime_probe_trace_contract",
+  "battle/test_battle_scene_runtime_binding"
+]

@@ -1,5 +1,6 @@
 extends SceneTree
 
+const SMOKE_SUITE_CONFIG_PATH := "res://tests/battle/smoke_suite.json"
 const TEST_SUITES := [
 	{"name": "battle/test_entity_store", "path": "res://tests/battle/test_entity_store.gd"},
 	{"name": "battle/test_spatial_grid", "path": "res://tests/battle/test_spatial_grid.gd"},
@@ -169,9 +170,39 @@ const TEST_SUITES := [
 var _failure_count := 0
 var _test_count := 0
 
+func _should_run_smoke_only() -> bool:
+	for arg in OS.get_cmdline_user_args():
+		if arg == "--smoke":
+			return true
+	return false
+
+func _load_smoke_suite_names() -> Dictionary:
+	var text := FileAccess.get_file_as_string(SMOKE_SUITE_CONFIG_PATH)
+	if text == "":
+		return {}
+	var parsed: Variant = JSON.parse_string(text)
+	if not (parsed is Array):
+		return {}
+	var names := {}
+	for item in parsed:
+		names[str(item)] = true
+	return names
+
+func _filtered_suites() -> Array:
+	if not _should_run_smoke_only():
+		return TEST_SUITES
+	var allowed := _load_smoke_suite_names()
+	if allowed.is_empty():
+		return []
+	var filtered: Array = []
+	for suite in TEST_SUITES:
+		if allowed.has(str(suite.get("name", ""))):
+			filtered.append(suite)
+	return filtered
+
 func _initialize() -> void:
 	print("[TEST] Starting test run...")
-	for suite_def in TEST_SUITES:
+	for suite_def in _filtered_suites():
 		await _run_suite(str(suite_def.name), str(suite_def.path))
 
 	if _failure_count == 0:
