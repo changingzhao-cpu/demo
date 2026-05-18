@@ -73,6 +73,7 @@ func _process(delta: float) -> void:
 			"live_count": int(report.get("live_count", 0)),
 			"combat_event_count": int(report.get("combat_event_count", 0))
 		})
+	_refresh_v4_degradative_feedback()
 	var state := str(_controller.call("get_state"))
 	if state == "reward":
 		if not _reward_panel.visible and _reward_panel.has_method("show_rewards"):
@@ -84,6 +85,36 @@ func _process(delta: float) -> void:
 	_consume_combat_feedback()
 	_sync_runtime_screen_space_views()
 	_update_hud()
+
+func _refresh_v4_degradative_feedback() -> void:
+	if _controller == null:
+		return
+	var payload: Dictionary = _controller.call("debug_get_runtime_trace_payload")
+	var critical_snapshot: Dictionary = payload.get("critical_unified_snapshot", {})
+	var gate_results: Dictionary = critical_snapshot.get("gate_results", {})
+	var drift_count := int(gate_results.get("attack_midband_drift_count", 0))
+	var escape_count := int(gate_results.get("attack_rebind_escape_count", 0))
+	var should_degrade := drift_count > 0 or escape_count > 0
+	_controller.set("_v4_feedback_mode", "degradative" if should_degrade else "observe_only")
+	_controller.set("_v4_feedback_active", should_degrade)
+	_controller.set("_v4_takeover_shadow_mode", "review_only")
+	_controller.set("_v4_takeover_shadow_ready", should_degrade)
+	_controller.set("_v4_takeover_shadow_recommendation", "degrade_only" if should_degrade else "hold")
+	_controller.set("_v4_takeover_shadow_reason", "high_density_jitter_detected" if should_degrade else "awaiting_stable_feedback")
+	if _controller.has_method("emit_v4_probe_event"):
+		_controller.call("emit_v4_probe_event", {
+			"event_type": "takeover_shadow_review",
+			"state": _controller.call("get_state"),
+			"recommendation": "degrade_only" if should_degrade else "hold",
+			"reason": "high_density_jitter_detected" if should_degrade else "awaiting_stable_feedback",
+			"feedback_mode": "degradative" if should_degrade else "observe_only",
+			"takeover_shadow_mode": "review_only",
+			"takeover_shadow_ready": should_degrade,
+			"attack_midband_drift_count": drift_count,
+			"attack_rebind_escape_count": escape_count
+		})
+	if should_degrade and _phase_hint != null:
+		_phase_hint.text = "V4 degrade review"
 
 func _get_tempo_hint_text() -> String:
 	if _initial_layout_active:

@@ -89,6 +89,12 @@ var _runtime_anomaly_trace_history_limit := 24
 var _runtime_anomaly_trace_samples: Array[Dictionary] = []
 var _runtime_movement_anomalies: Array[Dictionary] = []
 var _v4_business_probe_events: Array[Dictionary] = []
+var _v4_feedback_mode := "observe_only"
+var _v4_feedback_active := false
+var _v4_takeover_shadow_mode := "review_only"
+var _v4_takeover_shadow_ready := false
+var _v4_takeover_shadow_recommendation := "hold"
+var _v4_takeover_shadow_reason := "awaiting_stable_feedback"
 
 func _get_runtime_backend_name() -> String:
 	if _simulation != null:
@@ -248,6 +254,12 @@ func debug_get_runtime_trace_payload() -> Dictionary:
 	var output := probe_payload.duplicate(true)
 	output["probe"] = nested_probe.duplicate(true)
 	output["business_probe_events"] = _v4_business_probe_events.duplicate(true)
+	output["feedback_mode"] = _v4_feedback_mode
+	output["feedback_active"] = _v4_feedback_active
+	output["takeover_shadow_mode"] = _v4_takeover_shadow_mode
+	output["takeover_shadow_ready"] = _v4_takeover_shadow_ready
+	output["takeover_shadow_recommendation"] = _v4_takeover_shadow_recommendation
+	output["takeover_shadow_reason"] = _v4_takeover_shadow_reason
 	output["warning_unified_snapshot"] = _read_warning_unified_snapshot_for_debug()
 	output["critical_unified_snapshot"] = _read_critical_unified_snapshot_for_debug()
 	for key in nested_probe.keys():

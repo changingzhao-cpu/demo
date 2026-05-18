@@ -19,8 +19,14 @@ func run() -> Array[String]:
 			}
 		},
 		"business_probe_events": [
-			{"event_type": "battle_scene_runtime_tick", "state": "combat", "wave": 1, "live_count": 36, "combat_event_count": 4}
+			{"event_type": "takeover_shadow_review", "state": "combat", "wave": 1, "live_count": 36, "combat_event_count": 4, "recommendation": "hold", "reason": "awaiting_stable_feedback", "feedback_mode": "observe_only", "takeover_shadow_mode": "review_only", "takeover_shadow_ready": false}
 		],
+		"feedback_mode": "observe_only",
+		"feedback_active": false,
+		"takeover_shadow_mode": "review_only",
+		"takeover_shadow_ready": false,
+		"takeover_shadow_recommendation": "hold",
+		"takeover_shadow_reason": "awaiting_stable_feedback",
 		"warning_unified_snapshot": {
 			"family": "warning",
 			"confidence_score": 0.75,
@@ -45,6 +51,12 @@ func run() -> Array[String]:
 	}
 	var failures := TraceSamplerCore.new().validate(runtime_snapshot, trace_payload.get("probe", {}))
 	_assert_trace_true(trace_payload.has("business_probe_events"), "runtime trace payload should expose business probe events", failures)
+	_assert_trace_true(trace_payload.has("feedback_mode"), "runtime trace payload should expose feedback_mode", failures)
+	_assert_trace_true(trace_payload.has("feedback_active"), "runtime trace payload should expose feedback_active", failures)
+	_assert_trace_true(trace_payload.has("takeover_shadow_mode"), "runtime trace payload should expose takeover_shadow_mode", failures)
+	_assert_trace_true(trace_payload.has("takeover_shadow_ready"), "runtime trace payload should expose takeover_shadow_ready", failures)
+	_assert_trace_true(trace_payload.has("takeover_shadow_recommendation"), "runtime trace payload should expose takeover_shadow_recommendation", failures)
+	_assert_trace_true(trace_payload.has("takeover_shadow_reason"), "runtime trace payload should expose takeover_shadow_reason", failures)
 	var business_probe_events: Array = trace_payload.get("business_probe_events", [])
 	_assert_trace_true(business_probe_events.size() > 0, "runtime trace payload should expose at least one business probe event", failures)
 	var first_event: Dictionary = business_probe_events[0] if not business_probe_events.is_empty() else {}
@@ -53,6 +65,12 @@ func run() -> Array[String]:
 	_assert_trace_true(first_event.has("wave"), "business probe event should expose wave", failures)
 	_assert_trace_true(first_event.has("live_count"), "business probe event should expose live_count", failures)
 	_assert_trace_true(first_event.has("combat_event_count"), "business probe event should expose combat_event_count", failures)
+	if str(first_event.get("event_type", "")) == "takeover_shadow_review":
+		_assert_trace_true(first_event.has("recommendation"), "takeover shadow review event should expose recommendation", failures)
+		_assert_trace_true(first_event.has("reason"), "takeover shadow review event should expose reason", failures)
+		_assert_trace_true(first_event.has("feedback_mode"), "takeover shadow review event should expose feedback_mode", failures)
+		_assert_trace_true(first_event.has("takeover_shadow_mode"), "takeover shadow review event should expose takeover_shadow_mode", failures)
+		_assert_trace_true(first_event.has("takeover_shadow_ready"), "takeover shadow review event should expose takeover_shadow_ready", failures)
 	_assert_trace_true(trace_payload.has("warning_unified_snapshot"), "runtime trace payload should expose warning unified snapshot", failures)
 	_assert_trace_true(trace_payload.has("critical_unified_snapshot"), "runtime trace payload should expose critical unified snapshot", failures)
 	var warning_unified_snapshot: Dictionary = trace_payload.get("warning_unified_snapshot", {})

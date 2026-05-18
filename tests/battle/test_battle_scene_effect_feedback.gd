@@ -6,6 +6,7 @@ func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_enemy_death_spawns_effect_feedback_in_effect_layer(failures)
 	_test_effect_layer_node_count_recovers_after_combat_feedback(failures)
+	_test_degradative_feedback_state_stays_observe_only_without_stress_signal(failures)
 	return failures
 
 func _test_enemy_death_spawns_effect_feedback_in_effect_layer(failures: Array[String]) -> void:
@@ -65,6 +66,29 @@ func _test_effect_layer_node_count_recovers_after_combat_feedback(failures: Arra
 	_assert_true(peak_child_count > 0, "effect layer should create nodes during combat feedback", failures)
 	_assert_true(settled_child_count <= peak_child_count, "effect layer node count should stabilize instead of growing forever", failures)
 	_assert_true(settled_child_count <= 12, "effect layer should stay within a bounded node count after effects settle", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
+
+func _test_degradative_feedback_state_stays_observe_only_without_stress_signal(failures: Array[String]) -> void:
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = BattleScene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	if controller == null:
+		failures.append("battle scene should expose controller before degradative feedback state checks")
+		if instance.get_parent() != null:
+			main_loop.root.remove_child(instance)
+		instance.queue_free()
+		await main_loop.process_frame
+		return
+	var payload: Dictionary = controller.call("debug_get_runtime_trace_payload")
+	_assert_true(str(payload.get("feedback_mode", "")) == "observe_only", "feedback mode should default to observe_only before stress handling", failures)
+	_assert_true(bool(payload.get("feedback_active", true)) == false, "feedback should stay inactive before stress handling", failures)
+	_assert_true(str(payload.get("takeover_shadow_mode", "")) == "review_only", "takeover shadow mode should default to review_only", failures)
+	_assert_true(bool(payload.get("takeover_shadow_ready", true)) == false, "takeover shadow should stay not ready before stress handling", failures)
+	_assert_true(str(payload.get("takeover_shadow_recommendation", "")) == "hold", "takeover shadow recommendation should default to hold", failures)
+	_assert_true(str(payload.get("takeover_shadow_reason", "")) == "awaiting_stable_feedback", "takeover shadow reason should default to awaiting_stable_feedback", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
 

@@ -1,11 +1,15 @@
 # V4 Backlog Tiers
 
+## Active next phase
+- Phase E / Authoritative Takeover
+- Goal: verify whether takeover_ready can safely enter business decision loops
+
 ## P1
 
 | Item | Why it stays out of current slice |
 |---|---|
-| 用 V4 数据解释真实业务中的已知毛刺/拥挤点 | Baseline 已建立，下一步应进入真实问题解释 |
-| 降级式 gate feedback | 当 V4 报 Warning/Critical 时，优先做特效削减、AI 精度放宽、负载节流，而不是粗暴阻断战斗逻辑 |
+| authoritative takeover 准入检查 | 需要先验证 takeover_ready 是否适合进入真实业务决策回路，具体检查项见 `docs/v4_authoritative_takeover_readiness.md` |
+| 降级式 gate feedback | 已有方向，但仍需继续观察其对真实业务的缓解效果 |
 
 ## P2
 
@@ -17,6 +21,7 @@
 | 20 resources / DummyTexture 尾项继续排查 | 已 accepted，不阻断交付 |
 
 ## Rule
-
+- Degradative feedback may begin only after at least one real business issue has been explained by V4 signals.
+- Authoritative takeover may begin only after degradative feedback has proven stable on real business paths.
 - Closeout phase must not accept new feature logic.
 - Any new work must be classified into P1 or P2 before implementation begins.
