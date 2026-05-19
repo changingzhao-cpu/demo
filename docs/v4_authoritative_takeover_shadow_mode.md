@@ -43,3 +43,22 @@
 - expose recommendation only
 - do not alter battle authority
 - use shadow review output for business-side advisory consumption next
+
+## Bounded trial status
+
+| Field | Current bounded meaning |
+|---|---|
+| `review_only` | 仅做影子评审与建议输出 |
+| `trial_gate` | 单一决策点已满足受控试运行前提，但尚未进入 live authority |
+| `authoritative_trial` | 单一决策点已进入受控 live trial |
+| `authoritative_takeover` | 当前 trial 的 live recommendation，仍不意味着全局多点 authority 扩张 |
+
+## Business-side consumption rule
+- 业务层可以消费 `review_only` / `trial_gate` / `authoritative_trial` 状态做显示、标记、日志或 timeline 记录。
+- 除已批准的单一决策点外，不得把这些状态扩展成第二个真实 authority 改写点。
+- `takeover_trial_applied` 必须持续可见，作为 bounded live trial 已发生的证据。
+- `battle_report_timeline` 应保持可读，用于承接 advisory 与 trial 的业务解释链。
+
+## Current boundary
+- bounded trial 已完成验证，但当前仍只允许一个显式决策点进入 authoritative trial。
+- 下一步先加强业务侧消费与证据稳定，不直接新增第二个 takeover 点。

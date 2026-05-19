@@ -56,11 +56,11 @@
 
 ## Next implementation slice
 
-- expose takeover review state in debug/runtime payload
-- wire a shadow-mode business-facing field
-- keep business authority unchanged in the first slice
-- validate with smoke and full runner before any stronger coupling
-- follow `docs/v4_takeover_rollforward_rules.md` before any bounded authoritative promotion
+- bounded trial 已完成后，先固化 `authoritative_trial` / `authoritative_takeover` / `takeover_trial_applied` 的可见契约
+- 让业务层消费 `review_only` / `trial_gate` / `authoritative_trial` 状态，但只允许显示、标记、日志或 timeline 记录
+- 为 degradative feedback 补前后对比证据，不直接扩成第二个 authoritative point
+- 第二个候选决策点只进入评审，不进入实现
+- follow `docs/v4_takeover_rollforward_rules.md` before any further bounded promotion
 
 ## Rollforward reference
 

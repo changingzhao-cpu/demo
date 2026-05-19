@@ -46,6 +46,11 @@ func _test_takeover_trial_gate_can_drive_single_decision_point(failures: Array[S
 		_assert_true(str(payload.get("takeover_shadow_mode", "")) == "authoritative_trial", "battle scene should promote takeover mode into authoritative_trial at the single decision point", failures)
 		_assert_true(str(payload.get("takeover_shadow_recommendation", "")) == "authoritative_takeover", "battle scene should promote recommendation into authoritative_takeover at the single decision point", failures)
 		_assert_true(str(payload.get("takeover_shadow_reason", "")) == "single_decision_point_live", "battle scene should record the live single decision point reason during trial takeover", failures)
+		var battle_report_timeline: Array = controller.call("get_battle_report_timeline")
+		_assert_true(battle_report_timeline.size() > 0, "battle scene should keep battle report timeline available during authoritative trial", failures)
+		if battle_report_timeline.size() > 0:
+			var first_timeline_event: Dictionary = battle_report_timeline[0]
+			_assert_true(first_timeline_event.has("event_type"), "battle report timeline should expose event_type during authoritative trial", failures)
 		var events: Array = payload.get("business_probe_events", [])
 		var found_live_takeover := false
 		for event_variant in events:

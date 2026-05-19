@@ -144,6 +144,11 @@ func _test_authoritative_trial_takeover_promotes_review_signal_to_live_gate(fail
 	_assert_true(str(payload.get("takeover_shadow_mode", "")) == "authoritative_trial", "authoritative trial should promote takeover mode from trial_gate to authoritative_trial", failures)
 	_assert_true(str(payload.get("takeover_shadow_recommendation", "")) == "authoritative_takeover", "authoritative trial should promote recommendation from trial_takeover to authoritative_takeover", failures)
 	_assert_true(str(payload.get("takeover_shadow_reason", "")) == "single_decision_point_live", "authoritative trial should mark the live single decision point reason", failures)
+	var battle_report_timeline: Array = controller.call("get_battle_report_timeline")
+	_assert_true(battle_report_timeline.size() > 0, "authoritative trial should keep battle_report_timeline available for business-side advisory consumption", failures)
+	if battle_report_timeline.size() > 0:
+		var first_timeline_event: Dictionary = battle_report_timeline[0]
+		_assert_true(first_timeline_event.has("event_type"), "battle_report_timeline entries should expose event_type during authoritative trial", failures)
 	var events: Array = payload.get("business_probe_events", [])
 	var found_live_takeover := false
 	for event_variant in events:

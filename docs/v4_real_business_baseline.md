@@ -63,3 +63,15 @@
 - first prove that V4 can explain one real business issue
 - then activate degradative feedback
 - do not directly switch to authoritative takeover
+
+## Degradative feedback evidence rule
+
+| Evidence | Requirement |
+|---|---|
+| Before | 记录问题出现时的业务症状、wave/live_count/combat_event_count 与对应 V4 signal |
+| During | 记录 `feedback_mode` / `feedback_active` 与 shadow recommendation 如何变化 |
+| After | 记录业务表现是否收敛，并保留在 `business_probe_events` 或 `battle_report_timeline` 可复查 |
+
+## Current evidence boundary
+- 现阶段已具备 `business_probe_events`、`feedback_mode`、`takeover_shadow_*` 与 `battle_report_timeline` 出口。
+- 下一步应补“反馈前/后”证据，而不是直接扩成第二个 authoritative decision point。
