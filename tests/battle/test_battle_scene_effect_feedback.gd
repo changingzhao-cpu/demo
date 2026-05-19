@@ -7,6 +7,8 @@ func run() -> Array[String]:
 	_test_enemy_death_spawns_effect_feedback_in_effect_layer(failures)
 	_test_effect_layer_node_count_recovers_after_combat_feedback(failures)
 	_test_degradative_feedback_state_stays_observe_only_without_stress_signal(failures)
+	_test_degradative_feedback_becomes_active_under_shadow_recommendation(failures)
+	_test_authoritative_trial_takeover_promotes_review_signal_to_live_gate(failures)
 	return failures
 
 func _test_enemy_death_spawns_effect_feedback_in_effect_layer(failures: Array[String]) -> void:
@@ -89,6 +91,67 @@ func _test_degradative_feedback_state_stays_observe_only_without_stress_signal(f
 	_assert_true(bool(payload.get("takeover_shadow_ready", true)) == false, "takeover shadow should stay not ready before stress handling", failures)
 	_assert_true(str(payload.get("takeover_shadow_recommendation", "")) == "hold", "takeover shadow recommendation should default to hold", failures)
 	_assert_true(str(payload.get("takeover_shadow_reason", "")) == "awaiting_stable_feedback", "takeover shadow reason should default to awaiting_stable_feedback", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
+
+func _test_degradative_feedback_becomes_active_under_shadow_recommendation(failures: Array[String]) -> void:
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = BattleScene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	if controller == null:
+		failures.append("battle scene should expose controller before degradative activation checks")
+		if instance.get_parent() != null:
+			main_loop.root.remove_child(instance)
+		instance.queue_free()
+		await main_loop.process_frame
+		return
+	controller.set("_v4_feedback_mode", "degradative")
+	controller.set("_v4_feedback_active", true)
+	controller.set("_v4_takeover_shadow_mode", "review_only")
+	controller.set("_v4_takeover_shadow_ready", true)
+	controller.set("_v4_takeover_shadow_recommendation", "degrade_only")
+	controller.set("_v4_takeover_shadow_reason", "high_density_jitter_detected")
+	var payload: Dictionary = controller.call("debug_get_runtime_trace_payload")
+	_assert_true(str(payload.get("feedback_mode", "")) == "degradative", "feedback mode should switch to degradative during stress handling", failures)
+	_assert_true(bool(payload.get("feedback_active", false)) == true, "feedback should become active under stress handling", failures)
+	_assert_true(str(payload.get("takeover_shadow_recommendation", "")) == "degrade_only", "takeover shadow recommendation should promote degrade_only under stress handling", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
+
+func _test_authoritative_trial_takeover_promotes_review_signal_to_live_gate(failures: Array[String]) -> void:
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = BattleScene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	if controller == null:
+		failures.append("battle scene should expose controller before authoritative trial takeover checks")
+		if instance.get_parent() != null:
+			main_loop.root.remove_child(instance)
+		instance.queue_free()
+		await main_loop.process_frame
+		return
+	controller.set("_v4_feedback_mode", "degradative")
+	controller.set("_v4_feedback_active", true)
+	controller.set("_v4_takeover_shadow_mode", "trial_gate")
+	controller.set("_v4_takeover_shadow_ready", true)
+	controller.set("_v4_takeover_shadow_recommendation", "trial_takeover")
+	controller.set("_v4_takeover_shadow_reason", "single_decision_point_approved")
+	instance.call("_process", 0.016)
+	var payload: Dictionary = controller.call("debug_get_runtime_trace_payload")
+	_assert_true(str(payload.get("takeover_shadow_mode", "")) == "authoritative_trial", "authoritative trial should promote takeover mode from trial_gate to authoritative_trial", failures)
+	_assert_true(str(payload.get("takeover_shadow_recommendation", "")) == "authoritative_takeover", "authoritative trial should promote recommendation from trial_takeover to authoritative_takeover", failures)
+	_assert_true(str(payload.get("takeover_shadow_reason", "")) == "single_decision_point_live", "authoritative trial should mark the live single decision point reason", failures)
+	var events: Array = payload.get("business_probe_events", [])
+	var found_live_takeover := false
+	for event_variant in events:
+		var event: Dictionary = event_variant
+		if str(event.get("event_type", "")) == "takeover_trial_applied":
+			found_live_takeover = str(event.get("takeover_shadow_mode", "")) == "authoritative_trial" and str(event.get("recommendation", "")) == "authoritative_takeover"
+			break
+	_assert_true(found_live_takeover, "authoritative trial should emit takeover_trial_applied when the live gate is entered", failures)
 	main_loop.root.remove_child(instance)
 	instance.free()
 

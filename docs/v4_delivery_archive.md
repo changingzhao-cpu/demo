@@ -59,6 +59,7 @@
 - Readiness review is tracked in `docs/v4_authoritative_takeover_readiness.md`.
 - First rollout should remain advisory-only or shadow-mode before any authoritative switch.
 - Shadow output contract is tracked in `docs/v4_authoritative_takeover_shadow_mode.md`.
+- Rollforward / rollback rules are tracked in `docs/v4_takeover_rollforward_rules.md`.
 ## Next Step
 - Authoritative takeover readiness review
 - Gate activation back into business battle logic only after low-risk feedback remains stable

@@ -8,7 +8,7 @@
 
 | Item | Why it stays out of current slice |
 |---|---|
-| authoritative takeover 准入检查 | 需要先验证 takeover_ready 是否适合进入真实业务决策回路，具体检查项见 `docs/v4_authoritative_takeover_readiness.md` |
+| authoritative takeover 准入检查 | 需要先验证 takeover_ready 是否适合进入真实业务决策回路，具体检查项见 `docs/v4_authoritative_takeover_readiness.md` 与 `docs/v4_takeover_rollforward_rules.md` |
 | 降级式 gate feedback | 已有方向，但仍需继续观察其对真实业务的缓解效果 |
 
 ## P2

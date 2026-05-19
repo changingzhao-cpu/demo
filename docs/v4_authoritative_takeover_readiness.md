@@ -40,9 +40,19 @@
 | Item | Target |
 |---|---|
 | Gate exposure | expose takeover review result to business layer |
-| Business behavior | do not yet alter battle authority |
+| Business behavior | keep authority changes bounded to one explicit trial gate only |
 | Validation | smoke and full runner remain green |
-| Exit | only after this milestone may authoritative control be considered |
+| Exit | only after this bounded milestone may broader authoritative control be considered |
+
+## Current bounded trial status
+
+| Item | Status |
+|---|---|
+| Trial scope | one single decision point |
+| Trial promotion | `trial_gate` -> `authoritative_trial` -> `authoritative_takeover` |
+| Visibility | `takeover_trial_applied` remains visible in `business_probe_events` |
+| Guardrail | regression returns to shadow/review-only mode |
+| Verification | full runner green (`All 163 test suite(s) passed.`) |
 
 ## Next implementation slice
 
@@ -50,3 +60,10 @@
 - wire a shadow-mode business-facing field
 - keep business authority unchanged in the first slice
 - validate with smoke and full runner before any stronger coupling
+- follow `docs/v4_takeover_rollforward_rules.md` before any bounded authoritative promotion
+
+## Rollforward reference
+
+- See `docs/v4_takeover_rollforward_rules.md`
+- Promotion must remain bounded to one business decision point at a time
+- Rollback returns immediately to shadow/review-only mode

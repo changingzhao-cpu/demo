@@ -95,12 +95,16 @@ func _refresh_v4_degradative_feedback() -> void:
 	var drift_count := int(gate_results.get("attack_midband_drift_count", 0))
 	var escape_count := int(gate_results.get("attack_rebind_escape_count", 0))
 	var should_degrade := drift_count > 0 or escape_count > 0
+	if not should_degrade and bool(payload.get("takeover_shadow_ready", false)):
+		var existing_mode := str(payload.get("takeover_shadow_mode", ""))
+		var existing_recommendation := str(payload.get("takeover_shadow_recommendation", ""))
+		should_degrade = existing_mode == "trial_gate" and existing_recommendation == "trial_takeover"
 	_controller.set("_v4_feedback_mode", "degradative" if should_degrade else "observe_only")
 	_controller.set("_v4_feedback_active", should_degrade)
-	_controller.set("_v4_takeover_shadow_mode", "review_only")
+	_controller.set("_v4_takeover_shadow_mode", "trial_gate" if should_degrade else "review_only")
 	_controller.set("_v4_takeover_shadow_ready", should_degrade)
-	_controller.set("_v4_takeover_shadow_recommendation", "degrade_only" if should_degrade else "hold")
-	_controller.set("_v4_takeover_shadow_reason", "high_density_jitter_detected" if should_degrade else "awaiting_stable_feedback")
+	_controller.set("_v4_takeover_shadow_recommendation", "trial_takeover" if should_degrade else "hold")
+	_controller.set("_v4_takeover_shadow_reason", "single_decision_point_approved" if should_degrade else "awaiting_stable_feedback")
 	if _controller.has_method("emit_v4_probe_event"):
 		_controller.call("emit_v4_probe_event", {
 			"event_type": "takeover_shadow_review",
@@ -115,6 +119,44 @@ func _refresh_v4_degradative_feedback() -> void:
 		})
 	if should_degrade and _phase_hint != null:
 		_phase_hint.text = "V4 degrade review"
+	_try_apply_authoritative_takeover_trial()
+
+func _try_apply_authoritative_takeover_trial() -> void:
+	if _controller == null:
+		return
+	var payload: Dictionary = _controller.call("debug_get_runtime_trace_payload")
+	if str(payload.get("feedback_mode", "")) != "degradative":
+		return
+	if not bool(payload.get("feedback_active", false)):
+		return
+	if str(payload.get("takeover_shadow_mode", "")) != "trial_gate":
+		return
+	if not bool(payload.get("takeover_shadow_ready", false)):
+		return
+	if str(payload.get("takeover_shadow_recommendation", "")) != "trial_takeover":
+		return
+	if str(payload.get("takeover_shadow_reason", "")) != "single_decision_point_approved":
+		return
+	_controller.set("_v4_takeover_shadow_mode", "authoritative_trial")
+	_controller.set("_v4_takeover_shadow_recommendation", "authoritative_takeover")
+	_controller.set("_v4_takeover_shadow_reason", "single_decision_point_live")
+	if _controller.has_method("emit_v4_probe_event"):
+		var current_wave: Dictionary = _controller.call("get_current_wave") if _controller.has_method("get_current_wave") else {}
+		var report: Dictionary = _controller.call("get_last_tick_report") if _controller.has_method("get_last_tick_report") else {}
+		_controller.call("emit_v4_probe_event", {
+			"event_type": "takeover_trial_applied",
+			"state": _controller.call("get_state"),
+			"wave": int(current_wave.get("wave", -1)),
+			"live_count": int(report.get("live_count", 0)),
+			"combat_event_count": int(report.get("combat_event_count", 0)),
+			"recommendation": "authoritative_takeover",
+			"reason": "single_decision_point_live",
+			"feedback_mode": "degradative",
+			"takeover_shadow_mode": "authoritative_trial",
+			"takeover_shadow_ready": true
+		})
+	if _phase_hint != null:
+		_phase_hint.text = "V4 authoritative trial"
 
 func _get_tempo_hint_text() -> String:
 	if _initial_layout_active:

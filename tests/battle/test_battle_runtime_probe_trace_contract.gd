@@ -19,14 +19,14 @@ func run() -> Array[String]:
 			}
 		},
 		"business_probe_events": [
-			{"event_type": "takeover_shadow_review", "state": "combat", "wave": 1, "live_count": 36, "combat_event_count": 4, "recommendation": "hold", "reason": "awaiting_stable_feedback", "feedback_mode": "observe_only", "takeover_shadow_mode": "review_only", "takeover_shadow_ready": false}
+			{"event_type": "takeover_shadow_review", "state": "combat", "wave": 1, "live_count": 36, "combat_event_count": 4, "recommendation": "degrade_only", "reason": "high_density_jitter_detected", "feedback_mode": "degradative", "takeover_shadow_mode": "review_only", "takeover_shadow_ready": true}
 		],
-		"feedback_mode": "observe_only",
-		"feedback_active": false,
-		"takeover_shadow_mode": "review_only",
-		"takeover_shadow_ready": false,
-		"takeover_shadow_recommendation": "hold",
-		"takeover_shadow_reason": "awaiting_stable_feedback",
+		"feedback_mode": "degradative",
+		"feedback_active": true,
+		"takeover_shadow_mode": "trial_gate",
+		"takeover_shadow_ready": true,
+		"takeover_shadow_recommendation": "trial_takeover",
+		"takeover_shadow_reason": "single_decision_point_approved",
 		"warning_unified_snapshot": {
 			"family": "warning",
 			"confidence_score": 0.75,
