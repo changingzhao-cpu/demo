@@ -1,5 +1,6 @@
 extends SceneTree
 
+const SMOKE_SUITE_CONFIG_PATH := "res://tests/battle/smoke_suite.json"
 const TEST_SUITES := [
 	{"name": "battle/test_entity_store", "path": "res://tests/battle/test_entity_store.gd"},
 	{"name": "battle/test_spatial_grid", "path": "res://tests/battle/test_spatial_grid.gd"},
@@ -9,6 +10,107 @@ const TEST_SUITES := [
 	{"name": "battle/test_battle_simulation_targeting", "path": "res://tests/battle/test_battle_simulation_targeting.gd"},
 	{"name": "battle/test_battle_simulation_attacks", "path": "res://tests/battle/test_battle_simulation_attacks.gd"},
 	{"name": "battle/test_battle_simulation_combat_report", "path": "res://tests/battle/test_battle_simulation_combat_report.gd"},
+	{"name": "battle/test_battle_simulation_v2_duel", "path": "res://tests/battle/test_battle_simulation_v2_duel.gd"},
+	{"name": "battle/test_combat_state_core", "path": "res://tests/battle/test_combat_state_core.gd"},
+	{"name": "battle/test_contact_resolver", "path": "res://tests/battle/test_contact_resolver.gd"},
+	{"name": "battle/test_motion_resolver", "path": "res://tests/battle/test_motion_resolver.gd"},
+	{"name": "battle/test_battle_simulation_v3_duel", "path": "res://tests/battle/test_battle_simulation_v3_duel.gd"},
+	{"name": "battle/test_battle_simulation_v3_skirmish", "path": "res://tests/battle/test_battle_simulation_v3_skirmish.gd"},
+	{"name": "battle/test_battle_runtime_probe_trace_contract", "path": "res://tests/battle/test_battle_runtime_probe_trace_contract.gd"},
+	{"name": "battle/test_battle_controller_v4_backend_routing", "path": "res://tests/battle/test_battle_controller_v4_backend_routing.gd"},
+	{"name": "battle/test_probe_comfort_stability_summary_contract", "path": "res://tests/battle/test_probe_comfort_stability_summary_contract.gd"},
+	{"name": "battle/test_probe_comfort_peak_to_peak_drift_contract", "path": "res://tests/battle/test_probe_comfort_peak_to_peak_drift_contract.gd"},
+	{"name": "battle/test_v4_probe_wire_integrity", "path": "res://tests/battle/test_v4_probe_wire_integrity.gd"},
+	{"name": "battle/test_debug_runtime_probe_v4_entry", "path": "res://tests/battle/test_debug_runtime_probe_v4_entry.gd"},
+	{"name": "battle/test_debug_probe_backend_trace_v4_probe", "path": "res://tests/battle/test_debug_probe_backend_trace_v4_probe.gd"},
+	{"name": "battle/test_debug_probe_identity_trace_v4_probe", "path": "res://tests/battle/test_debug_probe_identity_trace_v4_probe.gd"},
+	{"name": "battle/test_debug_runtime_probe_fingerprint_contract", "path": "res://tests/battle/test_debug_runtime_probe_fingerprint_contract.gd"},
+	{"name": "battle/test_runtime_probe_oscillation_fingerprint_contract", "path": "res://tests/battle/test_runtime_probe_oscillation_fingerprint_contract.gd"},
+	{"name": "battle/test_v4_probe_contract_matrix", "path": "res://tests/battle/test_v4_probe_contract_matrix.gd"},
+	{"name": "battle/test_probe_golden_entry_membership", "path": "res://tests/battle/test_probe_golden_entry_membership.gd"},
+	{"name": "battle/test_probe_fast_suite_membership", "path": "res://tests/battle/test_probe_fast_suite_membership.gd"},
+	{"name": "battle/test_probe_slow_suite_membership", "path": "res://tests/battle/test_probe_slow_suite_membership.gd"},
+	{"name": "battle/test_probe_baseline_readiness_contract", "path": "res://tests/battle/test_probe_baseline_readiness_contract.gd"},
+	{"name": "battle/test_probe_contention_readiness_gates", "path": "res://tests/battle/test_probe_contention_readiness_gates.gd"},
+	{"name": "battle/test_probe_shadow_warning_contract", "path": "res://tests/battle/test_probe_shadow_warning_contract.gd"},
+	{"name": "battle/test_probe_shadow_overlap_contract", "path": "res://tests/battle/test_probe_shadow_overlap_contract.gd"},
+	{"name": "battle/test_probe_shadow_threshold_readiness", "path": "res://tests/battle/test_probe_shadow_threshold_readiness.gd"},
+	{"name": "battle/test_probe_threshold_summary_contract", "path": "res://tests/battle/test_probe_threshold_summary_contract.gd"},
+	{"name": "battle/test_probe_threshold_zone_contract", "path": "res://tests/battle/test_probe_threshold_zone_contract.gd"},
+	{"name": "battle/test_probe_threshold_candidate_contract", "path": "res://tests/battle/test_probe_threshold_candidate_contract.gd"},
+	{"name": "battle/test_probe_sampling_artifact_contract", "path": "res://tests/battle/test_probe_sampling_artifact_contract.gd"},
+	{"name": "battle/test_probe_extreme_sample_contract", "path": "res://tests/battle/test_probe_extreme_sample_contract.gd"},
+	{"name": "battle/test_probe_takeover_gate_contract", "path": "res://tests/battle/test_probe_takeover_gate_contract.gd"},
+	{"name": "battle/test_probe_sampling_family_contract", "path": "res://tests/battle/test_probe_sampling_family_contract.gd"},
+	{"name": "battle/test_probe_scene_type_contract", "path": "res://tests/battle/test_probe_scene_type_contract.gd"},
+	{"name": "battle/test_probe_schema_contract", "path": "res://tests/battle/test_probe_schema_contract.gd"},
+	{"name": "battle/test_warning_aggregation_contract", "path": "res://tests/battle/test_warning_aggregation_contract.gd"},
+	{"name": "battle/test_probe_warning_sampler_core_boundary_contract", "path": "res://tests/battle/test_probe_warning_sampler_core_boundary_contract.gd"},
+	{"name": "battle/test_probe_warning_sampler_core_factory_contract", "path": "res://tests/battle/test_probe_warning_sampler_core_factory_contract.gd"},
+	{"name": "battle/test_probe_warning_runtime_variation_runner", "path": "res://tests/battle/test_probe_warning_runtime_variation_runner.gd"},
+	{"name": "battle/test_probe_sampling_execution_contract", "path": "res://tests/battle/test_probe_sampling_execution_contract.gd"},
+	{"name": "battle/test_probe_real_threshold_formula_contract", "path": "res://tests/battle/test_probe_real_threshold_formula_contract.gd"},
+	{"name": "battle/test_probe_outlier_analysis_contract", "path": "res://tests/battle/test_probe_outlier_analysis_contract.gd"},
+	{"name": "battle/test_probe_fitted_threshold_contract", "path": "res://tests/battle/test_probe_fitted_threshold_contract.gd"},
+	{"name": "battle/test_probe_sampling_execution_results_contract", "path": "res://tests/battle/test_probe_sampling_execution_results_contract.gd"},
+	{"name": "battle/test_warning_sampling_artifact_freshness", "path": "res://tests/battle/test_warning_sampling_artifact_freshness.gd"},
+	{"name": "battle/test_warning_sampling_behavior_contract", "path": "res://tests/battle/test_warning_sampling_behavior_contract.gd"},
+	{"name": "battle/test_warning_sampling_stability_contract", "path": "res://tests/battle/test_warning_sampling_stability_contract.gd"},
+	{"name": "battle/test_warning_sampling_artifact_content_contract", "path": "res://tests/battle/test_warning_sampling_artifact_content_contract.gd"},
+	{"name": "battle/test_warning_readiness_snapshot_contract", "path": "res://tests/battle/test_warning_readiness_snapshot_contract.gd"},
+	{"name": "battle/test_unified_snapshot_schema_contract", "path": "res://tests/battle/test_unified_snapshot_schema_contract.gd"},
+	{"name": "battle/test_probe_critical_payload_enrichment_contract", "path": "res://tests/battle/test_probe_critical_payload_enrichment_contract.gd"},
+	{"name": "battle/test_probe_critical_aggregated_thresholds_contract", "path": "res://tests/battle/test_probe_critical_aggregated_thresholds_contract.gd"},
+	{"name": "battle/test_probe_critical_weighted_error_threshold_contract", "path": "res://tests/battle/test_probe_critical_weighted_error_threshold_contract.gd"},
+	{"name": "battle/test_probe_critical_confidence_contract", "path": "res://tests/battle/test_probe_critical_confidence_contract.gd"},
+	{"name": "battle/test_probe_critical_runtime_perturbation_contract", "path": "res://tests/battle/test_probe_critical_runtime_perturbation_contract.gd"},
+	{"name": "battle/test_probe_sampling_payload_contract", "path": "res://tests/battle/test_probe_sampling_payload_contract.gd"},
+	{"name": "battle/test_probe_sampling_visual_contract", "path": "res://tests/battle/test_probe_sampling_visual_contract.gd"},
+	{"name": "battle/test_probe_sampling_svg_contract", "path": "res://tests/battle/test_probe_sampling_svg_contract.gd"},
+	{"name": "battle/test_probe_sampling_causality_contract", "path": "res://tests/battle/test_probe_sampling_causality_contract.gd"},
+	{"name": "battle/test_probe_long_running_stability_contract", "path": "res://tests/battle/test_probe_long_running_stability_contract.gd"},
+	{"name": "battle/test_v4_probe_contract_matrix_v4_runner", "path": "res://tests/battle/test_v4_probe_contract_matrix_v4_runner.gd"},
+	{"name": "battle/test_probe_contract_suite_membership", "path": "res://tests/battle/test_probe_contract_suite_membership.gd"},
+	{"name": "battle/test_v4_runner_suite_membership", "path": "res://tests/battle/test_v4_runner_suite_membership.gd"},
+	{"name": "battle/test_probe_membership_banner_chain", "path": "res://tests/battle/test_probe_membership_banner_chain.gd"},
+	{"name": "battle/test_probe_membership_cluster_ordering", "path": "res://tests/battle/test_probe_membership_cluster_ordering.gd"},
+	{"name": "battle/test_probe_membership_to_banner_transition", "path": "res://tests/battle/test_probe_membership_to_banner_transition.gd"},
+	{"name": "battle/test_probe_membership_to_entry_bridge", "path": "res://tests/battle/test_probe_membership_to_entry_bridge.gd"},
+	{"name": "battle/test_probe_membership_entry_cluster_chain", "path": "res://tests/battle/test_probe_membership_entry_cluster_chain.gd"},
+	{"name": "battle/test_probe_entry_cluster_to_contract_cluster", "path": "res://tests/battle/test_probe_entry_cluster_to_contract_cluster.gd"},
+	{"name": "battle/test_probe_contract_bridge_sequence", "path": "res://tests/battle/test_probe_contract_bridge_sequence.gd"},
+	{"name": "battle/test_probe_block_to_entry_ordering", "path": "res://tests/battle/test_probe_block_to_entry_ordering.gd"},
+	{"name": "battle/test_probe_entry_to_fingerprint_transition", "path": "res://tests/battle/test_probe_entry_to_fingerprint_transition.gd"},
+	{"name": "battle/test_probe_entry_block_chain", "path": "res://tests/battle/test_probe_entry_block_chain.gd"},
+	{"name": "battle/test_probe_entry_block_adjacency", "path": "res://tests/battle/test_probe_entry_block_adjacency.gd"},
+	{"name": "battle/test_probe_entry_cluster_internal_chain", "path": "res://tests/battle/test_probe_entry_cluster_internal_chain.gd"},
+	{"name": "battle/test_probe_entry_internal_adjacency", "path": "res://tests/battle/test_probe_entry_internal_adjacency.gd"},
+	{"name": "battle/test_probe_fingerprint_to_matrix_transition", "path": "res://tests/battle/test_probe_fingerprint_to_matrix_transition.gd"},
+	{"name": "battle/test_probe_matrix_to_membership_transition", "path": "res://tests/battle/test_probe_matrix_to_membership_transition.gd"},
+	{"name": "battle/test_probe_entry_suite_membership", "path": "res://tests/battle/test_probe_entry_suite_membership.gd"},
+	{"name": "battle/test_probe_entry_contract_bridge", "path": "res://tests/battle/test_probe_entry_contract_bridge.gd"},
+	{"name": "battle/test_runner_v4_banner_contract", "path": "res://tests/battle/test_runner_v4_banner_contract.gd"},
+	{"name": "battle/test_runner_banner_contract", "path": "res://tests/battle/test_runner_banner_contract.gd"},
+	{"name": "battle/test_probe_banner_to_contract_ordering", "path": "res://tests/battle/test_probe_banner_to_contract_ordering.gd"},
+	{"name": "battle/test_probe_banner_chain", "path": "res://tests/battle/test_probe_banner_chain.gd"},
+	{"name": "battle/test_probe_contract_banner_bridge", "path": "res://tests/battle/test_probe_contract_banner_bridge.gd"},
+	{"name": "battle/test_probe_banner_contract_chain", "path": "res://tests/battle/test_probe_banner_contract_chain.gd"},
+	{"name": "battle/test_probe_banner_cluster_bridge", "path": "res://tests/battle/test_probe_banner_cluster_bridge.gd"},
+	{"name": "battle/test_probe_contract_ordering_chain", "path": "res://tests/battle/test_probe_contract_ordering_chain.gd"},
+	{"name": "battle/test_probe_contract_ordering", "path": "res://tests/battle/test_probe_contract_ordering.gd"},
+	{"name": "battle/test_probe_contract_block_adjacency", "path": "res://tests/battle/test_probe_contract_block_adjacency.gd"},
+	{"name": "battle/test_runner_contract_cluster", "path": "res://tests/battle/test_runner_contract_cluster.gd"},
+	{"name": "battle/test_probe_contract_block_bounds", "path": "res://tests/battle/test_probe_contract_block_bounds.gd"},
+	{"name": "battle/test_probe_contract_projection_boundary", "path": "res://tests/battle/test_probe_contract_projection_boundary.gd"},
+	{"name": "battle/test_probe_contract_late_chain", "path": "res://tests/battle/test_probe_contract_late_chain.gd"},
+	{"name": "battle/test_probe_contract_tail_adjacency", "path": "res://tests/battle/test_probe_contract_tail_adjacency.gd"},
+	{"name": "battle/test_probe_contract_block_cluster_chain", "path": "res://tests/battle/test_probe_contract_block_cluster_chain.gd"},
+	{"name": "battle/test_probe_contract_block_before_core_tests", "path": "res://tests/battle/test_probe_contract_block_before_core_tests.gd"},
+	{"name": "battle/test_probe_contract_cluster_ordering", "path": "res://tests/battle/test_probe_contract_cluster_ordering.gd"},
+	{"name": "battle/test_probe_contract_final_block_order", "path": "res://tests/battle/test_probe_contract_final_block_order.gd"},
+	{"name": "battle/test_probe_contract_to_core_transition", "path": "res://tests/battle/test_probe_contract_to_core_transition.gd"},
+	{"name": "battle/test_probe_contract_cluster_full_chain", "path": "res://tests/battle/test_probe_contract_cluster_full_chain.gd"},
+	{"name": "battle/test_battle_projection", "path": "res://tests/battle/test_battle_projection.gd"},
 	{"name": "battle/test_unit_defs_loader", "path": "res://tests/battle/test_unit_defs_loader.gd"},
 	{"name": "battle/test_wave_defs_loader", "path": "res://tests/battle/test_wave_defs_loader.gd"},
 	{"name": "battle/test_relic_defs_loader", "path": "res://tests/battle/test_relic_defs_loader.gd"},
@@ -68,16 +170,47 @@ const TEST_SUITES := [
 var _failure_count := 0
 var _test_count := 0
 
+func _should_run_smoke_only() -> bool:
+	for arg in OS.get_cmdline_user_args():
+		if arg == "--smoke":
+			return true
+	return false
+
+func _load_smoke_suite_names() -> Dictionary:
+	var text := FileAccess.get_file_as_string(SMOKE_SUITE_CONFIG_PATH)
+	if text == "":
+		return {}
+	var parsed: Variant = JSON.parse_string(text)
+	if not (parsed is Array):
+		return {}
+	var names := {}
+	for item in parsed:
+		names[str(item)] = true
+	return names
+
+func _filtered_suites() -> Array:
+	if not _should_run_smoke_only():
+		return TEST_SUITES
+	var allowed := _load_smoke_suite_names()
+	if allowed.is_empty():
+		return []
+	var filtered: Array = []
+	for suite in TEST_SUITES:
+		if allowed.has(str(suite.get("name", ""))):
+			filtered.append(suite)
+	return filtered
+
 func _initialize() -> void:
 	print("[TEST] Starting test run...")
-	for suite_def in TEST_SUITES:
-		_run_suite(str(suite_def.name), str(suite_def.path))
+	for suite_def in _filtered_suites():
+		await _run_suite(str(suite_def.name), str(suite_def.path))
 
 	if _failure_count == 0:
 		print("[TEST] All %d test suite(s) passed." % _test_count)
 		quit(0)
 		return
 
+	await process_frame
 	printerr("[TEST] %d failure(s) across %d test suite(s)." % [_failure_count, _test_count])
 	quit(1)
 
@@ -98,18 +231,20 @@ func _run_suite(suite_name: String, suite_path: String) -> void:
 		_failure_count += 1
 		printerr("[FAIL] %s: script failed to instantiate" % suite_name)
 		return
-
+	if suite is Node or suite is SceneTree:
+		_failure_count += 1
+		printerr("[FAIL] %s: generic runner only supports RefCounted contracts" % suite_name)
+		return
 	if not suite.has_method("run"):
 		_failure_count += 1
 		printerr("[FAIL] %s: missing run() method" % suite_name)
 		return
 
-	var result: Variant = suite.run()
+	var result: Variant = await suite.run()
 	if result is Array and result.is_empty():
 		await process_frame
 		print("[PASS] %s" % suite_name)
 		return
-
 	if result is Array:
 		await process_frame
 		for failure in result:

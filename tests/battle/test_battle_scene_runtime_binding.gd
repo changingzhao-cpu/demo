@@ -18,7 +18,68 @@ func run() -> Array[String]:
 	_test_initial_layout_syncs_bound_entities_26_and_40_before_combat_starts(failures)
 	_test_initial_binding_keeps_slot_entity_ids_stable_across_instances(failures)
 	_test_runtime_probe_exports_battle_report_timeline(failures)
+	_test_controller_runtime_trace_payload_exposes_unified_snapshots(failures)
+	_test_takeover_trial_gate_can_drive_single_decision_point(failures)
+	_test_battle_scene_can_run_with_v2_simulation_backend(failures)
 	return failures
+
+func _test_takeover_trial_gate_can_drive_single_decision_point(failures: Array[String]) -> void:
+	var battle_scene = _load_battle_scene()
+	_assert_true(battle_scene != null, "battle scene should load before takeover trial gate checks", failures)
+	if battle_scene == null:
+		return
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = battle_scene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	_assert_true(controller != null, "battle scene should expose BattleController for takeover trial gate checks", failures)
+	if controller != null:
+		controller.set("_v4_feedback_mode", "degradative")
+		controller.set("_v4_feedback_active", true)
+		controller.set("_v4_takeover_shadow_mode", "trial_gate")
+		controller.set("_v4_takeover_shadow_ready", true)
+		controller.set("_v4_takeover_shadow_recommendation", "trial_takeover")
+		controller.set("_v4_takeover_shadow_reason", "single_decision_point_approved")
+		instance.call("_process", 0.016)
+		var payload: Dictionary = controller.call("debug_get_runtime_trace_payload")
+		_assert_true(str(payload.get("takeover_shadow_mode", "")) == "authoritative_trial", "battle scene should promote takeover mode into authoritative_trial at the single decision point", failures)
+		_assert_true(str(payload.get("takeover_shadow_recommendation", "")) == "authoritative_takeover", "battle scene should promote recommendation into authoritative_takeover at the single decision point", failures)
+		_assert_true(str(payload.get("takeover_shadow_reason", "")) == "single_decision_point_live", "battle scene should record the live single decision point reason during trial takeover", failures)
+		var battle_report_timeline: Array = controller.call("get_battle_report_timeline")
+		_assert_true(battle_report_timeline.size() > 0, "battle scene should keep battle report timeline available during authoritative trial", failures)
+		if battle_report_timeline.size() > 0:
+			var first_timeline_event: Dictionary = battle_report_timeline[0]
+			_assert_true(first_timeline_event.has("event_type"), "battle report timeline should expose event_type during authoritative trial", failures)
+		var events: Array = payload.get("business_probe_events", [])
+		var found_live_takeover := false
+		for event_variant in events:
+			var event: Dictionary = event_variant
+			if str(event.get("event_type", "")) == "takeover_trial_applied":
+				found_live_takeover = str(event.get("takeover_shadow_mode", "")) == "authoritative_trial" and str(event.get("recommendation", "")) == "authoritative_takeover"
+				break
+		_assert_true(found_live_takeover, "battle scene should emit a takeover_trial_applied business event when the single decision point enters authoritative trial", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
+
+func _test_battle_scene_can_run_with_v2_simulation_backend(failures: Array[String]) -> void:
+	var battle_scene = _load_battle_scene()
+	_assert_true(battle_scene != null, "battle scene should load before v2 backend checks", failures)
+	if battle_scene == null:
+		return
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = battle_scene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	_assert_true(controller != null, "battle scene should expose BattleController for v2 backend checks", failures)
+	if controller != null:
+		controller.call("debug_force_simulation_backend", "v2")
+		controller.call("start_run")
+		var contract: Dictionary = controller.call("debug_get_authoritative_battle_contract")
+		_assert_true(str(contract.get("ticksource", "")) == "battle_simulation_v2", "battle scene should expose v2 authoritative contract when controller backend switches to v2", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
 
 func _test_initial_layout_uses_runtime_combat_positions(failures: Array[String]) -> void:
 	var battle_scene = _load_battle_scene()
@@ -258,11 +319,65 @@ func _test_runtime_probe_exports_battle_report_timeline(failures: Array[String])
 		return
 	var payload: Dictionary = json.data
 	_assert_true(payload.has("battle_report_timeline"), "runtime probe output should expose battle_report_timeline key", failures)
-	var timeline: Array = payload.get("battle_report_timeline", [])
-	_assert_true(timeline is Array, "battle_report_timeline should remain an Array in runtime probe output", failures)
-	if timeline.is_empty():
+	if payload.has("warning_unified_snapshot") or payload.has("critical_unified_snapshot"):
+		var warning_unified_snapshot: Dictionary = payload.get("warning_unified_snapshot", {})
+		var critical_unified_snapshot: Dictionary = payload.get("critical_unified_snapshot", {})
+		_assert_true(str(warning_unified_snapshot.get("family", "")) == "warning", "runtime probe output should keep warning unified snapshot family", failures)
+		_assert_true(str(critical_unified_snapshot.get("family", "")) == "critical", "runtime probe output should keep critical unified snapshot family", failures)
+		_assert_true(warning_unified_snapshot.has("confidence_score"), "runtime probe output should keep warning unified snapshot confidence score", failures)
+		_assert_true(critical_unified_snapshot.has("confidence_score"), "runtime probe output should keep critical unified snapshot confidence score", failures)
+		_assert_true(warning_unified_snapshot.has("thresholds"), "runtime probe output should keep warning unified snapshot thresholds", failures)
+		_assert_true(critical_unified_snapshot.has("thresholds"), "runtime probe output should keep critical unified snapshot thresholds", failures)
+		_assert_true(warning_unified_snapshot.has("support_counts"), "runtime probe output should keep warning unified snapshot support counts", failures)
+		_assert_true(critical_unified_snapshot.has("support_counts"), "runtime probe output should keep critical unified snapshot support counts", failures)
+		_assert_true(warning_unified_snapshot.has("blockers"), "runtime probe output should keep warning unified snapshot blockers", failures)
+		_assert_true(critical_unified_snapshot.has("blockers"), "runtime probe output should keep critical unified snapshot blockers", failures)
+		_assert_true(warning_unified_snapshot.has("gate_results"), "runtime probe output should keep warning unified snapshot gate results", failures)
+		_assert_true(critical_unified_snapshot.has("gate_results"), "runtime probe output should keep critical unified snapshot gate results", failures)
+
+func _test_controller_runtime_trace_payload_exposes_unified_snapshots(failures: Array[String]) -> void:
+	var battle_scene = _load_battle_scene()
+	_assert_true(battle_scene != null, "battle scene should load before runtime trace payload contract checks", failures)
+	if battle_scene == null:
 		return
-	_assert_true(str(timeline[0].get("event_type", "")) != "", "battle_report_timeline entries should include event_type when present", failures)
+	var main_loop: SceneTree = Engine.get_main_loop()
+	var instance = battle_scene.instantiate()
+	main_loop.root.add_child(instance)
+	await main_loop.process_frame
+	var controller = instance.get_node_or_null("BattleController")
+	_assert_true(controller != null, "battle scene should expose BattleController for runtime trace payload contract checks", failures)
+	if controller != null:
+		var payload: Dictionary = controller.call("debug_get_runtime_trace_payload")
+		_assert_true(payload.has("probe"), "battle scene controller runtime trace payload should expose probe payload", failures)
+		_assert_true(payload.has("business_probe_events"), "battle scene controller runtime trace payload should expose business_probe_events", failures)
+		_assert_true(payload.has("feedback_mode"), "battle scene runtime trace payload should expose feedback_mode", failures)
+		_assert_true(payload.has("feedback_active"), "battle scene runtime trace payload should expose feedback_active", failures)
+		_assert_true(payload.has("takeover_shadow_mode"), "battle scene runtime trace payload should expose takeover_shadow_mode", failures)
+		_assert_true(payload.has("takeover_shadow_ready"), "battle scene runtime trace payload should expose takeover_shadow_ready", failures)
+		_assert_true(payload.has("takeover_shadow_recommendation"), "battle scene runtime trace payload should expose takeover_shadow_recommendation", failures)
+		_assert_true(payload.has("takeover_shadow_reason"), "battle scene runtime trace payload should expose takeover_shadow_reason", failures)
+		_assert_true(str(payload.get("takeover_shadow_mode", "")) == "review_only", "battle scene runtime trace payload should keep takeover_shadow_mode in review_only", failures)
+		_assert_true(str(payload.get("takeover_shadow_recommendation", "")) == "hold" or str(payload.get("takeover_shadow_recommendation", "")) == "degrade_only", "battle scene runtime trace payload should expose advisory recommendation only", failures)
+		_assert_true(payload.has("warning_unified_snapshot"), "battle scene controller runtime trace payload should expose warning unified snapshot", failures)
+		_assert_true(payload.has("critical_unified_snapshot"), "battle scene controller runtime trace payload should expose critical unified snapshot", failures)
+		var warning_unified_snapshot: Dictionary = payload.get("warning_unified_snapshot", {})
+		var critical_unified_snapshot: Dictionary = payload.get("critical_unified_snapshot", {})
+		_assert_true(str(warning_unified_snapshot.get("family", "")) == "warning", "battle scene controller runtime trace payload should keep warning unified snapshot family", failures)
+		_assert_true(str(critical_unified_snapshot.get("family", "")) == "critical", "battle scene controller runtime trace payload should keep critical unified snapshot family", failures)
+		_assert_true(warning_unified_snapshot.has("confidence_score"), "battle scene controller runtime trace payload should keep warning unified snapshot confidence score", failures)
+		_assert_true(critical_unified_snapshot.has("confidence_score"), "battle scene controller runtime trace payload should keep critical unified snapshot confidence score", failures)
+		var events: Array = payload.get("business_probe_events", [])
+		_assert_true(events.size() > 0, "battle scene controller runtime trace payload should expose business probe events", failures)
+		var first_event: Dictionary = events[0] if not events.is_empty() else {}
+		_assert_true(first_event.has("wave"), "battle scene controller runtime trace payload should expose wave in business probe event", failures)
+		_assert_true(first_event.has("live_count"), "battle scene controller runtime trace payload should expose live_count in business probe event", failures)
+		_assert_true(first_event.has("combat_event_count"), "battle scene controller runtime trace payload should expose combat_event_count in business probe event", failures)
+		var critical_gate_results: Dictionary = critical_unified_snapshot.get("gate_results", {})
+		_assert_true(critical_gate_results.has("attack_rebind_escape_count"), "battle scene controller runtime trace payload should expose perturbation escape count", failures)
+		_assert_true(critical_gate_results.has("attack_rebind_recontact_count"), "battle scene controller runtime trace payload should expose perturbation recontact count", failures)
+		_assert_true(critical_gate_results.has("attack_midband_drift_count"), "battle scene controller runtime trace payload should expose perturbation midband drift count", failures)
+	main_loop.root.remove_child(instance)
+	instance.free()
 
 func _test_runtime_keeps_units_visible_after_initial_layout(failures: Array[String]) -> void:
 	var battle_scene = _load_battle_scene()

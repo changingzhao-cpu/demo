@@ -16,7 +16,7 @@ func _test_reward_panel_scene_loads_and_exposes_buttons(failures: Array[String])
 	_assert_true(instance.get_node_or_null("OptionButtons/OptionA") != null, "reward panel should expose OptionA button", failures)
 	_assert_true(instance.get_node_or_null("OptionButtons/OptionB") != null, "reward panel should expose OptionB button", failures)
 	_assert_true(instance.get_node_or_null("OptionButtons/OptionC") != null, "reward panel should expose OptionC button", failures)
-	instance.free()
+	instance.queue_free()
 
 func _test_reward_panel_emits_selection_result(failures: Array[String]) -> void:
 	var panel_scene: PackedScene = load("res://scenes/ui/reward_panel.tscn")
@@ -44,7 +44,8 @@ func _test_reward_panel_emits_selection_result(failures: Array[String]) -> void:
 		_assert_eq(received, 1, "reward panel should emit the selected reward index", failures)
 		_assert_false(instance.visible, "reward panel should hide after a reward is selected", failures)
 	main_loop.root.remove_child(instance)
-	instance.free()
+	instance.queue_free()
+	await main_loop.process_frame
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

@@ -8,9 +8,15 @@ func run() -> Array[String]:
 	_test_attack_pulse_temporarily_boosts_motion_feedback(failures)
 	return failures
 
+func _free_view(view) -> void:
+	if view != null:
+		view.queue_free()
+		view = null
+
 func _test_visual_radius_stays_compact_for_dense_battles(failures: Array[String]) -> void:
 	var view = UnitViewScript.new()
 	_assert_true(view.call("get_visual_radius") <= 8.0, "unit view radius should stay compact to reduce overlap in dense battles", failures)
+	_free_view(view)
 
 func _test_attack_pulse_temporarily_boosts_motion_feedback(failures: Array[String]) -> void:
 	var view = UnitViewScript.new()
@@ -21,6 +27,7 @@ func _test_attack_pulse_temporarily_boosts_motion_feedback(failures: Array[Strin
 		view.call("trigger_attack_pulse")
 	_assert_true(view.has_method("trigger_attack_pulse"), "unit view should expose an attack pulse hook for combat readability", failures)
 	_assert_true(float(view.call("get_visual_motion_strength")) >= baseline, "attack pulse should not reduce readable motion strength", failures)
+	_free_view(view)
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:

@@ -12,6 +12,11 @@ func run() -> Array[String]:
 	_test_depth_anchor_sorting_uses_foot_points(failures)
 	return failures
 
+func _free_view(view) -> void:
+	if view != null:
+		view.queue_free()
+		view = null
+
 func _test_goose_attack_texture_is_loadable(failures: Array[String]) -> void:
 	var texture = ResourceLoader.load("res://assets/battle/units/goose_attack.png")
 	_assert_true(texture != null, "goose attack texture should be loadable through ResourceLoader", failures)
@@ -31,6 +36,9 @@ func _test_depth_anchor_sorting_uses_foot_points(failures: Array[String]) -> voi
 	soldier.call("sync_from_entity_visual", Vector2(100.0, 120.0), true, 0, 0.0, 1.0)
 	soldier.call("refresh_depth_sort")
 	_assert_true(float(soldier.call("get_depth_anchor_global_y")) != float(front_goose.call("get_depth_anchor_global_y")) or int(soldier.z_index) != int(front_goose.z_index), "different unit types should still derive depth from their own foot anchors", failures)
+	_free_view(front_goose)
+	_free_view(back_goose)
+	_free_view(soldier)
 
 func _test_hit_pulse_temporarily_boosts_motion_feedback(failures: Array[String]) -> void:
 	var view = UnitViewScript.new()
@@ -41,6 +49,7 @@ func _test_hit_pulse_temporarily_boosts_motion_feedback(failures: Array[String])
 	if view.has_method("trigger_hit_pulse"):
 		view.call("trigger_hit_pulse")
 		_assert_true(float(view.call("get_visual_motion_strength")) > baseline, "hit pulse should temporarily increase readable motion strength", failures)
+	_free_view(view)
 
 func _test_attack_pulse_holds_attack_pose_long_enough_to_read(failures: Array[String]) -> void:
 	var view = UnitViewScript.new()
@@ -54,6 +63,7 @@ func _test_attack_pulse_holds_attack_pose_long_enough_to_read(failures: Array[St
 		view.call("set_visual_motion", -1.0, 0.0)
 		_assert_true(view.get_node("BodySprite").texture == attack_texture, "attack pose should stay visible long enough to read instead of flashing away immediately", failures)
 		_assert_true(view.get_node("BodySprite").scale.x > 0.0, "left-facing source art should keep positive scale.x when facing left", failures)
+	_free_view(view)
 
 func _test_attack_pose_recovers_to_idle_without_new_attack_state(failures: Array[String]) -> void:
 	var view = UnitViewScript.new()
@@ -63,6 +73,7 @@ func _test_attack_pose_recovers_to_idle_without_new_attack_state(failures: Array
 		view.call("sync_from_entity_visual", Vector2.ZERO, true, 0, 0.0, 1.0, 0)
 	_assert_true(not bool(view.call("is_showing_attack_pose")), "attack pose should recover to idle when new syncs no longer report ATTACK state", failures)
 	_assert_true(float(view.call("get_attack_pose_hold")) <= 0.001, "attack hold timer should drain back to zero after ATTACK state stops", failures)
+	_free_view(view)
 
 func _test_goose_attack_pose_is_visibly_distinct_from_idle(failures: Array[String]) -> void:
 	var view = UnitViewScript.new()
@@ -76,6 +87,7 @@ func _test_goose_attack_pose_is_visibly_distinct_from_idle(failures: Array[Strin
 		var idle_position := Vector2(body.position)
 		view.call("trigger_attack_pulse")
 		_assert_true(absf(float(body.rotation) - idle_rotation) > 0.05 or body.position.distance_to(idle_position) > 0.05, "goose attack should visibly change pose instead of looking identical to idle", failures)
+	_free_view(view)
 
 func _assert_true(value: bool, message: String, failures: Array[String]) -> void:
 	if not value:
